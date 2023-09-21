@@ -47,6 +47,7 @@ class JointNetwork(torch.nn.Module):
         enc_out: torch.Tensor,
         dec_out: torch.Tensor,
         no_projection: bool = False,
+        return_h_joint: bool = False
     ) -> torch.Tensor:
         """Joint computation of encoder and decoder hidden state sequences.
 
@@ -67,5 +68,37 @@ class JointNetwork(torch.nn.Module):
             joint_out = self.joint_activation(
                 self.lin_enc(enc_out) + self.lin_dec(dec_out)
             )
+        if return_h_joint:
+            return self.lin_out(joint_out), joint_out
+        return self.lin_out(joint_out)
 
+class JointBiasingNetwork(JointNetwork):
+    def forward(
+        self,
+        enc_out: torch.Tensor,
+        dec_out: torch.Tensor,
+        bias_out: torch.Tensor,
+        no_projection: bool = False,
+        return_h_joint: bool = False
+    ) -> torch.Tensor:
+        """Joint computation of encoder, decoder and biasing vector hidden state sequences.
+
+        Args:
+            enc_out: Expanded encoder output state sequences.
+                         (B, T, s_range, D_enc) or (B, T, 1, D_enc)
+            dec_out: Expanded decoder output state sequences.
+                         (B, T, s_range, D_dec) or (B, 1, U, D_dec)
+            bias_out: Expanded decoder output state sequences.
+                         (B, T, U, D_out)
+
+        Returns:
+            joint_out: Joint output state sequences.
+                           (B, T, U, D_out) or (B, T, s_range, D_out)
+
+        """
+        joint_out = self.joint_activation(
+            self.lin_enc(enc_out) + self.lin_dec(dec_out) + bias_out
+        )
+        if return_h_joint:
+            return self.lin_out(joint_out), joint_out
         return self.lin_out(joint_out)

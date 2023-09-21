@@ -16,6 +16,7 @@ def get_activation(
     softplus_beta: float = 1.0,
     softplus_threshold: int = 20,
     swish_beta: float = 1.0,
+    **kwargs
 ) -> torch.nn.Module:
     """Return activation function.
 

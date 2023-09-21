@@ -66,7 +66,10 @@ from espnet2.asr.preencoder.linear import LinearProjection
 from espnet2.asr.preencoder.sinc import LightweightSincConvs
 from espnet2.asr.specaug.abs_specaug import AbsSpecAug
 from espnet2.asr.specaug.specaug import SpecAug
-from espnet2.asr_transducer.joint_network import JointNetwork
+from espnet2.asr_transducer.joint_network import (
+    JointNetwork,
+    JointBiasingNetwork,
+)
 from espnet2.layers.abs_normalize import AbsNormalize
 from espnet2.layers.global_mvn import GlobalMVN
 from espnet2.layers.utterance_mvn import UtteranceMVN
@@ -75,16 +78,25 @@ from espnet2.text.phoneme_tokenizer import g2p_choices
 from espnet2.torch_utils.initialize import initialize
 from espnet2.train.abs_espnet_model import AbsESPnetModel
 from espnet2.train.class_choices import ClassChoices
-from espnet2.train.collate_fn import CommonCollateFn
+from espnet2.train.collate_fn import (
+    CommonCollateFn,
+    RarewordCollateFn
+)
 from espnet2.train.preprocessor import (
     AbsPreprocessor,
     CommonPreprocessor,
+    RarewordPreprocessor,
     CommonPreprocessor_multi,
 )
 from espnet2.train.trainer import Trainer
 from espnet2.utils.get_default_kwargs import get_default_kwargs
 from espnet2.utils.nested_dict_action import NestedDictAction
 from espnet2.utils.types import float_or_none, int_or_none, str2bool, str_or_none
+
+from espnet2.text.trie_processor import TrieProcessor
+from espnet2.asr.espnet_biasing_model import ESPnetBiasingASRModel
+
+from espnet2.asr.prototype.tcpgen_prototype import TCPGenPrototype
 
 frontend_choices = ClassChoices(
     name="frontend",
@@ -123,6 +135,7 @@ model_choices = ClassChoices(
         espnet=ESPnetASRModel,
         maskctc=MaskCTCModel,
         pit_espnet=PITESPnetModel,
+        espnet_biasing=ESPnetBiasingASRModel
     ),
     type_check=AbsESPnetModel,
     default="espnet",
@@ -188,11 +201,19 @@ decoder_choices = ClassChoices(
     default=None,
     optional=True,
 )
+rareword_choices = ClassChoices(
+    "rareword",
+    classes=dict(
+        tcpgen=TCPGenPrototype
+    ),
+    default="tcpgen",
+)
 preprocessor_choices = ClassChoices(
     "preprocessor",
     classes=dict(
         default=CommonPreprocessor,
         multi=CommonPreprocessor_multi,
+        rareword=RarewordPreprocessor
     ),
     type_check=AbsPreprocessor,
     default="default",
@@ -221,6 +242,8 @@ class ASRTask(AbsTask):
         postencoder_choices,
         # --decoder and --decoder_conf
         decoder_choices,
+        # --rareword and --rareword_conf
+        rareword_choices,
         # --preprocessor and --preprocessor_conf
         preprocessor_choices,
     ]
@@ -382,6 +405,13 @@ class ASRTask(AbsTask):
             default=[],
             help="Auxillary tasks to train on using CTC loss. ",
         )
+        group.add_argument(
+            "--collate_fn_type",
+            type=str,
+            choices=["default", "rareword"],
+            default="default",
+            help="Specify collate function type",
+        )
 
         for class_choices in cls.class_choices_list:
             # Append --<name> and --<name>_conf.
@@ -397,7 +427,30 @@ class ASRTask(AbsTask):
     ]:
         assert check_argument_types()
         # NOTE(kamo): int value = 0 is reserved by CTC-blank symbol
-        return CommonCollateFn(float_pad_value=0.0, int_pad_value=-1)
+        if args.collate_fn_type == "default":
+            return CommonCollateFn(float_pad_value=0.0, int_pad_value=-1)
+        elif args.collate_fn_type == "rareword":
+            blist_path = args.rareword_conf.get("blist_path", 0)
+            droup_out  = args.rareword_conf.get("droup_out", 0)
+            blist_max  = args.rareword_conf.get("blist_max", 500)
+
+            trie_processor = TrieProcessor(
+                blist_path=blist_path, 
+                droup_out=droup_out,
+                blist_max=blist_max,
+                pad_value=-1,
+                ookB_value=len(args.token_list),
+                token_type=args.token_type,
+                token_list=args.token_list,
+                bpemodel=args.bpemodel,
+                g2p_type=args.g2p,
+                non_linguistic_symbols=args.non_linguistic_symbols,
+            )
+            return RarewordCollateFn(
+                float_pad_value=0.0, 
+                int_pad_value=-1, 
+                trie_processor=trie_processor
+            )
 
     @classmethod
     def build_preprocess_fn(
@@ -551,8 +604,12 @@ class ASRTask(AbsTask):
                     embed_pad=0,
                     **args.decoder_conf,
                 )
-
-                joint_network = JointNetwork(
+                joiner_type = args.joint_net_conf.get("joint_type", None)
+                if joiner_type == "biasing":
+                    joint_class = JointBiasingNetwork
+                else:
+                    joint_class = JointNetwork
+                joint_network = joint_class(
                     vocab_size,
                     encoder.output_size(),
                     decoder.dunits,
@@ -568,6 +625,19 @@ class ASRTask(AbsTask):
         else:
             decoder = None
             joint_network = None
+
+        # ?. rareword methods
+        if args.rareword_conf != None:
+            rareword_class = rareword_choices.get_class(args.rareword)
+            rareword = rareword_class(
+                vocab_size=vocab_size,
+                encoder_hidden_size=args.encoder_conf.get("output_size", None),
+                decoder_hidden_size=args.decoder_conf.get("hidden_size", None),
+                joint_space_size=args.joint_net_conf.get("joint_space_size", None),
+                **args.rareword_conf
+            )
+        else:
+            rareword = None
 
         # 6. CTC
         ctc = CTC(
@@ -588,6 +658,8 @@ class ASRTask(AbsTask):
             encoder=encoder,
             postencoder=postencoder,
             decoder=decoder,
+            rareword=rareword,
+            rareword_conf=args.rareword_conf,
             ctc=ctc,
             joint_network=joint_network,
             token_list=token_list,

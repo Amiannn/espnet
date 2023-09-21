@@ -161,6 +161,12 @@ asr_speech_fold_length=800 # fold_length for speech data during ASR training.
 asr_text_fold_length=150   # fold_length for text data during ASR training.
 lm_fold_length=150         # fold_length for LM training.
 
+suffixbpe=
+usesuffixbpe=
+
+biasing=false
+biasing_path=
+
 help_message=$(cat << EOF
 Usage: $0 --train-set "<train_set_name>" --valid-set "<valid_set_name>" --test_sets "<test_set_names>"
 
@@ -381,6 +387,13 @@ if [ "${lang}" != noinfo ]; then
 else
     token_listdir=data/token_list
 fi
+if [ -z "${suffixbpe}" ]; then
+    bpedir="${token_listdir}/bpe_${bpemode}${nbpe}"
+else
+    usesuffixbpe=true
+    bpedir="${token_listdir}/bpe_${bpemode}${nbpe}${suffixbpe}"
+fi
+
 bpedir="${token_listdir}/bpe_${bpemode}${nbpe}"
 bpeprefix="${bpedir}"/bpe
 bpemodel="${bpeprefix}".model
@@ -485,6 +498,10 @@ if [ -z "${asr_stats_dir}" ]; then
     if [ -n "${speed_perturb_factors}" ]; then
         asr_stats_dir+="_sp"
     fi
+fi
+if [ -n "${suffixbpe}" ]; then
+    asr_stats_dir="${asr_stats_dir}_suffix"
+    asr_tag+="_suffix"
 fi
 if [ -z "${lm_stats_dir}" ]; then
     if [ "${lang}" != noinfo ]; then
@@ -900,6 +917,7 @@ if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ] && ! [[ " ${skip_stages} " =~ [
             --model_type="${bpemode}" \
             --model_prefix="${bpeprefix}" \
             --character_coverage=${bpe_char_cover} \
+            --treat_whitespace_as_suffix=${usesuffixbpe} \
             --input_sentence_size="${bpe_input_sentence_size}" \
             ${_opts_spm}
 
@@ -1383,6 +1401,14 @@ if [ ${stage} -le 11 ] && [ ${stop_stage} -ge 11 ] && ! [[ " ${skip_stages} " =~
             _opts+="--train_shape_file ${asr_stats_dir}/train/${ref_text_names[$i]}_shape.${token_type} "
         done
     fi
+
+    if [ "${biasing}" ]; then
+        _opts+="--preprocessor rareword "
+        _opts+="--collate_fn_type rareword "
+        _opts+="--allow_variable_data_keys True "
+        _opts+="--train_data_path_and_name_and_type ${_asr_train_dir}/uttblist,uttblist,multi_columns_text "
+        _opts+="--valid_data_path_and_name_and_type ${_asr_valid_dir}/uttblist,uttblist,multi_columns_text "
+    fi 
 
     # shellcheck disable=SC2068
     for i in ${!ref_text_names[@]}; do

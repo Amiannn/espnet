@@ -81,6 +81,49 @@ def read_multi_columns_text(
 
     return data, unsplit_data
 
+def read_multi_columns_text_tuple(
+    path: Union[Path, str], return_unsplit: bool = False
+) -> Tuple[Dict[str, List[str]], Optional[Dict[str, str]]]:
+    """Read a text file having 2 or more columns as dict object.
+
+    Examples:
+        wav.scp:
+            key1 /some/path/a1.wav /some/path/a2.wav
+            key2 /some/path/b1.wav /some/path/b2.wav  /some/path/b3.wav
+            key3 /some/path/c1.wav
+            ...
+
+        >>> read_multi_columns_text('wav.scp')
+        {'key1': ['/some/path/a1.wav', '/some/path/a2.wav'],
+         'key2': ['/some/path/b1.wav', '/some/path/b2.wav', '/some/path/b3.wav'],
+         'key3': ['/some/path/c1.wav']}
+
+    """
+    assert check_argument_types()
+
+    data = {}
+
+    if return_unsplit:
+        unsplit_data = {}
+    else:
+        unsplit_data = None
+
+    with Path(path).open("r", encoding="utf-8") as f:
+        for linenum, line in enumerate(f, 1):
+            sps = line.rstrip().split(maxsplit=1)
+            if len(sps) == 1:
+                k, v = sps[0], ""
+            else:
+                k, v = sps
+
+            if k in data:
+                raise RuntimeError(f"{k} is duplicated ({path}:{linenum})")
+
+            data[k] = tuple(v.split() if v != "" else [""])
+            if return_unsplit:
+                unsplit_data[k] = v
+
+    return data
 
 def load_num_sequence_text(
     path: Union[Path, str], loader_type: str = "csv_int"

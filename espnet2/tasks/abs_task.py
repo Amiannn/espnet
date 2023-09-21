@@ -314,6 +314,13 @@ class AbsTask(ABC):
             help="Perform process without training",
         )
         group.add_argument(
+            "--dataset_type",
+            type=str,
+            choices=["espnet", "rareword"],
+            default="espnet",
+            help="Specify Dataset type",
+        )
+        group.add_argument(
             "--iterator_type",
             type=str,
             choices=["sequence", "category", "chunk", "task", "none"],

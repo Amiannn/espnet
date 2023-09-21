@@ -287,6 +287,7 @@ class Trainer:
             reporter.set_epoch(iepoch)
             # 1. Train and validation for one-epoch
             with reporter.observe("train") as sub_reporter:
+                setattr(dp_model, "epoch", iepoch)
                 all_steps_are_invalid = cls.train_one_epoch(
                     model=dp_model,
                     optimizers=optimizers,

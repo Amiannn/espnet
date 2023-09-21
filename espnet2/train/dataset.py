@@ -25,6 +25,7 @@ from espnet2.fileio.read_text import (
     load_num_sequence_text,
     read_2columns_text,
     read_label,
+    read_multi_columns_text_tuple,
 )
 from espnet2.fileio.rttm import RttmReader
 from espnet2.fileio.score_scp import SingingScoreReader
@@ -311,6 +312,16 @@ DATA_TYPES = {
         "\n\n"
         "   utterance_id_A hello world\n"
         "   utterance_id_B foo bar\n"
+        "   ...",
+    ),
+    "multi_columns_text": dict(
+        func=read_multi_columns_text_tuple,
+        kwargs=[],
+        help="Enable multi columns text. "
+        "The following text file can be loaded as multi texts"
+        "\n\n"
+        "   utterance_id_a b1 b2\n"
+        "   utterance_id_b b3 b4 b5\n"
         "   ...",
     ),
     "random_text": dict(

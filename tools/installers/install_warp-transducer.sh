@@ -27,6 +27,7 @@ fi
 
 rm -rf warp-transducer
 git clone --single-branch --branch espnet_v1.1 https://github.com/b-flo/warp-transducer.git
+# git clone https://github.com/Amiannn/warp-transducer.git
 
 (
     set -euo pipefail
@@ -40,7 +41,8 @@ git clone --single-branch --branch espnet_v1.1 https://github.com/b-flo/warp-tra
 
     (
         set -euo pipefail
-        cd pytorch_binding && python3 -m pip install -e .
+        # cd pytorch_binding && python3 -m pip install -e .
+        cd pytorch_binding && python3 setup.py install
     )
 )
 

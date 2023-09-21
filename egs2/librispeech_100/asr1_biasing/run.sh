@@ -9,7 +9,7 @@ train_set="train_clean_100"
 valid_set="dev"
 test_sets="test_clean test_other dev_clean dev_other"
 
-asr_config=conf/exp/train_asr_transducer_conformer_e15_linear1024_mini.yaml
+asr_config=conf/exp/train_rnnt_std_tcpgen.yaml
 inference_config=conf/decode_asr.yaml
 
 CUDA_VISIBLE_DEVICES=0 ./asr.sh \
@@ -31,4 +31,7 @@ CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --valid_set "${valid_set}" \
     --test_sets "${test_sets}" \
     --lm_train_text "data/${train_set}/text" \
-    --bpe_train_text "data/${train_set}/text" "$@"
+    --bpe_train_text "data/${train_set}/text" \
+    --biasing true \
+    --asr_args "--use_wandb true" \
+    "$@"

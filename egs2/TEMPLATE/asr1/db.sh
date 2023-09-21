@@ -51,7 +51,7 @@ HUI_ACG=downloads
 HUB4_SPANISH=
 LABOROTV=
 TEDXJP=
-LIBRISPEECH=downloads
+LIBRISPEECH=/share/corpus/LibriSpeech
 LIBRILIGHT_LIMITED=
 FSC=
 MELD=downloads
@@ -266,7 +266,7 @@ if [[ "$(hostname -d)" == clsp.jhu.edu ]]; then
     HUB4_SPANISH=
     LABOROTV=
     TEDXJP=
-    LIBRISPEECH=
+    LIBRISPEECH=/share/corpus/LibriSpeech
     FSC=
     SNIPS= # smart-light-en-closed-field data path
     SLURP=

@@ -1,4 +1,6 @@
 import math
+import logging
+
 from typing import Collection, Dict, List, Tuple, Union
 
 import numpy as np
@@ -38,6 +40,38 @@ class CommonCollateFn:
             not_sequence=self.not_sequence,
         )
 
+class RarewordCollateFn(CommonCollateFn):
+    """Functor class of common_collate_fn()"""
+
+    def __init__(
+        self,
+        float_pad_value: Union[float, int] = 0.0,
+        int_pad_value: int = -32768,
+        not_sequence: Collection[str] = (),
+        collatefn_type: str="trie",
+        trie_processor: object=None
+    ):
+        super().__init__(
+            float_pad_value=float_pad_value,
+            int_pad_value=int_pad_value,
+            not_sequence=not_sequence,
+        )
+        self.collatefn_type = collatefn_type
+        self.trie_processor = trie_processor
+
+    def __call__(
+        self, data: Collection[Tuple[str, Dict[str, np.ndarray]]]
+    ) -> Tuple[List[str], Dict[str, torch.Tensor]]:
+        if self.collatefn_type == 'trie':
+            return rareword_trie_collate_fn(
+                data,
+                float_pad_value=self.float_pad_value,
+                int_pad_value=self.int_pad_value,
+                not_sequence=self.not_sequence,
+                trie_processor=self.trie_processor
+            )
+        else:
+            raise NotImplementedError(f'Not implement {self.collatefn_type}!') 
 
 class HuBERTCollateFn(CommonCollateFn):
     """Functor class of common_collate_fn()"""
@@ -236,5 +270,80 @@ def common_collate_fn(
             output[key + "_lengths"] = lens
 
     output = (uttids, output)
+    assert check_return_type(output)
+    return output
+
+def rareword_trie_collate_fn(
+    data: Collection[Tuple[str, Dict[str, np.ndarray]]],
+    float_pad_value: Union[float, int] = 0.0,
+    int_pad_value: int = -32768,
+    not_sequence: Collection[str] = (),
+    trie_processor: object=None
+) -> Tuple[List[str], Dict[str, torch.Tensor]]:
+    """Concatenate ndarray-list to an array and convert to torch.Tensor.
+
+    Examples:
+        >>> from espnet2.samplers.constant_batch_sampler import ConstantBatchSampler,
+        >>> import espnet2.tasks.abs_task
+        >>> from espnet2.train.dataset import ESPnetDataset
+        >>> sampler = ConstantBatchSampler(...)
+        >>> dataset = ESPnetDataset(...)
+        >>> keys = next(iter(sampler)
+        >>> batch = [dataset[key] for key in keys]
+        >>> batch = common_collate_fn(batch)
+        >>> model(**batch)
+
+        Note that the dict-keys of batch are propagated from
+        that of the dataset as they are.
+
+    """
+    # TODO: Make prefix tree search!
+    assert check_argument_types()
+    uttids = [u for u, _ in data]
+    data = [d for _, d in data]
+    
+    assert all(set(data[0]) == set(d) for d in data), "dict-keys mismatching"
+    assert all(
+        not k.endswith("_lengths") for k in data[0]
+    ), f"*_lengths is reserved: {list(data[0])}"
+
+    output = {}
+    masks_mat, max_mask_len, masks_gate_mat, max_masks_gate_len = trie_processor(data)
+    
+    for d in data:
+        del d['textsegment']
+        del d['uttblist']
+        del d['uttblistsegment']
+
+    for key in data[0]:
+        # NOTE(kamo):
+        # Each models, which accepts these values finally, are responsible
+        # to repaint the pad_value to the desired value for each tasks.
+        if data[0][key].dtype.kind == "i":
+            pad_value = int_pad_value
+        else:
+            pad_value = float_pad_value
+
+        array_list = [d[key] for d in data]
+
+        # Assume the first axis is length:
+        # tensor_list: Batch x (Length, ...)
+        tensor_list = [torch.from_numpy(a) for a in array_list]
+        # tensor: (Batch, Length, ...)
+        tensor = pad_list(tensor_list, pad_value)
+        output[key] = tensor
+
+        # lens: (Batch,)
+        if key not in not_sequence:
+            lens = torch.tensor([d[key].shape[0] for d in data], dtype=torch.long)
+            output[key + "_lengths"] = lens
+
+    output['masks_mat']          = torch.from_numpy(masks_mat)
+    # output['max_mask_len']       = torch.from_numpy(max_mask_len)
+    output['masks_gate_mat']     = torch.from_numpy(masks_gate_mat)
+    # output['max_masks_gate_len'] = torch.from_numpy(max_masks_gate_len)
+
+    output = (uttids, output)
+
     assert check_return_type(output)
     return output
