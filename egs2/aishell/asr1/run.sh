@@ -9,8 +9,8 @@ train_set=train
 valid_set=dev
 test_sets="dev test"
 
-asr_config=conf/train_asr_branchformer.yaml
-inference_config=conf/decode_asr_branchformer.yaml
+asr_config=conf/exp/train_asr_transducer_conformer.yaml
+inference_config=conf/exp/decode_asr_rnnt_transducer.yaml
 
 lm_config=conf/train_lm_transformer.yaml
 use_lm=false
@@ -20,10 +20,10 @@ use_wordlm=false
 # (train_set will be "${train_set}_sp" if speed_perturb_factors is specified)
 speed_perturb_factors="0.9 1.0 1.1"
 
-./asr.sh \
+CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --nj 32 \
     --inference_nj 32 \
-    --ngpu 4 \
+    --ngpu 1 \
     --lang zh \
     --audio_format "flac.ark" \
     --feats_type raw \
@@ -40,4 +40,6 @@ speed_perturb_factors="0.9 1.0 1.1"
     --asr_speech_fold_length 512 \
     --asr_text_fold_length 150 \
     --lm_fold_length 150 \
-    --lm_train_text "data/${train_set}/text" "$@"
+    --lm_train_text "data/${train_set}/text" \
+    --asr_args "--use_wandb true" \
+    "$@"

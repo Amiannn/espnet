@@ -1402,7 +1402,7 @@ if [ ${stage} -le 11 ] && [ ${stop_stage} -ge 11 ] && ! [[ " ${skip_stages} " =~
         done
     fi
 
-    if [ "${biasing}" ]; then
+    if [ "${biasing}" == true ]; then
         _opts+="--preprocessor rareword "
         _opts+="--collate_fn_type rareword "
         _opts+="--allow_variable_data_keys True "

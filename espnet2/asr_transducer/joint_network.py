@@ -77,7 +77,7 @@ class JointBiasingNetwork(JointNetwork):
         self,
         enc_out: torch.Tensor,
         dec_out: torch.Tensor,
-        bias_out: torch.Tensor,
+        bias_out: torch.Tensor = None,
         no_projection: bool = False,
         return_h_joint: bool = False
     ) -> torch.Tensor:
@@ -96,9 +96,14 @@ class JointBiasingNetwork(JointNetwork):
                            (B, T, U, D_out) or (B, T, s_range, D_out)
 
         """
-        joint_out = self.joint_activation(
-            self.lin_enc(enc_out) + self.lin_dec(dec_out) + bias_out
-        )
+        if bias_out != None:
+            joint_out = self.joint_activation(
+                self.lin_enc(enc_out) + self.lin_dec(dec_out) + bias_out
+            )
+        else:
+            joint_out = self.joint_activation(
+                self.lin_enc(enc_out) + self.lin_dec(dec_out)
+            )
         if return_h_joint:
             return self.lin_out(joint_out), joint_out
         return self.lin_out(joint_out)

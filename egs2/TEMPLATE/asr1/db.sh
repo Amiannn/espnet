@@ -233,7 +233,7 @@ fi
 # For only JHU environment
 if [[ "$(hostname -d)" == clsp.jhu.edu ]]; then
     AIDATATANG_200ZH=downloads
-    AISHELL=
+    AISHELL=/share/corpus/AISHELL-SV
     AISHELL3=downloads
     ALFFA=downloads
     AN4=

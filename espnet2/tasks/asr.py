@@ -627,7 +627,7 @@ class ASRTask(AbsTask):
             joint_network = None
 
         # ?. rareword methods
-        if args.rareword_conf != None:
+        if args.rareword_conf != {}:
             rareword_class = rareword_choices.get_class(args.rareword)
             rareword = rareword_class(
                 vocab_size=vocab_size,
