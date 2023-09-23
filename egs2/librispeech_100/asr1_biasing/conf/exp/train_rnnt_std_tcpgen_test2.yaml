@@ -89,4 +89,4 @@ rareword_conf:
     blist_max: 500
     attndim: 256
     deepbiasing: true
-    warmup_epoch: 30
+    warmup_epoch: 0

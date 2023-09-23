@@ -42,4 +42,5 @@ CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --lm_fold_length 150 \
     --lm_train_text "data/${train_set}/text" \
     --asr_args "--use_wandb true" \
+    --inference_asr_model valid.loss.ave_10best.pth \
     "$@"
