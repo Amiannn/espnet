@@ -152,7 +152,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
 
         # c1. Encoder contextualization
         if self.contextualizer_conf["contextualizer_type"] == "contextual_adapter_encoder":
-            logging.info(f'Encoder contextualize!')
+            # logging.info(f'Encoder contextualize!')
             encoder_out = self.forward_contextual_adapter_fusion(
                 model_embed=encoder_out,
                 context_idxs=contexts['blist'],
@@ -295,13 +295,13 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         
         # c1. Decoder contextualization
         if self.contextualizer_conf["contextualizer_type"] == "contextual_adapter_decoder":
-            logging.info(f'Decoder contextualize!')
+            # logging.info(f'Decoder contextualize!')
             decoder_hs = self.forward_contextual_adapter_fusion(
                 model_embed=decoder_hs,
                 context_idxs=contexts['blist'],
             )
         decoder_out = self.decoder.output_layer(decoder_hs)
-        
+
         # 2. Compute attention loss
         loss_att = self.criterion_att(decoder_out, ys_out_pad)
         acc_att = th_accuracy(
@@ -351,7 +351,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
 
         # c1. Decoder contextualization
         if self.contextualizer_conf["contextualizer_type"] == "contextual_adapter_decoder":
-            logging.info(f'Decoder contextualize!')
+            # logging.info(f'Decoder contextualize!')
             decoder_out = self.forward_contextual_adapter_fusion(
                 model_embed=decoder_out,
                 context_idxs=contexts['blist'],
@@ -390,14 +390,14 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             self.contextualizer.encoder.oovembed.weight.data,
         ], dim=0)
 
-        logging.info(f'text_embed_matrix shape: {text_embed_matrix.shape}')
+        # logging.info(f'text_embed_matrix shape: {text_embed_matrix.shape}')
         context_embed = text_embed_matrix[context_idxs]
-        logging.info(f'model_embed shape: {model_embed.shape}')
-        logging.info(f'context_embed shape: {context_embed.shape}')
+        # logging.info(f'model_embed shape: {model_embed.shape}')
+        # logging.info(f'context_embed shape: {context_embed.shape}')
         
         out = self.contextualizer(
             model_embed=model_embed,
             context_embed=context_embed,
         )
-        logging.info(f'fusion out shape: {out.shape}')
+        # logging.info(f'fusion out shape: {out.shape}')
         return model_embed + out

@@ -38,6 +38,5 @@ CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --pretrained_model $pretrained_model \
     --ignore_init_mismatch true \
     --inference_asr_model transfered.pth \
+    --asr_args "--use_wandb true --wandb_project Contextualize_ASR_NEW" \
     "$@"
-
-    # --asr_args "--use_wandb true" \

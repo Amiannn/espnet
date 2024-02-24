@@ -19,14 +19,14 @@ class TrieProcessor():
         tokenizer=None,
         token_id_converter=None,
         pad_value=-1,
-        ookB_value=500,
+        oov_value=500,
         for_transducer=True,
     ):
         self.tokenizer          = tokenizer
         self.token_id_converter = token_id_converter
         self.pad_value          = pad_value
         self.for_transducer     = for_transducer
-        self.ookB_value         = ookB_value
+        self.oov_value         = oov_value
 
     @classmethod
     def _get_cache_key(cls, element):
@@ -108,7 +108,7 @@ class TrieProcessor():
                     now = now[char]
                     masks.append(list(now.keys()))
                 elif now != tree:
-                    masks.extend([[self.ookB_value]] * (subword_length - i - 1) + [first_level])
+                    masks.extend([[self.oov_value]] * (subword_length - i - 1) + [first_level])
                     masks_gate.extend([1] * (subword_length - i))
                     break
                 else:

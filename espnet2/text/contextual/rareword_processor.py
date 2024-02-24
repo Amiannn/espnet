@@ -31,7 +31,7 @@ class RarewordProcessor():
         blist_max=500,
         for_transducer=True,
         pad_value=-1,
-        ookB_value=500,
+        oov_value=500,
         token_type: str = None,
         token_list: Union[Path, str, Iterable[str]] = None,
         bpemodel: Union[Path, str, Iterable[str]] = None,
@@ -41,8 +41,13 @@ class RarewordProcessor():
         non_linguistic_symbols: Union[Path, str, Iterable[str]] = None,
         delimiter: str = None,
         nonsplit_symbol: Iterable[str] = None,
-        # only use for init whisper tokenizer
-        tokenizer_language: str = "en",
+        # tokenization encode (text2token) args, e.g. BPE dropout, only applied in training
+        encode_kwargs: Dict = None,
+        # only use for whisper
+        whisper_language: str = None,
+        whisper_task: str = None,
+        sot_asr: bool = False,
+        # contextual asr
         structure_type: str = "none",
         sampling_method: str = "none",
         asr_model: object = None,
@@ -55,7 +60,10 @@ class RarewordProcessor():
             non_linguistic_symbols=non_linguistic_symbols,
             g2p_type=g2p_type,
             nonsplit_symbol=nonsplit_symbol,
-            tokenizer_language=tokenizer_language,
+            encode_kwargs=encode_kwargs,
+            whisper_language=whisper_language,
+            whisper_task=whisper_task,
+            sot_asr=sot_asr,
         )
         if token_type == "hugging_face":
             self.token_id_converter = HuggingFaceTokenIDConverter(
@@ -69,7 +77,7 @@ class RarewordProcessor():
         else:
             self.token_id_converter = OpenAIWhisperTokenIDConverter(
                 model_type=bpemodel,
-                language=tokenizer_language,
+                language=whisper_language,
             )
 
         self.blist          = self.load_blist(blist_path)
@@ -77,7 +85,7 @@ class RarewordProcessor():
         self.blist_max      = blist_max
         self.pad_value      = pad_value
         self.for_transducer = for_transducer
-        self.ookB_value     = ookB_value
+        self.oov_value     = oov_value
 
         # structure
         self.structure_type = structure_type
@@ -85,7 +93,7 @@ class RarewordProcessor():
             tokenizer=self.tokenizer,
             token_id_converter=self.token_id_converter,
             pad_value=self.pad_value,
-            ookB_value=self.ookB_value,
+            oov_value=self.oov_value,
             for_transducer=self.for_transducer,
         )
 

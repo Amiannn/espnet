@@ -34,6 +34,6 @@ CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --bpe_train_text "data/${train_set}/text" \
     --contextualize true \
     --inference_asr_model transfered.pth \
+    --asr_args "--use_wandb true --wandb_project Contextualize_ASR_NEW" \
     "$@"
 
-    # --asr_args "--use_wandb true" \

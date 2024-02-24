@@ -564,7 +564,7 @@ class ASRTask(AbsTask):
                 droup_out=args.contextual_conf.get("blist_droup_out", 0),
                 blist_max=args.contextual_conf.get("blist_max", 500),
                 pad_value=-1,
-                ookB_value=len(args.token_list),
+                oov_value=len(args.token_list),
                 token_type=args.token_type,
                 token_list=args.token_list,
                 bpemodel=args.bpemodel,
