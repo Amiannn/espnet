@@ -316,7 +316,7 @@ class AbsTask(ABC):
         group.add_argument(
             "--dataset_type",
             type=str,
-            choices=["espnet", "rareword"],
+            choices=["espnet", "contextual"],
             default="espnet",
             help="Specify Dataset type",
         )

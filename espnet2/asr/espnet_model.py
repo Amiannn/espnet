@@ -383,7 +383,7 @@ class ESPnetASRModel(AbsESPnetModel):
                 feats, feats_lengths = self.specaug(feats, feats_lengths)
 
             # 3. Normalization for feature: e.g. Global-CMVN, Utterance-CMVN
-            if self.normalize is not None:
+            if not self.is_encoder_whisper and self.normalize is not None:
                 feats, feats_lengths = self.normalize(feats, feats_lengths)
 
         # Pre-encoder, e.g. used for raw input data

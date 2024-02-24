@@ -1,14 +1,13 @@
 import math
-import logging
-
-from typing import Collection, Dict, List, Tuple, Union
-
-import numpy as np
 import torch
-from typeguard import check_argument_types, check_return_type
+import logging
+import numpy as np
+
+from torch.nn.utils.rnn import pad_sequence
+from typing             import Collection, Dict, List, Tuple, Union
+from typeguard          import check_argument_types, check_return_type
 
 from espnet.nets.pytorch_backend.nets_utils import pad_list
-
 
 class CommonCollateFn:
     """Functor class of common_collate_fn()"""
@@ -40,7 +39,7 @@ class CommonCollateFn:
             not_sequence=self.not_sequence,
         )
 
-class RarewordCollateFn(CommonCollateFn):
+class ContextualCollateFn(CommonCollateFn):
     """Functor class of common_collate_fn()"""
 
     def __init__(
@@ -49,7 +48,7 @@ class RarewordCollateFn(CommonCollateFn):
         int_pad_value: int = -32768,
         not_sequence: Collection[str] = (),
         collatefn_type: str="trie",
-        trie_processor: object=None
+        contextual_processor: object=None
     ):
         super().__init__(
             float_pad_value=float_pad_value,
@@ -57,18 +56,18 @@ class RarewordCollateFn(CommonCollateFn):
             not_sequence=not_sequence,
         )
         self.collatefn_type = collatefn_type
-        self.trie_processor = trie_processor
+        self.contextual_processor = contextual_processor
 
     def __call__(
         self, data: Collection[Tuple[str, Dict[str, np.ndarray]]]
     ) -> Tuple[List[str], Dict[str, torch.Tensor]]:
         if self.collatefn_type == 'trie':
-            return rareword_trie_collate_fn(
+            return contextual_collate_fn(
                 data,
                 float_pad_value=self.float_pad_value,
                 int_pad_value=self.int_pad_value,
                 not_sequence=self.not_sequence,
-                trie_processor=self.trie_processor
+                contextual_processor=self.contextual_processor
             )
         else:
             raise NotImplementedError(f'Not implement {self.collatefn_type}!') 
@@ -273,12 +272,12 @@ def common_collate_fn(
     assert check_return_type(output)
     return output
 
-def rareword_trie_collate_fn(
+def contextual_collate_fn(
     data: Collection[Tuple[str, Dict[str, np.ndarray]]],
     float_pad_value: Union[float, int] = 0.0,
     int_pad_value: int = -32768,
     not_sequence: Collection[str] = (),
-    trie_processor: object=None
+    contextual_processor: object=None
 ) -> Tuple[List[str], Dict[str, torch.Tensor]]:
     """Concatenate ndarray-list to an array and convert to torch.Tensor.
 
@@ -307,13 +306,15 @@ def rareword_trie_collate_fn(
         not k.endswith("_lengths") for k in data[0]
     ), f"*_lengths is reserved: {list(data[0])}"
 
-    output = {}
-    masks_mat, max_mask_len, masks_gate_mat, max_masks_gate_len = trie_processor(data)
+    contexts          = contextual_processor.sample(data)
+    blist             = [torch.tensor(b) for b in contexts['blist']]
+    contexts['blist'] = pad_sequence(blist, batch_first=True).long()
+    output            = {'contexts': contexts}
     
     for d in data:
-        del d['textsegment']
         del d['uttblist']
         del d['uttblistsegment']
+        del d['textsegment']
 
     for key in data[0]:
         # NOTE(kamo):
@@ -338,12 +339,6 @@ def rareword_trie_collate_fn(
             lens = torch.tensor([d[key].shape[0] for d in data], dtype=torch.long)
             output[key + "_lengths"] = lens
 
-    output['masks_mat']          = torch.from_numpy(masks_mat)
-    # output['max_mask_len']       = torch.from_numpy(max_mask_len)
-    output['masks_gate_mat']     = torch.from_numpy(masks_gate_mat)
-    # output['max_masks_gate_len'] = torch.from_numpy(max_masks_gate_len)
-
     output = (uttids, output)
-
-    assert check_return_type(output)
+    # assert check_return_type(output)
     return output

@@ -1,5 +1,7 @@
 """Iterable dataset module."""
 import copy
+import logging
+
 from io import StringIO
 from pathlib import Path
 from typing import Callable, Collection, Dict, Iterator, Tuple, Union
@@ -207,7 +209,7 @@ class IterableESPnetDataset(IterableDataset):
 
             # 3. [Option] Apply preprocessing
             #   e.g. espnet2.train.preprocessor:CommonPreprocessor
-            if self.preprocess is not None:
+            if self.preprocess is not None and not isinstance(data['speech'], np.ndarray):
                 data = self.preprocess(uid, data)
 
             # 4. Force data-precision

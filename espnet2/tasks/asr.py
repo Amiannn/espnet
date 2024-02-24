@@ -80,12 +80,12 @@ from espnet2.train.abs_espnet_model import AbsESPnetModel
 from espnet2.train.class_choices import ClassChoices
 from espnet2.train.collate_fn import (
     CommonCollateFn,
-    RarewordCollateFn
+    ContextualCollateFn
 )
 from espnet2.train.preprocessor import (
     AbsPreprocessor,
     CommonPreprocessor,
-    RarewordPreprocessor,
+    ContextualPreprocessor,
     CommonPreprocessor_multi,
 )
 from espnet2.train.trainer import Trainer
@@ -93,10 +93,11 @@ from espnet2.utils.get_default_kwargs import get_default_kwargs
 from espnet2.utils.nested_dict_action import NestedDictAction
 from espnet2.utils.types import float_or_none, int_or_none, str2bool, str_or_none
 
-from espnet2.text.trie_processor import TrieProcessor
-from espnet2.asr.espnet_biasing_model import ESPnetBiasingASRModel
+from espnet2.text.contextual.rareword_processor import RarewordProcessor
+from espnet2.asr.contextual_asr_espnet_model import ESPnetContextualASRModel
 
-from espnet2.asr.prototype.tcpgen_prototype import TCPGenPrototype
+from espnet2.asr.prototype.tcpgen_prototype             import TCPGenPrototype
+from espnet2.asr.prototype.contextual_adapter_prototype import ContextualAdapterPrototype
 
 frontend_choices = ClassChoices(
     name="frontend",
@@ -135,7 +136,7 @@ model_choices = ClassChoices(
         espnet=ESPnetASRModel,
         maskctc=MaskCTCModel,
         pit_espnet=PITESPnetModel,
-        espnet_biasing=ESPnetBiasingASRModel
+        contextual_asr_espnet=ESPnetContextualASRModel
     ),
     type_check=AbsESPnetModel,
     default="espnet",
@@ -201,19 +202,28 @@ decoder_choices = ClassChoices(
     default=None,
     optional=True,
 )
-rareword_choices = ClassChoices(
-    "rareword",
+contextualizer_choices = ClassChoices(
+    "contextualizer",
     classes=dict(
-        tcpgen=TCPGenPrototype
+        tcpgen=TCPGenPrototype,
+        contextual_adapter_encoder=ContextualAdapterPrototype,
+        contextual_adapter_decoder=ContextualAdapterPrototype,
     ),
-    default="tcpgen",
+    default="contextual_adapter_encoder",
+)
+contextual_choices = ClassChoices(
+    "contextual",
+    classes=dict(
+        rareword=RarewordProcessor,
+    ),
+    default="rareword_processor",
 )
 preprocessor_choices = ClassChoices(
     "preprocessor",
     classes=dict(
         default=CommonPreprocessor,
         multi=CommonPreprocessor_multi,
-        rareword=RarewordPreprocessor
+        contextual=ContextualPreprocessor
     ),
     type_check=AbsPreprocessor,
     default="default",
@@ -242,8 +252,10 @@ class ASRTask(AbsTask):
         postencoder_choices,
         # --decoder and --decoder_conf
         decoder_choices,
-        # --rareword and --rareword_conf
-        rareword_choices,
+        # --contextualizer and --contextualizer_conf
+        contextualizer_choices,
+        # --contextual and --contextual_conf
+        contextual_choices,
         # --preprocessor and --preprocessor_conf
         preprocessor_choices,
     ]
@@ -408,7 +420,7 @@ class ASRTask(AbsTask):
         group.add_argument(
             "--collate_fn_type",
             type=str,
-            choices=["default", "rareword"],
+            choices=["default", "contextual"],
             default="default",
             help="Specify collate function type",
         )
@@ -429,27 +441,11 @@ class ASRTask(AbsTask):
         # NOTE(kamo): int value = 0 is reserved by CTC-blank symbol
         if args.collate_fn_type == "default":
             return CommonCollateFn(float_pad_value=0.0, int_pad_value=-1)
-        elif args.collate_fn_type == "rareword":
-            blist_path = args.rareword_conf.get("blist_path", 0)
-            droup_out  = args.rareword_conf.get("droup_out", 0)
-            blist_max  = args.rareword_conf.get("blist_max", 500)
-
-            trie_processor = TrieProcessor(
-                blist_path=blist_path, 
-                droup_out=droup_out,
-                blist_max=blist_max,
-                pad_value=-1,
-                ookB_value=len(args.token_list),
-                token_type=args.token_type,
-                token_list=args.token_list,
-                bpemodel=args.bpemodel,
-                g2p_type=args.g2p,
-                non_linguistic_symbols=args.non_linguistic_symbols,
-            )
-            return RarewordCollateFn(
+        elif args.collate_fn_type == "contextual":
+            return ContextualCollateFn(
                 float_pad_value=0.0, 
                 int_pad_value=-1, 
-                trie_processor=trie_processor
+                contextual_processor=cls.contextual_processor
             )
 
     @classmethod
@@ -514,6 +510,38 @@ class ASRTask(AbsTask):
         logging.info(f"Optional Data Names: {retval }")
         assert check_return_type(retval)
         return retval
+
+    @classmethod
+    def build_contextualizer(cls, vocab_size: int, args: argparse.Namespace):
+        contextualizer_type  = args.contextualizer_conf.get("contextualizer_type", None)
+        contextualizer_class = contextualizer_choices.get_class(contextualizer_type)
+        if contextualizer_type == "tcpgen":
+            raise NotImplementedError("TCPGen not implemented!")
+        elif contextualizer_type in ["contextual_adapter_encoder", "contextual_adapter_decoder"]:
+            contextualizer = contextualizer_class(**args.contextualizer_conf)
+        return contextualizer
+
+    @classmethod
+    def build_contextual_processor(cls, args: argparse.Namespace, model: object):
+        contextual_type  = args.contextual_conf.get("contextual_type", None)
+        contextual_class = contextual_choices.get_class(contextual_type)
+        if contextual_type == "rareword":
+            contextual_processor = contextual_class(
+                blist_path=args.contextual_conf.get("blist_path", 0), 
+                droup_out=args.contextual_conf.get("blist_droup_out", 0),
+                blist_max=args.contextual_conf.get("blist_max", 500),
+                pad_value=-1,
+                ookB_value=len(args.token_list),
+                token_type=args.token_type,
+                token_list=args.token_list,
+                bpemodel=args.bpemodel,
+                g2p_type=args.g2p,
+                non_linguistic_symbols=args.non_linguistic_symbols,
+                structure_type=args.contextual_conf.get("structure_type", "none"),
+                sampling_method=args.contextual_conf.get("sampling_method", "none"),
+                asr_model=model,
+            )
+        return contextual_processor
 
     @classmethod
     def build_model(cls, args: argparse.Namespace) -> ESPnetASRModel:
@@ -626,25 +654,18 @@ class ASRTask(AbsTask):
             decoder = None
             joint_network = None
 
-        # ?. rareword methods
-        if args.rareword_conf != {}:
-            rareword_class = rareword_choices.get_class(args.rareword)
-            rareword = rareword_class(
-                vocab_size=vocab_size,
-                encoder_hidden_size=args.encoder_conf.get("output_size", None),
-                decoder_hidden_size=args.decoder_conf.get("hidden_size", None),
-                joint_space_size=args.joint_net_conf.get("joint_space_size", None),
-                **args.rareword_conf
-            )
+        # ?. contextualizer methods
+        if args.contextualizer_conf != {}:
+            contextualizer           = cls.build_contextualizer(vocab_size, args)
         else:
-            rareword = None
+            contextualizer = None
 
-        # 6. CTC
+        # 7. CTC
         ctc = CTC(
             odim=vocab_size, encoder_output_size=encoder_output_size, **args.ctc_conf
         )
 
-        # 7. Build model
+        # 8. Build model
         try:
             model_class = model_choices.get_class(args.model)
         except AttributeError:
@@ -658,8 +679,8 @@ class ASRTask(AbsTask):
             encoder=encoder,
             postencoder=postencoder,
             decoder=decoder,
-            rareword=rareword,
-            rareword_conf=args.rareword_conf,
+            contextualizer=contextualizer,
+            contextualizer_conf=args.contextualizer_conf,
             ctc=ctc,
             joint_network=joint_network,
             token_list=token_list,
@@ -667,9 +688,18 @@ class ASRTask(AbsTask):
         )
 
         # FIXME(kamo): Should be done in model?
-        # 8. Initialize
+        # 9. Initialize
         if args.init is not None:
             initialize(model, args.init)
+        
+        # ?. contextual processor methods
+        if args.contextual_conf != {}:
+            cls.contextual_processor = cls.build_contextual_processor(
+                args,
+                model
+            )
+        else:
+            cls.contextual_processor = None
 
         assert check_return_type(model)
         return model

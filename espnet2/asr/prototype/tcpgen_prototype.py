@@ -46,7 +46,7 @@ class TCPGenPrototype(torch.nn.Module):
     def encode_key_value(self, key, value):
         # B x U x C x attndim
         key   = self.dropout(self.Kproj(key))
-        value = self.dropout(self.Vproj(value))
+        # value = self.dropout(self.Vproj(value))
         return key, value
 
     def attention(self, queries, keys, values, masks):
@@ -64,10 +64,11 @@ class TCPGenPrototype(torch.nn.Module):
         decoder_in: torch.Tensor,
         dec_embed: torch.Tensor,
         dec_embed_dropout: torch.Tensor,
-        masks_mat: torch.Tensor
+        masks_mat: torch.Tensor,
+        skip_dropout: bool=False
     ):  
         # generate queries
-        semantic = dec_embed_dropout(dec_embed(decoder_in))
+        semantic = dec_embed_dropout(dec_embed(decoder_in)) if not skip_dropout else dec_embed(decoder_in)
         queries = self.encode_query(encoder_out, semantic)
 
         # generate keys and values
@@ -124,7 +125,7 @@ class TCPGenPrototype(torch.nn.Module):
         p_not_null         = 1.0 - model_dist[:, :, :, 0:1]
         ptr_dist_fact      = ptr_dist[:, :, :, 1:] * p_not_null
         ptr_gen_complement = (ptr_dist[:, :, :, -1:]) * gate
-        p_partial = ptr_dist_fact[:, :, :, :-1] * gate + model_dist[
+        p_partial          = ptr_dist_fact[:, :, :, :-1] * gate + model_dist[
             :, :, :, 1:
         ] * (1 - gate + ptr_gen_complement)
         p_final   = torch.cat([model_dist[:, :, :, 0:1], p_partial], dim=-1)

@@ -432,8 +432,8 @@ class CommonPreprocessor(AbsPreprocessor):
         data = self._text_process(data)
         return data
 
-# TODO: build rareword preprocessor!
-class RarewordPreprocessor(CommonPreprocessor):
+# TODO: build contextual preprocessor!
+class ContextualPreprocessor(CommonPreprocessor):
     def __init__(
         self,
         train: bool,

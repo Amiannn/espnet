@@ -164,8 +164,8 @@ lm_fold_length=150         # fold_length for LM training.
 suffixbpe=
 usesuffixbpe=
 
-biasing=false
-biasing_path=
+contextualize=false
+contextualize_path=
 
 help_message=$(cat << EOF
 Usage: $0 --train-set "<train_set_name>" --valid-set "<valid_set_name>" --test_sets "<test_set_names>"
@@ -1402,9 +1402,9 @@ if [ ${stage} -le 11 ] && [ ${stop_stage} -ge 11 ] && ! [[ " ${skip_stages} " =~
         done
     fi
 
-    if [ "${biasing}" == true ]; then
-        _opts+="--preprocessor rareword "
-        _opts+="--collate_fn_type rareword "
+    if [ "${contextualize}" == true ]; then
+        _opts+="--preprocessor contextual "
+        _opts+="--collate_fn_type contextual "
         _opts+="--allow_variable_data_keys True "
         _opts+="--train_data_path_and_name_and_type ${_asr_train_dir}/uttblist,uttblist,multi_columns_text "
         _opts+="--valid_data_path_and_name_and_type ${_asr_valid_dir}/uttblist,uttblist,multi_columns_text "
@@ -1580,6 +1580,14 @@ if [ ${stage} -le 12 ] && [ ${stop_stage} -ge 12 ] && ! [[ " ${skip_stages} " =~
         done
         # shellcheck disable=SC2086
         utils/split_scp.pl "${key_file}" ${split_scps}
+
+        if [ "${contextualize}" == true ]; then
+            # _opts+="--preprocessor contextual "
+            # _opts+="--collate_fn_type contextual "
+            _opts+="--speech2text_fn contextual "
+            _opts+="--allow_variable_data_keys True "
+            _opts+="--data_path_and_name_and_type ${_data}/uttblist,uttblist,multi_columns_text "
+        fi 
 
         # 2. Submit decoding jobs
         log "Decoding started... log: '${_logdir}/asr_inference.*.log'"
