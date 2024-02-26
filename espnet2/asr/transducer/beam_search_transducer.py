@@ -149,8 +149,8 @@ class BeamSearchTransducer:
 
             self.search_algorithm = self.modified_adaptive_expansion_search
 
-        else:
-            raise NotImplementedError
+        # else:
+        #     raise NotImplementedError
 
         self.use_lm = lm is not None
         self.lm = lm
@@ -164,7 +164,9 @@ class BeamSearchTransducer:
         self.nbest = nbest
 
     def __call__(
-        self, enc_out: torch.Tensor
+        self,
+        enc_out: torch.Tensor, 
+        contexts: object={},
     ) -> Union[List[Hypothesis], List[ExtendedHypothesis]]:
         """Perform beam search.
 
@@ -177,7 +179,10 @@ class BeamSearchTransducer:
         """
         self.decoder.set_device(enc_out.device)
 
-        nbest_hyps = self.search_algorithm(enc_out)
+        if not self.use_contextual_asr:
+            nbest_hyps = self.search_algorithm(enc_out)
+        else:
+            nbest_hyps = self.search_algorithm(enc_out, contexts)
 
         return nbest_hyps
 

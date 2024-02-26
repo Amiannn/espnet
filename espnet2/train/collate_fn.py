@@ -312,9 +312,12 @@ def contextual_collate_fn(
     output            = {'contexts': contexts}
     
     for d in data:
-        del d['uttblist']
-        del d['uttblistsegment']
-        del d['textsegment']
+        if 'uttblist' in d:
+            del d['uttblist']
+        if 'uttblistsegment' in d:
+            del d['uttblistsegment']
+        if 'textsegment' in d:
+            del d['textsegment']
 
     for key in data[0]:
         # NOTE(kamo):

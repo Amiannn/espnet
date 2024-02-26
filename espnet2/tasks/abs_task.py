@@ -2096,3 +2096,87 @@ class AbsTask(ABC):
                     raise
 
         return model, args
+
+    @classmethod
+    def build_contextual_model_from_file(
+        cls,
+        config_file: Union[Path, str] = None,
+        model_file: Union[Path, str] = None,
+        contextual_conf: object = None,
+        device: str = "cpu",
+    ) -> Tuple[AbsESPnetModel, argparse.Namespace]:
+        """Build model from the files.
+
+        This method is used for inference or fine-tuning.
+
+        Args:
+            config_file: The yaml file saved when training.
+            model_file: The model file saved when training.
+            device: Device type, "cpu", "cuda", or "cuda:N".
+
+        """
+        assert check_argument_types()
+        if config_file is None:
+            assert model_file is not None, (
+                "The argument 'model_file' must be provided "
+                "if the argument 'config_file' is not specified."
+            )
+            config_file = Path(model_file).parent / "config.yaml"
+        else:
+            config_file = Path(config_file)
+
+        logging.info("config file: {}".format(config_file))
+        with config_file.open("r", encoding="utf-8") as f:
+            args = yaml.safe_load(f)
+        args = argparse.Namespace(**args)
+
+        if contextual_conf != None:
+            args.contextual_conf.update(contextual_conf)
+
+        model = cls.build_model(args)
+        if not isinstance(model, AbsESPnetModel):
+            raise RuntimeError(
+                f"model must inherit {AbsESPnetModel.__name__}, but got {type(model)}"
+            )
+        model.to(device)
+
+        # For LoRA finetuned model, create LoRA adapter
+        use_lora = getattr(args, "use_lora", False)
+        if use_lora:
+            create_lora_adapter(model, **args.lora_conf)
+
+        if model_file is not None:
+            if device == "cuda":
+                # NOTE(kamo): "cuda" for torch.load always indicates cuda:0
+                #   in PyTorch<=1.4
+                device = f"cuda:{torch.cuda.current_device()}"
+            try:
+                model.load_state_dict(
+                    torch.load(model_file, map_location=device),
+                    strict=not use_lora,
+                )
+            except RuntimeError:
+                # Note(simpleoier): the following part is to be compatible with
+                #   pretrained model using earlier versions before `0a625088`
+                state_dict = torch.load(model_file, map_location=device)
+                if any(["frontend.upstream.model" in k for k in state_dict.keys()]):
+                    if any(
+                        [
+                            "frontend.upstream.upstream.model" in k
+                            for k in dict(model.named_parameters())
+                        ]
+                    ):
+                        state_dict = {
+                            k.replace(
+                                "frontend.upstream.model",
+                                "frontend.upstream.upstream.model",
+                            ): v
+                            for k, v in state_dict.items()
+                        }
+                        model.load_state_dict(state_dict, strict=not use_lora)
+                    else:
+                        raise
+                else:
+                    raise
+
+        return model, args

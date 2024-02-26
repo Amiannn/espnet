@@ -6,8 +6,16 @@ maxlenratio: 0.0
 minlenratio: 0.0
 penalty: 0.0
 
-rareword_conf:
-    blist_path: ./local/rareword/all_rare_words.txt
-    droup_out: 0.0
+# transducer settings
+transducer_conf:
+    search_type: casr
+
+# contextual information settings
+contextual_conf:
+    contextual_type: rareword
+    blist_path: ./local/contextual/rareword_f15.txt
     blist_max: 5
-    deepbiasing: True
+    blist_droup_out: 0.0
+    warmup_epoch: 0
+    structure_type: null
+    sampling_method: null

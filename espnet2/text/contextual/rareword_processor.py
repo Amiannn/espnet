@@ -120,7 +120,17 @@ class RarewordProcessor():
         blist = drouped_uttblist + globalblist
         return blist
 
-    def build_batch_trie(self, text, batch_size, textsegments, elements):
+    # def build_batch_trie(self, text, batch_size, textsegments, elements):
+    #     texts = []
+    #     tree, cache = self.trie_processor.build_trie(elements)
+    #     # for i in range(batch_size):
+    #     #     _tmp = []
+    #     #     for start, end in textsegments[i]:
+    #     #         _tmp.append(text[i][start:end].tolist())
+    #     #     texts.append(_tmp)
+    #     return tree, texts
+
+    def build_batch_trie(self, elements):
         texts = []
         tree, cache = self.trie_processor.build_trie(elements)
         # for i in range(batch_size):
@@ -131,8 +141,9 @@ class RarewordProcessor():
         return tree, texts
 
     def sample(self, batch_data):
-        text              = [data['text'] for data in batch_data]
-        textsegments      = [data['textsegment'] for data in batch_data]
+        # if 'text' in batch_data[0]:
+        #     text         = [data['text'] for data in batch_data]
+        #     textsegments = [data['textsegment'] for data in batch_data]
         uttblists         = [data['uttblist'] for data in batch_data]
         uttblistsegments  = [data['uttblistsegment'] for data in batch_data]
         batch_size        = len(uttblists)
@@ -146,7 +157,8 @@ class RarewordProcessor():
         output['blist'] = elements 
 
         if self.structure_type == "trie":
-            tree, texts     = self.build_batch_trie(text, batch_size, textsegments, elements)
+            # tree, texts     = self.build_batch_trie(text, batch_size, textsegments, elements)
+            tree, texts     = self.build_batch_trie(elements)
             output['trie']  = tree
             output['texts'] = texts
         

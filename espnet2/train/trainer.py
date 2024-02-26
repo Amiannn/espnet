@@ -838,6 +838,10 @@ class Trainer:
 
         model.eval()
         for ids, batch in iterator:
+            contexts = None
+            if "contexts" in batch:
+                contexts = batch['contexts']
+                del batch['contexts']
             assert isinstance(batch, dict), type(batch)
             assert len(next(iter(batch.values()))) == len(ids), (
                 len(next(iter(batch.values()))),
@@ -845,6 +849,8 @@ class Trainer:
             )
 
             batch["utt_id"] = ids
+            if contexts != None:
+                batch["contexts"] = contexts
 
             batch = to_device(batch, "cuda" if ngpu > 0 else "cpu")
             if no_forward_run:

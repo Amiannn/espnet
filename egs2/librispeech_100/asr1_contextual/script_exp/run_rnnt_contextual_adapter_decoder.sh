@@ -10,9 +10,9 @@ valid_set="dev"
 test_sets="test_clean"
 
 asr_config=conf/exp/contextual_adapter/train_rnnt_contextual_adapter_decoder.yaml
-inference_config=conf/exp/decode_asr_rnnt_transducer_greedy.yaml
+inference_config=conf/exp/decode_asr_rnnt_transducer.yaml
 
-pretrained_model=/share/nas165/amian/experiments/speech/tcpgen/espnet/egs2/librispeech_100/asr1/exp/asr_train_asr_transducer_conformer_e15_linear1024_raw_en_bpe600_use_wandbtrue_sp_suffix/valid.loss.ave_10best.pth
+pretrained_model=exp/asr_pretrain_rnnt/valid.loss.10epoch.pth
 
 CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --lang en \
@@ -34,10 +34,10 @@ CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --test_sets "${test_sets}" \
     --lm_train_text "data/${train_set}/text" \
     --bpe_train_text "data/${train_set}/text" \
-    --contextualize true \
+    --contextualization true \
     --pretrained_model $pretrained_model \
     --ignore_init_mismatch true \
-    --inference_asr_model transfered.pth \
+    --inference_asr_model 1epoch.pth \
     "$@"
 
     # --asr_args "--use_wandb true" \

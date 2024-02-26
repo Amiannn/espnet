@@ -32,7 +32,7 @@ CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --test_sets "${test_sets}" \
     --lm_train_text "data/${train_set}/text" \
     --bpe_train_text "data/${train_set}/text" \
-    --contextualize true \
+    --contextualization true \
     --inference_asr_model transfered.pth \
     --asr_args "--use_wandb true --wandb_project Contextualize_ASR_NEW" \
     "$@"

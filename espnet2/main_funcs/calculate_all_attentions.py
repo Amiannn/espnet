@@ -38,6 +38,10 @@ def calculate_all_attentions(
         key_names x batch x (D1, D2, ...)
 
     """
+    contexts = None
+    if "contexts" in batch:
+        contexts = batch['contexts']
+        del batch['contexts']
     bs = len(next(iter(batch.values())))
     assert all(len(v) == bs for v in batch.values()), {
         k: v.shape for k, v in batch.items()
@@ -135,6 +139,8 @@ def calculate_all_attentions(
 
         if "utt_id" in batch:
             _sample["utt_id"] = batch["utt_id"]
+        if contexts != None:
+            _sample["contexts"] = contexts
 
         model(**_sample)
 

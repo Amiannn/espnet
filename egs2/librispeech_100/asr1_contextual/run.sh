@@ -13,9 +13,9 @@ test_sets="test_clean test_other dev_clean dev_other"
 asr_config=conf/exp/train_rnnt_std_tcpgen_test2.yaml
 inference_config=conf/decode_asr.yaml
 
-CUDA_VISIBLE_DEVICES=0 ./asr.sh \
+CUDA_VISIBLE_DEVICES=0,1 ./asr.sh \
     --lang en \
-    --ngpu 1 \
+    --ngpu 2 \
     --nj 16 \
     --gpu_inference false \
     --inference_nj 10 \

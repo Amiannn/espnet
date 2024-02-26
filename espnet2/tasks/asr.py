@@ -558,6 +558,7 @@ class ASRTask(AbsTask):
     def build_contextual_processor(cls, args: argparse.Namespace, model: object):
         contextual_type  = args.contextual_conf.get("contextual_type", None)
         contextual_class = contextual_choices.get_class(contextual_type)
+        logging.info(f'args.contextual_conf: {args.contextual_conf}')
         if contextual_type == "rareword":
             contextual_processor = contextual_class(
                 blist_path=args.contextual_conf.get("blist_path", 0), 

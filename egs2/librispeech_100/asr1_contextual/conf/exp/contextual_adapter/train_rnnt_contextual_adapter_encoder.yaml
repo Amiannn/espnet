@@ -3,10 +3,10 @@ model: contextual_asr_espnet
 
 encoder: conformer
 encoder_conf:
-    output_size: 256
-    attention_heads: 4
-    linear_units: 1024
-    num_blocks: 15
+    output_size: 512
+    attention_heads: 8
+    linear_units: 2048
+    num_blocks: 12
     dropout_rate: 0.1
     positional_dropout_rate: 0.1
     attention_dropout_rate: 0.1
@@ -24,13 +24,12 @@ decoder: transducer
 decoder_conf:
     rnn_type: lstm
     num_layers: 1
-    hidden_size: 256
+    hidden_size: 512
     dropout: 0.1
     dropout_embed: 0.2
 
 joint_net_conf:
-    joint_type: biasing
-    joint_space_size: 320
+    joint_space_size: 640
 
 model_conf:
     ctc_weight: 0.0
@@ -49,7 +48,7 @@ batch_type: numel
 batch_bins: 2000000
 # batch_bins: 1000000
 accum_grad: 32
-max_epoch: 30
+max_epoch: 150
 patience: none
 init: none
 best_model_criterion:
@@ -62,7 +61,7 @@ use_amp: false
 optim: adam
 optim_conf:
     lr: 0.002
-    # weight_decay: 0.000001
+
 scheduler: warmuplr
 scheduler_conf:
     warmup_steps: 15000
