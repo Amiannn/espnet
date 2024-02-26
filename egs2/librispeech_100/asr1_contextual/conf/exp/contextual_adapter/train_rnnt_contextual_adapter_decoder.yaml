@@ -97,11 +97,11 @@ contextual_conf:
 contextualizer: contextual_adapter_decoder
 contextualizer_conf:
     contextualizer_type: contextual_adapter_decoder
-    context_embed_size: 256
-    context_hidden_size: 256
-    model_hidden_size: 256
-    attndim: 256
-    proj_hidden_size: 256
+    context_embed_size: 512
+    context_hidden_size: 512
+    model_hidden_size: 512
+    attndim: 512
+    proj_hidden_size: 512
     droup_out: 0.1
 
 # adapter style training

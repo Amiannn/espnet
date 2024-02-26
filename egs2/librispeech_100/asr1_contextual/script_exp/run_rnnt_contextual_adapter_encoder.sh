@@ -14,9 +14,9 @@ inference_config=conf/exp/decode_asr_rnnt_transducer.yaml
 
 pretrained_model=exp/asr_pretrain_rnnt/valid.loss.10epoch.pth
 
-CUDA_VISIBLE_DEVICES=0,1 ./asr.sh \
+CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --lang en \
-    --ngpu 2 \
+    --ngpu 1 \
     --nj 16 \
     --gpu_inference false \
     --inference_nj 10 \
