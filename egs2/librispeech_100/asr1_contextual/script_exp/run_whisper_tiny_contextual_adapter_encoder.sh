@@ -9,7 +9,7 @@ train_set="train_clean_100"
 valid_set="dev"
 test_sets="test_clean"
 
-asr_config=conf/exp/contextual_adapter/train_conformer_contextual_adapter_encoder.yaml
+asr_config=conf/exp/contextual_adapter/train_whisper_tiny_contextual_adapter_encoder.yaml
 inference_config=conf/exp/decode_asr_greedy.yaml
 
 CUDA_VISIBLE_DEVICES=1 ./asr.sh \
@@ -18,22 +18,22 @@ CUDA_VISIBLE_DEVICES=1 ./asr.sh \
     --nj 16 \
     --gpu_inference false \
     --inference_nj 10 \
-    --nbpe 600 \
-    --suffixbpe suffix \
+    --token_type whisper_multilingual \
+    --feats_normalize "" \
     --max_wav_duration 30 \
-    --speed_perturb_factors "0.9 1.0 1.1" \
     --audio_format "flac.ark" \
     --feats_type raw \
     --use_lm false \
+    --cleaner whisper_basic \
     --asr_config "${asr_config}" \
     --inference_config "${inference_config}" \
     --train_set "${train_set}" \
     --valid_set "${valid_set}" \
     --test_sets "${test_sets}" \
+    --speed_perturb_factors "0.9 1.0 1.1" \
     --lm_train_text "data/${train_set}/text" \
-    --bpe_train_text "data/${train_set}/text" \
     --contextualization true \
-    --inference_asr_model 6epoch.pth \
+    --inference_asr_model transfered.pth \
     "$@"
 
     # --asr_args "--use_wandb true --wandb_project Contextualize_ASR_NEW" \

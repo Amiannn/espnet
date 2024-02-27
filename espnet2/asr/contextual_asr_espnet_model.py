@@ -25,7 +25,8 @@ from espnet.nets.pytorch_backend.transformer.label_smoothing_loss import (  # no
     LabelSmoothingLoss,
 )
 
-from espnet2.asr.espnet_model import ESPnetASRModel
+from espnet2.asr.espnet_model            import ESPnetASRModel
+from espnet2.asr.decoder.whisper_decoder import OpenAIWhisperDecoder
 
 if V(torch.__version__) >= V("1.6.0"):
     from torch.cuda.amp import autocast
@@ -289,9 +290,10 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         ys_in_lens = ys_pad_lens + 1
 
         # 1. Forward decoder
-        _, _, decoder_hs = self.decoder(
+        outputs = self.decoder(
             encoder_out, encoder_out_lens, ys_in_pad, ys_in_lens, return_hs=True
         )
+        decoder_hs = outputs[0][1]
         
         # c1. Decoder contextualization
         if self.contextualizer_conf["contextualizer_type"] == "contextual_adapter_decoder":
@@ -381,9 +383,12 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         model_embed,
         context_idxs,
     ):
-        decoder_embed = self.decoder.embed
-        if isinstance(self.decoder.embed, torch.nn.Sequential):
+        if isinstance(self.decoder, OpenAIWhisperDecoder):
+            decoder_embed = self.decoder.decoders.token_embedding
+        elif isinstance(self.decoder.embed, torch.nn.Sequential):
             decoder_embed = self.decoder.embed[0]
+        else:
+            decoder_embed = self.decoder.embed
             
         text_embed_matrix = torch.cat([
             decoder_embed.weight.data, 

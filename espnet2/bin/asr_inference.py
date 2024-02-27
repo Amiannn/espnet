@@ -16,12 +16,14 @@ from espnet2.asr.decoder.hugging_face_transformers_decoder import (
     get_hugging_face_model_lm_head,
     get_hugging_face_model_network,
 )
+
 from espnet2.asr.decoder.s4_decoder import S4Decoder
 from espnet2.asr.transducer.beam_search_transducer            import BeamSearchTransducer
 from espnet2.asr.transducer.beam_search_transducer            import ExtendedHypothesis as ExtTransHypothesis
 from espnet2.asr.transducer.beam_search_transducer            import Hypothesis as TransHypothesis
 from espnet2.asr.transducer.beam_search_transducer_contextual import ContextualBeamSearchTransducer
 from espnet2.asr.transducer.beam_search_transducer_contextual import ContextualHypothesis as ContextualTransHypothesis
+
 from espnet2.fileio.datadir_writer import DatadirWriter
 from espnet2.tasks.asr import ASRTask
 from espnet2.tasks.enh_s2t import EnhS2TTask
@@ -35,10 +37,16 @@ from espnet2.torch_utils.set_all_random_seed import set_all_random_seed
 from espnet2.utils import config_argparse
 from espnet2.utils.nested_dict_action import NestedDictAction
 from espnet2.utils.types import str2bool, str2triple_str, str_or_none
-from espnet.nets.batch_beam_search import BatchBeamSearch
+
+from espnet.nets.batch_beam_search            import BatchBeamSearch
 from espnet.nets.batch_beam_search_online_sim import BatchBeamSearchOnlineSim
-from espnet.nets.beam_search import BeamSearch, Hypothesis
-from espnet.nets.beam_search_timesync import BeamSearchTimeSync
+from espnet.nets.beam_search                  import Hypothesis
+from espnet.nets.beam_search                  import BeamSearch
+from espnet.nets.beam_search_timesync         import BeamSearchTimeSync
+
+from espnet.nets.beam_search_contextual       import ContextualHypothesis
+from espnet.nets.beam_search_contextual       import ContextualBeamSearch
+
 from espnet.nets.pytorch_backend.transformer.add_sos_eos import add_sos_eos
 from espnet.nets.pytorch_backend.transformer.subsampling import TooShortUttError
 from espnet.nets.scorer_interface import BatchScorerInterface
@@ -365,12 +373,24 @@ class Speech2Text:
                         normalize_length=normalize_length,
                     )
                 else:
-                    raise NotImplementedError(
-                        "Beamsearch with contextual asr is not supported."
+                    beam_search = ContextualBeamSearch(
+                        beam_size=beam_size,
+                        weights=weights,
+                        contextualizer=asr_model.contextualizer,
+                        contextualizer_conf=asr_model.contextualizer_conf,
+                        scorers=scorers,
+                        sos=asr_model.sos,
+                        eos=asr_model.eos,
+                        vocab_size=len(token_list),
+                        token_list=token_list,
+                        pre_beam_score_key=None if ctc_weight == 1.0 else "full",
+                        normalize_length=normalize_length,
+                        return_hs=True
                     )
 
                 # TODO(karita): make all scorers batchfied
-                if batch_size == 1:
+                # Batch beam search for contextual asr is not supported yet.
+                if batch_size == 1 and len(contextual_conf) == 0:
                     non_batch = [
                         k
                         for k, v in beam_search.full_scorers.items()
@@ -567,7 +587,7 @@ class Speech2Text:
             assert len(enc) == 1, len(enc)
 
             # c. Passed the encoder result and the beam search
-            if self.contextual_conf == {}:
+            if len(self.contextual_conf) == 0:
                 results = self._decode_single_sample(enc[0])
             else:
                 results = self._decode_single_sample_contextual(enc[0], contexts)
@@ -695,6 +715,7 @@ class Speech2Text:
         return results
 
     def _decode_single_sample_contextual(self, enc: torch.Tensor, contexts: object):
+        logging.info(f'contexts: {contexts}')
         if self.beam_search_transducer:
             logging.info("encoder output length: " + str(enc.shape[0]))
             nbest_hyps = self.beam_search_transducer(enc, contexts)
@@ -759,9 +780,8 @@ class Speech2Text:
                     for module in self.beam_search.nn_dict.decoder.modules():
                         if hasattr(module, "setup_step"):
                             module.setup_step()
-            assert True == False
             nbest_hyps = self.beam_search(
-                x=enc, maxlenratio=self.maxlenratio, minlenratio=self.minlenratio
+                x=enc, maxlenratio=self.maxlenratio, minlenratio=self.minlenratio, contexts=contexts
             )
 
         nbest_hyps = nbest_hyps[: self.nbest]

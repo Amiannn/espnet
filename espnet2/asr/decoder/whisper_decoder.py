@@ -1,4 +1,5 @@
 import copy
+import logging
 from typing import Any, List, Tuple
 
 import torch
@@ -106,6 +107,12 @@ class OpenAIWhisperDecoder(AbsDecoder, BatchScorerInterface):
 
         self.decoders.train()
         del _model
+    
+    def output_layer(self, x):
+        x = (
+            x @ torch.transpose(self.decoders.token_embedding.weight.to(x.dtype), 0, 1)
+        ).float()
+        return x
 
     def forward(
         self,
@@ -113,6 +120,8 @@ class OpenAIWhisperDecoder(AbsDecoder, BatchScorerInterface):
         hlens: torch.Tensor,
         ys_in_pad: torch.Tensor,
         ys_in_lens: torch.Tensor,
+        return_hs: bool = False,
+        return_all_hs: bool = False,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Forward decoder.
 
@@ -146,10 +155,12 @@ class OpenAIWhisperDecoder(AbsDecoder, BatchScorerInterface):
                 x = self.dropout(x)
 
         x = self.decoders.ln(x)
-        x = (
-            x @ torch.transpose(self.decoders.token_embedding.weight.to(x.dtype), 0, 1)
-        ).float()
+        if return_hs:
+            hidden = x
+        x = self.output_layer(x)
 
+        if return_hs:
+            return (x, hidden), ys_in_lens
         return x, ys_in_lens
 
     def forward_one_step(

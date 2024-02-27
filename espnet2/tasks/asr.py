@@ -574,6 +574,7 @@ class ASRTask(AbsTask):
                 structure_type=args.contextual_conf.get("structure_type", "none"),
                 sampling_method=args.contextual_conf.get("sampling_method", "none"),
                 asr_model=model,
+                **args.preprocessor_conf,
             )
         return contextual_processor
 

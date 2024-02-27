@@ -217,6 +217,9 @@ class IterableESPnetDataset(IterableDataset):
             #   e.g. espnet2.train.preprocessor:CommonPreprocessor
             if self.preprocess is not None and not isinstance(data['speech'], np.ndarray):
                 data = self.preprocess(uid, data)
+            elif 'text' in data and self.preprocess is not None and not isinstance(data['text'], np.ndarray):
+                # this may cause a problem
+                data = self.preprocess._text_process(data)
 
             # 4. Force data-precision
             for name in data:

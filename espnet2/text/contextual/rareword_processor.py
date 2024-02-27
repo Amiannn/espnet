@@ -60,10 +60,20 @@ class RarewordProcessor():
             non_linguistic_symbols=non_linguistic_symbols,
             g2p_type=g2p_type,
             nonsplit_symbol=nonsplit_symbol,
-            encode_kwargs=encode_kwargs,
             whisper_language=whisper_language,
             whisper_task=whisper_task,
-            sot_asr=sot_asr,
+        )
+        
+        self.tokenizer = build_tokenizer(
+            token_type=token_type,
+            bpemodel=bpemodel,
+            delimiter=delimiter,
+            space_symbol=space_symbol,
+            non_linguistic_symbols=non_linguistic_symbols,
+            g2p_type=g2p_type,
+            nonsplit_symbol=nonsplit_symbol,
+            whisper_language=whisper_language,
+            whisper_task=whisper_task,
         )
         if token_type == "hugging_face":
             self.token_id_converter = HuggingFaceTokenIDConverter(
@@ -77,7 +87,9 @@ class RarewordProcessor():
         else:
             self.token_id_converter = OpenAIWhisperTokenIDConverter(
                 model_type=bpemodel,
-                language=whisper_language,
+                added_tokens_txt=non_linguistic_symbols,
+                language=whisper_language or "en",
+                task=whisper_task or "transcribe",
             )
 
         self.blist          = self.load_blist(blist_path)
@@ -85,7 +97,7 @@ class RarewordProcessor():
         self.blist_max      = blist_max
         self.pad_value      = pad_value
         self.for_transducer = for_transducer
-        self.oov_value     = oov_value
+        self.oov_value      = oov_value
 
         # structure
         self.structure_type = structure_type
@@ -118,6 +130,8 @@ class RarewordProcessor():
         globalblist      = random.choices(self.blist, k = (self.blist_max - len(drouped_uttblist)))
         
         blist = drouped_uttblist + globalblist
+        # add oov
+        blist = blist + [[self.oov_value]]
         return blist
 
     # def build_batch_trie(self, text, batch_size, textsegments, elements):

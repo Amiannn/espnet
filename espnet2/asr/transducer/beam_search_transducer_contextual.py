@@ -291,9 +291,12 @@ class ContextualBeamSearchTransducer(BeamSearchTransducer):
         model_embed,
         context_idxs,
     ):
-        decoder_embed = self.decoder.embed
-        if isinstance(self.decoder.embed, torch.nn.Sequential):
+        if isinstance(self.decoder, OpenAIWhisperDecoder):
+            decoder_embed = self.decoder.decoders.token_embedding
+        elif isinstance(self.decoder.embed, torch.nn.Sequential):
             decoder_embed = self.decoder.embed[0]
+        else:
+            decoder_embed = self.decoder.embed
             
         text_embed_matrix = torch.cat([
             decoder_embed.weight.data, 
