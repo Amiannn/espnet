@@ -8,6 +8,7 @@ import torch
 
 from espnet.nets.e2e_asr_common import end_detect
 from espnet.nets.scorer_interface import PartialScorerInterface, ScorerInterface
+from espnet2.asr.decoder.whisper_decoder import OpenAIWhisperDecoder
 
 logger = logging.getLogger(__name__)
 
@@ -425,6 +426,14 @@ class BeamSearch(torch.nn.Module):
             minlen = -1 * int(minlenratio)
         else:
             minlen = int(minlenratio * inp.size(0))
+
+        # May cause some problem
+        if isinstance(self.scorers['decoder'], OpenAIWhisperDecoder):
+            pos_len = self.scorers['decoder'].decoders.positional_embedding.shape[0]
+            if maxlen > pos_len:
+                # logging.info(f'original maxlen: {maxlen}, after: {pos_len}')
+                # (4) -> special tokens
+                maxlen = pos_len - 4
         logger.info("decoder input length: " + str(inp.shape[0]))
         logger.info("max output length: " + str(maxlen))
         logger.info("min output length: " + str(minlen))
@@ -434,6 +443,7 @@ class BeamSearch(torch.nn.Module):
         ended_hyps = []
         for i in range(maxlen):
             logger.debug("position " + str(i))
+            # logger.info("position " + str(i))
             best = self.search(running_hyps, x, pre_x=pre_x)
             # post process of one iteration
             running_hyps = self.post_process(

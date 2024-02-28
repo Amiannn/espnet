@@ -1,8 +1,9 @@
-import copy
 import os
-from typing import Iterable, List, Union
-
+import copy
+import whisper
 import numpy as np
+
+from typing    import Iterable, List, Union
 from typeguard import check_argument_types
 
 from espnet2.text.whisper_tokenizer import LANGUAGES_CODE_MAPPING
@@ -83,12 +84,23 @@ class OpenAIWhisperTokenIDConverter:
             self.tokenizer.tokenizer.get_added_vocab()
         )
 
-    def ids2tokens(self, integers: Union[np.ndarray, Iterable[int]]) -> List[str]:
+    def ids2tokens(self, integers: Union[np.ndarray, Iterable[int]], skip_special_tokens: bool=True) -> List[str]:
         return self.tokenizer.tokenizer.convert_ids_to_tokens(
-            integers, skip_special_tokens=True
+            integers, skip_special_tokens=skip_special_tokens
         )
 
     def tokens2ids(self, tokens: Iterable[str]) -> List[int]:
         return list(
             self.tokenizer.sot_sequence_including_notimestamps[1:]
         ) + self.tokenizer.tokenizer.convert_tokens_to_ids(tokens)
+
+    def tokens2ids_withoutprompt(self, tokens: Iterable[str]) -> List[int]:
+        return self.tokenizer.tokenizer.convert_tokens_to_ids(tokens)
+
+if __name__ == '__main__':
+    tokens = ['E', 'ARD', 'RO', 'PS']
+
+    tokenizer = whisper.tokenizer.get_tokenizer(multilingual=False)
+    ids = tokenizer.tokenizer.convert_tokens_to_ids(tokens)
+
+    print(f'ids: {ids}')

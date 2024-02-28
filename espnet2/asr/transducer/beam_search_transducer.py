@@ -178,12 +178,7 @@ class BeamSearchTransducer:
 
         """
         self.decoder.set_device(enc_out.device)
-
-        if not self.use_contextual_asr:
-            nbest_hyps = self.search_algorithm(enc_out)
-        else:
-            nbest_hyps = self.search_algorithm(enc_out, contexts)
-
+        nbest_hyps = self.search_algorithm(enc_out)
         return nbest_hyps
 
     def sort_nbest(

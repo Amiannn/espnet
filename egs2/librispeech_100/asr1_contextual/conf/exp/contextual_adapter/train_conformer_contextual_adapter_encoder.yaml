@@ -94,7 +94,8 @@ contextual_conf:
     blist_max: 500
     blist_droup_out: 0.0
     warmup_epoch: 0
-    structure_type: trie
+    structure_type: null
+    # structure_type: trie
     sampling_method: null
 
 # contextualizer settings

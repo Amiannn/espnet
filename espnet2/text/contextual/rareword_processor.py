@@ -18,6 +18,7 @@ from espnet2.text.build_tokenizer                 import build_tokenizer
 from espnet2.text.token_id_converter              import TokenIDConverter
 from espnet2.text.whisper_token_id_converter      import OpenAIWhisperTokenIDConverter
 from espnet2.text.hugging_face_token_id_converter import HuggingFaceTokenIDConverter
+from espnet2.text.cleaner                         import TextCleaner
 
 from espnet2.text.contextual.structure.trie       import TrieProcessor
 
@@ -51,19 +52,8 @@ class RarewordProcessor():
         structure_type: str = "none",
         sampling_method: str = "none",
         asr_model: object = None,
+        text_cleaner: Collection[str] = None,
     ):
-        self.tokenizer = build_tokenizer(
-            token_type=token_type,
-            bpemodel=bpemodel,
-            delimiter=delimiter,
-            space_symbol=space_symbol,
-            non_linguistic_symbols=non_linguistic_symbols,
-            g2p_type=g2p_type,
-            nonsplit_symbol=nonsplit_symbol,
-            whisper_language=whisper_language,
-            whisper_task=whisper_task,
-        )
-        
         self.tokenizer = build_tokenizer(
             token_type=token_type,
             bpemodel=bpemodel,
@@ -91,6 +81,11 @@ class RarewordProcessor():
                 language=whisper_language or "en",
                 task=whisper_task or "transcribe",
             )
+        self.text_cleaner = TextCleaner(text_cleaner)
+        if isinstance(self.token_id_converter, OpenAIWhisperTokenIDConverter):
+            self.token_id_converter_fn = self.token_id_converter.tokens2ids_withoutprompt
+        else:
+            self.token_id_converter_fn = self.token_id_converter.tokens2ids
 
         self.blist          = self.load_blist(blist_path)
         self.droup_out      = droup_out
@@ -120,8 +115,9 @@ class RarewordProcessor():
         with open(blist_path, 'r', encoding='utf-8') as frs:
             for fr in frs:
                 bword     = fr.replace('\n', '')
+                bword     = self.text_cleaner(bword)
                 tokens    = self.tokenizer.text2tokens(bword)
-                text_ints = self.token_id_converter.tokens2ids(tokens)
+                text_ints = self.token_id_converter_fn(tokens)
                 blist.append(text_ints)
         return blist
 
@@ -167,7 +163,7 @@ class RarewordProcessor():
         for i in range(batch_size):
             for start, end in uttblistsegments[i]:
                 uttblists_resolve.append(uttblists[i][start:end].tolist())
-        elements        = self.build_batch_contextual(uttblists_resolve)
+        elements = self.build_batch_contextual(uttblists_resolve)
         output['blist'] = elements 
 
         if self.structure_type == "trie":

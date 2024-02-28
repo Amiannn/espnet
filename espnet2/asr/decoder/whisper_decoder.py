@@ -169,6 +169,8 @@ class OpenAIWhisperDecoder(AbsDecoder, BatchScorerInterface):
         tgt_mask: torch.Tensor,
         memory: torch.Tensor,
         cache: List[torch.Tensor] = None,
+        return_hs: bool = False,
+        return_all_hs: bool = False,
     ) -> Tuple[torch.Tensor, List[torch.Tensor]]:
         """Forward one step.
 
@@ -186,6 +188,11 @@ class OpenAIWhisperDecoder(AbsDecoder, BatchScorerInterface):
             cache implementation is ignored for now
             for simplicity & correctness
         """
+        # logging.info(f'self.decoders.positional_embedding.shape: {self.decoders.positional_embedding.shape}')
+        # logging.info(f'tgt.size(1): {tgt.size(1)}')
+        # logging.info(f'self.decoders.token_embedding(tgt): {self.decoders.token_embedding(tgt).shape}')
+        # logging.info(f'self.decoders.positional_embedding[: tgt.size(1)]: {self.decoders.positional_embedding[: tgt.size(1)].shape}')
+        # logging.info(f'-' * 10)
         x = (
             self.decoders.token_embedding(tgt)
             + self.decoders.positional_embedding[: tgt.size(1)]
@@ -200,18 +207,37 @@ class OpenAIWhisperDecoder(AbsDecoder, BatchScorerInterface):
 
         x = self.decoders.ln(x)
         y = x[:, -1]
-        y = (
-            y @ torch.transpose(self.decoders.token_embedding.weight.to(x.dtype), 0, 1)
-        ).float()
+        if return_hs:
+            hidden = y
+        y = self.output_layer(y)
         y = torch.log_softmax(y, dim=-1)
 
+        if return_hs:
+            return (y, hidden), None
         return y, None
 
-    def score(self, ys, state, x):
+    def score(self, 
+        ys, 
+        state, 
+        x, 
+        return_hs: bool = False,
+        return_all_hs: bool = False,
+        ):
         """Score."""
-        logp, state = self.forward_one_step(
-            ys.unsqueeze(0), torch.empty(0), x.unsqueeze(0), cache=state  # dummy mask
+        out = self.forward_one_step(
+            ys.unsqueeze(0), 
+            torch.empty(0), 
+            x.unsqueeze(0), 
+            cache=state, 
+            return_hs=return_hs,
+            return_all_hs=return_all_hs,
+            # dummy mask
         )
+        if return_hs or return_all_hs:
+            (logp, hidden), state = out
+            return logp.squeeze(0), hidden, state
+        else:
+            logp, state = out
         return logp.squeeze(0), state
 
     def batch_score(

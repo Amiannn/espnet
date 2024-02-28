@@ -20,6 +20,8 @@ from espnet.nets.pytorch_backend.transducer.utils import (
 from espnet2.asr.transducer.beam_search_transducer import BeamSearchTransducer
 from espnet2.asr.transducer.beam_search_transducer import Hypothesis
 
+from espnet2.asr.decoder.whisper_decoder import OpenAIWhisperDecoder
+
 @dataclass
 class ContextualHypothesis(Hypothesis):
     """Default hypothesis definition for Transducer search algorithms."""

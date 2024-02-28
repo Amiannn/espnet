@@ -568,6 +568,11 @@ class ContextualPreprocessor(CommonPreprocessor):
         )
         self.uttblist_name = uttblist_name
 
+        if isinstance(self.token_id_converter, OpenAIWhisperTokenIDConverter):
+            self.token_id_converter_fn = self.token_id_converter.tokens2ids_withoutprompt
+        else:
+            self.token_id_converter_fn = self.token_id_converter.tokens2ids
+
     def _speech_process(
         self, data: Dict[str, Union[str, np.ndarray, Tuple]]
     ) -> Dict[str, Union[str, np.ndarray, Tuple]]:
@@ -712,7 +717,7 @@ class ContextualPreprocessor(CommonPreprocessor):
             for uttb in uttblist:
                 text = self.text_cleaner(uttb)
                 tokens = self.tokenizer.text2tokens(text)
-                text_ints = self.token_id_converter.tokens2ids(tokens)
+                text_ints = self.token_id_converter_fn(tokens)
                 uttblist2text.extend(text_ints)
 
                 end = now_index + len(text_ints)

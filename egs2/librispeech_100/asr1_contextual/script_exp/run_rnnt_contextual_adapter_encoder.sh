@@ -10,7 +10,7 @@ valid_set="dev"
 test_sets="test_clean"
 
 asr_config=conf/exp/contextual_adapter/train_rnnt_contextual_adapter_encoder.yaml
-inference_config=conf/exp/decode_asr_rnnt_transducer.yaml
+inference_config=conf/exp/decode_asr_contextual_rnnt_transducer_greedy.yaml
 
 pretrained_model=exp/asr_pretrain_rnnt/valid.loss.10epoch.pth
 
@@ -37,7 +37,7 @@ CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --contextualization true \
     --pretrained_model $pretrained_model \
     --ignore_init_mismatch true \
-    --inference_asr_model 1epoch.pth \
+    --inference_asr_model valid.loss.best.pth \
+    --asr_args "--use_wandb true --wandb_project Contextualize_RNNT" \
     "$@"
 
-    # --asr_args "--use_wandb true --wandb_project Contextualize_ASR_NEW" \

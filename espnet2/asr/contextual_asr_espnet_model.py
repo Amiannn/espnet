@@ -124,6 +124,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             text_lengths: (Batch,)
             kwargs: "utt_id" is among the input.
         """
+        logging.info(f'training contexts blist: {contexts["blist"].shape}')
         assert text_lengths.dim() == 1, text_lengths.shape
         # Check that batch_size is unified
         assert (

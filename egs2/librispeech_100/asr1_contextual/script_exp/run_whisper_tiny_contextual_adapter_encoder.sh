@@ -10,14 +10,14 @@ valid_set="dev"
 test_sets="test_clean"
 
 asr_config=conf/exp/contextual_adapter/train_whisper_tiny_contextual_adapter_encoder.yaml
-inference_config=conf/exp/decode_asr_greedy.yaml
+inference_config=conf/exp/decode_whisper.yaml
 
 CUDA_VISIBLE_DEVICES=1 ./asr.sh \
     --lang en \
     --ngpu 1 \
     --nj 16 \
     --gpu_inference false \
-    --inference_nj 10 \
+    --inference_nj 5 \
     --token_type whisper_multilingual \
     --feats_normalize "" \
     --max_wav_duration 30 \
@@ -31,9 +31,11 @@ CUDA_VISIBLE_DEVICES=1 ./asr.sh \
     --valid_set "${valid_set}" \
     --test_sets "${test_sets}" \
     --speed_perturb_factors "0.9 1.0 1.1" \
+    --asr_speech_fold_length 512 \
+    --asr_text_fold_length 150 \
     --lm_train_text "data/${train_set}/text" \
     --contextualization true \
-    --inference_asr_model transfered.pth \
+    --inference_asr_model valid.acc.best.pth \
+    --asr_args "--use_wandb true --wandb_project Contextualize_ASR_NEW" \
     "$@"
 
-    # --asr_args "--use_wandb true --wandb_project Contextualize_ASR_NEW" \

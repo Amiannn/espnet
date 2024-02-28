@@ -154,6 +154,14 @@ class ContextualBeamSearch(BeamSearch):
             minlen = -1 * int(minlenratio)
         else:
             minlen = int(minlenratio * inp.size(0))
+        
+        # May cause some problem
+        if isinstance(self.scorers['decoder'], OpenAIWhisperDecoder):
+            pos_len = self.scorers['decoder'].decoders.positional_embedding.shape[0]
+            if maxlen > pos_len:
+                # logging.info(f'original maxlen: {maxlen}, after: {pos_len}')
+                # (4) -> special tokens
+                maxlen = pos_len - 4
         logger.info("decoder input length: " + str(inp.shape[0]))
         logger.info("max output length: " + str(maxlen))
         logger.info("min output length: " + str(minlen))
