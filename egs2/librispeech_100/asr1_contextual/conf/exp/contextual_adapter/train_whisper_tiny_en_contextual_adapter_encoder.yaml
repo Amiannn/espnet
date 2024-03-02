@@ -4,7 +4,7 @@ normalize: null
 
 encoder: whisper
 encoder_conf:
-    whisper_model: tiny
+    whisper_model: tiny.en
     dropout_rate: 0.0
     use_specaug: true
     specaug_conf:
@@ -25,7 +25,7 @@ encoder_conf:
 
 decoder: whisper
 decoder_conf:
-    whisper_model: tiny
+    whisper_model: tiny.en
     dropout_rate: 0.0
 
 model_conf:

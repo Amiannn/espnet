@@ -124,7 +124,8 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             text_lengths: (Batch,)
             kwargs: "utt_id" is among the input.
         """
-        logging.info(f'training contexts blist: {contexts["blist"].shape}')
+        # logging.info(f'training contexts blist: {contexts["blist"].shape}')
+        logging.info(f'training contexts blist: {contexts["blist"]}')
         assert text_lengths.dim() == 1, text_lengths.shape
         # Check that batch_size is unified
         assert (
@@ -393,7 +394,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             
         text_embed_matrix = torch.cat([
             decoder_embed.weight.data, 
-            self.contextualizer.encoder.oovembed.weight.data,
+            self.contextualizer.encoder.oovembed.weight,
         ], dim=0)
 
         # logging.info(f'text_embed_matrix shape: {text_embed_matrix.shape}')

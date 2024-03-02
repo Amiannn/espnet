@@ -9,10 +9,8 @@ train_set="train_clean_100"
 valid_set="dev"
 test_sets="test_clean"
 
-asr_config=conf/exp/contextual_adapter/train_whisper_tiny_en_contextual_adapter_encoder.yaml
-inference_config=conf/exp/decode_contextual_whisper_greedy.yaml
-
-pretrained_model=exp/asr_train_whisper_tiny_en_raw_en_whisper_en_sp/3epoch.pth
+asr_config=conf/exp/train_whisper_tiny_en.yaml
+inference_config=conf/decode_asr_whisper_noctc_greedy.yaml
 
 CUDA_VISIBLE_DEVICES=1 ./asr.sh \
     --lang en \
@@ -36,11 +34,7 @@ CUDA_VISIBLE_DEVICES=1 ./asr.sh \
     --asr_speech_fold_length 512 \
     --asr_text_fold_length 150 \
     --lm_train_text "data/${train_set}/text" \
-    --contextualization true \
-    --pretrained_model $pretrained_model \
-    --ignore_init_mismatch true \
     --inference_asr_model valid.acc.best.pth \
     "$@"
 
     # --asr_args "--use_wandb true --wandb_project Contextualize_Whisper" \
-

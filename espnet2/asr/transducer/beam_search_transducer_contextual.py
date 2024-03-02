@@ -302,7 +302,7 @@ class ContextualBeamSearchTransducer(BeamSearchTransducer):
             
         text_embed_matrix = torch.cat([
             decoder_embed.weight.data, 
-            self.contextualizer.encoder.oovembed.weight.data,
+            self.contextualizer.encoder.oovembed.weight,
         ], dim=0)
 
         logging.info(f'text_embed_matrix shape: {text_embed_matrix.shape}')

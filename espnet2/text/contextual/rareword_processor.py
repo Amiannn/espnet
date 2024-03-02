@@ -127,7 +127,7 @@ class RarewordProcessor():
         
         blist = drouped_uttblist + globalblist
         # add oov
-        blist = blist + [[self.oov_value]]
+        # blist = blist + [[self.oov_value]]
         return blist
 
     # def build_batch_trie(self, text, batch_size, textsegments, elements):

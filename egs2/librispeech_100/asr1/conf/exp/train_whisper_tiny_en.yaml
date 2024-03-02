@@ -1,10 +1,8 @@
-model: contextual_asr_espnet
-
 normalize: null
 
 encoder: whisper
 encoder_conf:
-    whisper_model: tiny
+    whisper_model: tiny.en
     dropout_rate: 0.0
     use_specaug: true
     specaug_conf:
@@ -25,7 +23,7 @@ encoder_conf:
 
 decoder: whisper
 decoder_conf:
-    whisper_model: tiny
+    whisper_model: tiny.en
     dropout_rate: 0.0
 
 model_conf:
@@ -73,29 +71,3 @@ optim_conf:
 scheduler: warmuplr
 scheduler_conf:
     warmup_steps: 1500
-
-# contextual information settings
-contextual: rareword
-contextual_conf:
-    contextual_type: rareword
-    blist_path: ./local/contextual/rareword_f15.txt
-    blist_max: 500
-    blist_droup_out: 0.0
-    warmup_epoch: 0
-    structure_type: null
-    # structure_type: trie
-    sampling_method: null
-
-# contextualizer settings
-contextualizer: contextual_adapter_encoder
-contextualizer_conf:
-    contextualizer_type: contextual_adapter_encoder
-    context_embed_size: 384
-    context_hidden_size: 384
-    model_hidden_size: 384
-    attndim: 384
-    proj_hidden_size: 384
-    droup_out: 0.0
-
-# adapter style training
-freeze_param: ["encoder", "decoder"]
