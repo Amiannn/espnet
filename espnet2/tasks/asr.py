@@ -97,8 +97,9 @@ from espnet2.utils.types import float_or_none, int_or_none, str2bool, str_or_non
 from espnet2.text.contextual.rareword_processor import RarewordProcessor
 from espnet2.asr.contextual_asr_espnet_model import ESPnetContextualASRModel
 
-from espnet2.asr.prototype.tcpgen_prototype             import TCPGenPrototype
-from espnet2.asr.prototype.contextual_adapter_prototype import ContextualAdapterPrototype
+from espnet2.asr.contextualizer.tcpgen             import TCPGenPrototype
+from espnet2.asr.contextualizer.contextual_adapter import ContextualAdapterPrototype
+from espnet2.asr.contextualizer.contextual_adapter import ContextualAdapterTransformer
 
 frontend_choices = ClassChoices(
     name="frontend",
@@ -210,6 +211,8 @@ contextualizer_choices = ClassChoices(
         tcpgen=TCPGenPrototype,
         contextual_adapter_encoder=ContextualAdapterPrototype,
         contextual_adapter_decoder=ContextualAdapterPrototype,
+        contextual_adapter_transformer_encoder=ContextualAdapterTransformer,
+        contextual_adapter_transformer_decoder=ContextualAdapterTransformer,
     ),
     default="contextual_adapter_encoder",
 )
@@ -550,7 +553,7 @@ class ASRTask(AbsTask):
         contextualizer_class = contextualizer_choices.get_class(contextualizer_type)
         if contextualizer_type == "tcpgen":
             raise NotImplementedError("TCPGen not implemented!")
-        elif contextualizer_type in ["contextual_adapter_encoder", "contextual_adapter_decoder"]:
+        elif "contextual_adapter" in contextualizer_type:
             contextualizer = contextualizer_class(**args.contextualizer_conf)
         return contextualizer
 

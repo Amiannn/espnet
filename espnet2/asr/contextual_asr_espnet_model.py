@@ -28,6 +28,9 @@ from espnet.nets.pytorch_backend.transformer.label_smoothing_loss import (  # no
 from espnet2.asr.espnet_model            import ESPnetASRModel
 from espnet2.asr.decoder.whisper_decoder import OpenAIWhisperDecoder
 
+from espnet2.asr.contextualizer.contextual_adapter import ContextualAdapterPrototype
+from espnet2.asr.contextualizer.contextual_adapter import ContextualAdapterTransformer
+
 if V(torch.__version__) >= V("1.6.0"):
     from torch.cuda.amp import autocast
 else:
@@ -154,11 +157,15 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         stats = dict()
 
         # c1. Encoder contextualization
-        if self.contextualizer_conf["contextualizer_type"] == "contextual_adapter_encoder":
+        if self.contextualizer_conf["contextualizer_type"] in [
+            "contextual_adapter_encoder",
+            "contextual_adapter_transformer_encoder",
+        ]:
             # logging.info(f'Encoder contextualize!')
-            encoder_out = self.forward_contextual_adapter_fusion(
+            encoder_out  = self.forward_contextual_adapter_fusion(
                 model_embed=encoder_out,
-                context_idxs=contexts['blist'],
+                context_idxs=context_idxs,
+                ilens=ilens
             )
 
         # 1. CTC branch
@@ -298,11 +305,15 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         decoder_hs = outputs[0][1]
         
         # c1. Decoder contextualization
-        if self.contextualizer_conf["contextualizer_type"] == "contextual_adapter_decoder":
+        if self.contextualizer_conf["contextualizer_type"] in [
+            "contextual_adapter_decoder",
+            "contextual_adapter_transformer_decoder"
+        ]:
             # logging.info(f'Decoder contextualize!')
-            decoder_hs = self.forward_contextual_adapter_fusion(
+            decoder_hs   = self.forward_contextual_adapter_fusion(
                 model_embed=decoder_hs,
-                context_idxs=contexts['blist'],
+                context_idxs=context_idxs,
+                ilens=ilens
             )
         decoder_out = self.decoder.output_layer(decoder_hs)
 
@@ -354,11 +365,15 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         decoder_out = self.decoder(decoder_in)
 
         # c1. Decoder contextualization
-        if self.contextualizer_conf["contextualizer_type"] == "contextual_adapter_decoder":
+        if self.contextualizer_conf["contextualizer_type"] in [
+            "contextual_adapter_decoder",
+            "contextual_adapter_transformer_decoder"
+        ]:
             # logging.info(f'Decoder contextualize!')
-            decoder_out = self.forward_contextual_adapter_fusion(
+            decoder_out  = self.forward_contextual_adapter_fusion(
                 model_embed=decoder_out,
                 context_idxs=contexts['blist'],
+                ilens=ilens,
             )
 
         joint_out = self.joint_network(
@@ -384,6 +399,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         self,
         model_embed,
         context_idxs,
+        ilens=None,
     ):
         if isinstance(self.decoder, OpenAIWhisperDecoder):
             decoder_embed = self.decoder.decoders.token_embedding
@@ -401,10 +417,11 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         context_embed = text_embed_matrix[context_idxs]
         # logging.info(f'model_embed shape: {model_embed.shape}')
         # logging.info(f'context_embed shape: {context_embed.shape}')
-        
-        out = self.contextualizer(
+        ilens = (context_idxs != 0).sum(dim=-1)
+        out   = self.contextualizer(
             model_embed=model_embed,
             context_embed=context_embed,
+            ilens=ilens,
         )
         # logging.info(f'fusion out shape: {out.shape}')
         return model_embed + out

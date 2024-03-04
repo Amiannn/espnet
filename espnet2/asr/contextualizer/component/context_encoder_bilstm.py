@@ -5,7 +5,7 @@ import logging
 
 from typing import Optional, Tuple
 
-class ContextEncoder(torch.nn.Module):
+class ContextEncoderBiLSTM(torch.nn.Module):
     def __init__(
         self,
         hidden_size : int,
