@@ -5,8 +5,10 @@ import logging
 
 from typing import Optional, Tuple
 
-from espnet2.asr.contextualizer.component.context_encoder_bilstm      import ContextEncoderBiLSTM
-from espnet2.asr.contextualizer.component.context_encoder_transformer import ContextEncoderTransformer
+from espnet2.asr.contextualizer.component.context_encoder import (
+    ContextEncoderBiLSTM,
+    ContextEncoderTransformer
+)
 
 from espnet2.asr.contextualizer.component.attention_based_adapter import AttentionBasedAdapter
 
@@ -40,15 +42,16 @@ class ContextualAdapterPrototype(torch.nn.Module):
         text_embed: torch.Tensor,
         ilens     : torch.Tensor = None,
     ):
-        return self.encoder(text_embed)
+        return self.encoder(text_embed, ilens)
 
     def forward_adapter(
         self,
         model_embed  : torch.Tensor,
         context_embed: torch.Tensor,
         mask         : torch.Tensor = None,
+        return_atten : bool=False,
     ):
-        return self.adapter(model_embed, context_embed)
+        return self.adapter(model_embed, context_embed, mask, return_atten)
 
     def forward(
         self,
@@ -56,9 +59,15 @@ class ContextualAdapterPrototype(torch.nn.Module):
         context_embed: torch.Tensor,
         ilens        : torch.Tensor = None,
         mask         : torch.Tensor = None,
+        return_atten : bool=False,
     ):
-        context_embed = self.forward_context_encoder(context_embed)
-        output        = self.forward_adapter(model_embed, context_embed)
+        context_embed = self.forward_context_encoder(context_embed, ilens)
+        output        = self.forward_adapter(
+            model_embed=model_embed,
+            context_embed=context_embed,
+            mask=mask,
+            return_atten=return_atten,
+        )
         return output
 
 class ContextualAdapterTransformer(ContextualAdapterPrototype):
@@ -91,24 +100,6 @@ class ContextualAdapterTransformer(ContextualAdapterPrototype):
             linear_units=linear_units,
             droup_out=droup_out,
         )
-
-    def forward_context_encoder(
-        self,
-        text_embed: torch.Tensor,
-        ilens     : torch.Tensor
-    ):
-        return self.encoder(text_embed, ilens)
-
-    def forward(
-        self,
-        model_embed  : torch.Tensor,
-        context_embed: torch.Tensor,
-        ilens        : torch.Tensor,
-        mask         : torch.Tensor = None,
-    ):
-        context_embed = self.forward_context_encoder(context_embed, ilens)
-        output        = self.forward_adapter(model_embed, context_embed)
-        return output
 
 if __name__ == '__main__':
     B, U, T = 2, 3, 5
@@ -149,5 +140,6 @@ if __name__ == '__main__':
         dropout=dropout,
     )
 
-    bias = context_adapter_transformer(text_embed, model_out, ilens)
+    bias, attn = context_adapter_transformer(text_embed, model_out, ilens, return_atten=True)
     print(f'contextual adapter transformer bias: {bias.shape}')
+    print(f'contextual adapter attn: {attn.shape}')

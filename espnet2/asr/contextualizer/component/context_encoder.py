@@ -8,6 +8,34 @@ from espnet2.asr.encoder.transformer_encoder           import TransformerEncoder
 from espnet.nets.pytorch_backend.nets_utils            import make_pad_mask
 from espnet.nets.pytorch_backend.transformer.embedding import PositionalEncoding
 
+class ContextEncoderBiLSTM(torch.nn.Module):
+    def __init__(
+        self,
+        hidden_size : int,
+        output_size : int,
+        droup_out   : float = 0.1,
+        **kwargs
+    ):
+        super().__init__()
+        self.oovembed  = torch.nn.Embedding(1, hidden_size)
+        self.droup_out = torch.nn.Dropout(droup_out)
+        self.encoder   = torch.nn.LSTM(
+            hidden_size, 
+            output_size // 2, 
+            1, 
+            batch_first=True, 
+            bidirectional=True
+        )
+
+    def forward(
+        self,
+        context_embed: torch.Tensor,
+        ilens: torch.Tensor = None,
+    ):
+        context_embed, _ = self.encoder(context_embed)
+        context_embed    = torch.mean(context_embed, dim=1)
+        return context_embed
+
 class ContextEncoderTransformer(torch.nn.Module):
     def __init__(
         self,

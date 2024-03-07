@@ -25,11 +25,8 @@ from espnet.nets.pytorch_backend.transformer.label_smoothing_loss import (  # no
     LabelSmoothingLoss,
 )
 
-from espnet2.asr.espnet_model            import ESPnetASRModel
-from espnet2.asr.decoder.whisper_decoder import OpenAIWhisperDecoder
-
-from espnet2.asr.contextualizer.contextual_adapter import ContextualAdapterPrototype
-from espnet2.asr.contextualizer.contextual_adapter import ContextualAdapterTransformer
+from espnet2.asr.espnet_model import ESPnetASRModel
+from espnet2.asr.contextualizer.func.contextual_adapter_func import forward_contextual_adapter
 
 if V(torch.__version__) >= V("1.6.0"):
     from torch.cuda.amp import autocast
@@ -162,11 +159,14 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             "contextual_adapter_transformer_encoder",
         ]:
             # logging.info(f'Encoder contextualize!')
-            encoder_out  = self.forward_contextual_adapter_fusion(
+            bias_vec = forward_contextual_adapter(
+                decoder=self.decoder,
+                contextualizer=self.contextualizer,
                 model_embed=encoder_out,
-                context_idxs=context_idxs,
-                ilens=ilens
+                context_idxs=contexts['blist'],
+                ilens=contexts['ilens']
             )
+            encoder_out = encoder_out + bias_vec
 
         # 1. CTC branch
         if self.ctc_weight != 0.0:
@@ -310,11 +310,15 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             "contextual_adapter_transformer_decoder"
         ]:
             # logging.info(f'Decoder contextualize!')
-            decoder_hs   = self.forward_contextual_adapter_fusion(
+            bias_vec = forward_contextual_adapter(
+                decoder=self.decoder,
+                contextualizer=self.contextualizer,
                 model_embed=decoder_hs,
-                context_idxs=context_idxs,
-                ilens=ilens
+                context_idxs=contexts['blist'],
+                ilens=contexts['ilens']
             )
+            decoder_hs = decoder_hs + bias_vec
+
         decoder_out = self.decoder.output_layer(decoder_hs)
 
         # 2. Compute attention loss
@@ -370,11 +374,14 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             "contextual_adapter_transformer_decoder"
         ]:
             # logging.info(f'Decoder contextualize!')
-            decoder_out  = self.forward_contextual_adapter_fusion(
+            bias_vec = forward_contextual_adapter(
+                decoder=self.decoder,
+                contextualizer=self.contextualizer,
                 model_embed=decoder_out,
                 context_idxs=contexts['blist'],
-                ilens=ilens,
+                ilens=contexts['ilens']
             )
+            decoder_out = decoder_out + bias_vec
 
         joint_out = self.joint_network(
             encoder_out.unsqueeze(2), decoder_out.unsqueeze(1)
@@ -394,34 +401,3 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             )
 
         return loss_transducer, cer_transducer, wer_transducer
-
-    def forward_contextual_adapter_fusion(
-        self,
-        model_embed,
-        context_idxs,
-        ilens=None,
-    ):
-        if isinstance(self.decoder, OpenAIWhisperDecoder):
-            decoder_embed = self.decoder.decoders.token_embedding
-        elif isinstance(self.decoder.embed, torch.nn.Sequential):
-            decoder_embed = self.decoder.embed[0]
-        else:
-            decoder_embed = self.decoder.embed
-            
-        text_embed_matrix = torch.cat([
-            decoder_embed.weight.data, 
-            self.contextualizer.encoder.oovembed.weight,
-        ], dim=0)
-
-        # logging.info(f'text_embed_matrix shape: {text_embed_matrix.shape}')
-        context_embed = text_embed_matrix[context_idxs]
-        # logging.info(f'model_embed shape: {model_embed.shape}')
-        # logging.info(f'context_embed shape: {context_embed.shape}')
-        ilens = (context_idxs != 0).sum(dim=-1)
-        out   = self.contextualizer(
-            model_embed=model_embed,
-            context_embed=context_embed,
-            ilens=ilens,
-        )
-        # logging.info(f'fusion out shape: {out.shape}')
-        return model_embed + out

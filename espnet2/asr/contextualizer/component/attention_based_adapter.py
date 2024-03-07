@@ -60,10 +60,11 @@ class AttentionBasedAdapter(torch.nn.Module):
         mask=None,
         return_atten=False,
     ):  
-        x = self.attention(
+        out = self.attention(
             query=model_embed, 
             key=context_embed, 
             value=context_embed,
             mask=mask,
+            return_atten=return_atten,
         )
-        return x
+        return out

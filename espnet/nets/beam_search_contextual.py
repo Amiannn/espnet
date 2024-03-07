@@ -14,6 +14,8 @@ from espnet.nets.beam_search import BeamSearch
 
 from espnet2.asr.decoder.whisper_decoder import OpenAIWhisperDecoder
 
+from espnet2.asr.contextualizer.func.contextual_adapter_func import forward_contextual_adapter
+
 logger = logging.getLogger(__name__)
 
 
@@ -167,13 +169,20 @@ class ContextualBeamSearch(BeamSearch):
         logger.info("min output length: " + str(minlen))
 
         # Encoder contextualization
-        if self.contextualizer_conf["contextualizer_type"] == "contextual_adapter_encoder":
+        if self.contextualizer_conf["contextualizer_type"] in [
+            "contextual_adapter_encoder",
+            "contextual_adapter_transformer_encoder",
+        ]:
             logging.info(f'Encoder contextualize!')
-            x = x.unsqueeze(0)
-            x = self.forward_contextual_adapter_fusion(
+            x        = x.unsqueeze(0)
+            bias_vec = forward_contextual_adapter(
+                decoder=self.decoder,
+                contextualizer=self.contextualizer,
                 model_embed=x,
                 context_idxs=contexts['blist'],
+                ilens=contexts['ilens']
             )
+            x = x + bias_vec
             x = x.squeeze(0)
 
         # main loop of prefix search
@@ -243,36 +252,6 @@ class ContextualBeamSearch(BeamSearch):
                 + "please consider to increase the maxlenratio."
             )
         return nbest_hyps
-    
-    # forward contextualizer
-    def forward_contextual_adapter_fusion(
-        self,
-        model_embed,
-        context_idxs,
-    ):
-        if isinstance(self.decoder, OpenAIWhisperDecoder):
-            decoder_embed = self.decoder.decoders.token_embedding
-        elif isinstance(self.decoder.embed, torch.nn.Sequential):
-            decoder_embed = self.decoder.embed[0]
-        else:
-            decoder_embed = self.decoder.embed
-            
-        text_embed_matrix = torch.cat([
-            decoder_embed.weight.data, 
-            self.contextualizer.encoder.oovembed.weight,
-        ], dim=0)
-
-        logging.info(f'text_embed_matrix shape: {text_embed_matrix.shape}')
-        context_embed = text_embed_matrix[context_idxs]
-        logging.info(f'model_embed shape: {model_embed.shape}')
-        logging.info(f'context_embed shape: {context_embed.shape}')
-        
-        out = self.contextualizer(
-            model_embed=model_embed,
-            context_embed=context_embed,
-        )
-        logging.info(f'fusion out shape: {out.shape}')
-        return model_embed + out
 
 def beam_search(
     x: torch.Tensor,

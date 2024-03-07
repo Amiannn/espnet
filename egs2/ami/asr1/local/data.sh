@@ -41,7 +41,7 @@ fi
 
 base_mic=${mic//[0-9]/} # sdm, ihm or mdm
 nmics=${mic//[a-z]/} # e.g. 8 for mdm8.
-
+stage=2
 if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
     log "data stage 1: Data Download"
     if [ -d ${AMI} ] && ! touch ${AMI}/.foo 2>/dev/null; then

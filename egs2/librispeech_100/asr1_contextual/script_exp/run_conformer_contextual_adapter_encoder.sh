@@ -17,7 +17,7 @@ CUDA_VISIBLE_DEVICES=1 ./asr.sh \
     --ngpu 1 \
     --nj 16 \
     --gpu_inference false \
-    --inference_nj 10 \
+    --inference_nj 1 \
     --nbpe 600 \
     --suffixbpe suffix \
     --max_wav_duration 30 \
@@ -33,7 +33,7 @@ CUDA_VISIBLE_DEVICES=1 ./asr.sh \
     --lm_train_text "data/${train_set}/text" \
     --bpe_train_text "data/${train_set}/text" \
     --contextualization true \
-    --inference_asr_model 6epoch.pth \
+    --inference_asr_model valid.loss.best.pth \
     "$@"
 
     # --asr_args "--use_wandb true --wandb_project Contextualize_ASR_NEW" \

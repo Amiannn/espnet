@@ -20,7 +20,7 @@ from espnet.nets.pytorch_backend.transducer.utils import (
 from espnet2.asr.transducer.beam_search_transducer import BeamSearchTransducer
 from espnet2.asr.transducer.beam_search_transducer import Hypothesis
 
-from espnet2.asr.decoder.whisper_decoder import OpenAIWhisperDecoder
+from espnet2.asr.contextualizer.func.contextual_adapter_func import forward_contextual_adapter
 
 @dataclass
 class ContextualHypothesis(Hypothesis):
@@ -111,13 +111,20 @@ class ContextualBeamSearchTransducer(BeamSearchTransducer):
 
         """
         # Encoder contextualization
-        if self.contextualizer_conf["contextualizer_type"] == "contextual_adapter_encoder":
+        if self.contextualizer_conf["contextualizer_type"] in [
+            "contextual_adapter_encoder",
+            "contextual_adapter_transformer_encoder",
+        ]:
             logging.info(f'Encoder contextualize!')
-            enc_out = enc_out.unsqueeze(0)
-            enc_out = self.forward_contextual_adapter_fusion(
+            enc_out  = enc_out.unsqueeze(0)
+            bias_vec = forward_contextual_adapter(
+                decoder=self.decoder,
+                contextualizer=self.contextualizer,
                 model_embed=enc_out,
                 context_idxs=contexts['blist'],
+                ilens=contexts['ilens']
             )
+            enc_out = enc_out + bias_vec
             enc_out = enc_out.squeeze(0)
 
         dec_state = self.decoder.init_state(1)
@@ -129,13 +136,20 @@ class ContextualBeamSearchTransducer(BeamSearchTransducer):
 
         for enc_out_t in enc_out:
             # Decoder contextualization
-            if self.contextualizer_conf["contextualizer_type"] == "contextual_adapter_decoder":
+            if self.contextualizer_conf["contextualizer_type"] in [
+                "contextual_adapter_decoder",
+                "contextual_adapter_transformer_decoder"
+            ]:
                 logging.info(f'Decoder contextualize!')
-                dec_out = dec_out.reshape(1, 1, -1)
-                dec_out = self.forward_contextual_adapter_fusion(
+                dec_out  = dec_out.reshape(1, 1, -1)
+                bias_vec = forward_contextual_adapter(
+                    decoder=self.decoder,
+                    contextualizer=self.contextualizer,
                     model_embed=dec_out,
                     context_idxs=contexts['blist'],
+                    ilens=contexts['ilens']
                 )
+                dec_out = dec_out + bias_vec
                 dec_out = dec_out.reshape(-1)
 
             logp = torch.log_softmax(
@@ -181,13 +195,20 @@ class ContextualBeamSearchTransducer(BeamSearchTransducer):
         cache_lm = {}
 
         # Encoder contextualization
-        if self.contextualizer_conf["contextualizer_type"] == "contextual_adapter_encoder":
+        if self.contextualizer_conf["contextualizer_type"] in [
+            "contextual_adapter_encoder",
+            "contextual_adapter_transformer_encoder",
+        ]:
             logging.info(f'Encoder contextualize!')
-            enc_out = enc_out.unsqueeze(0)
-            enc_out = self.forward_contextual_adapter_fusion(
+            enc_out  = enc_out.unsqueeze(0)
+            bias_vec = forward_contextual_adapter(
+                decoder=self.decoder,
+                contextualizer=self.contextualizer,
                 model_embed=enc_out,
                 context_idxs=contexts['blist'],
+                ilens=contexts['ilens']
             )
+            enc_out = enc_out + bias_vec
             enc_out = enc_out.squeeze(0)
 
         for enc_out_t in enc_out:
@@ -216,13 +237,20 @@ class ContextualBeamSearchTransducer(BeamSearchTransducer):
 
                 dec_out, state, lm_tokens = self.decoder.score(max_hyp, cache)
                 # Decoder contextualization
-                if self.contextualizer_conf["contextualizer_type"] == "contextual_adapter_decoder":
+                if self.contextualizer_conf["contextualizer_type"] in [
+                    "contextual_adapter_decoder",
+                    "contextual_adapter_transformer_decoder"
+                ]:
                     logging.info(f'Decoder contextualize!')
-                    dec_out = dec_out.reshape(1, 1, -1)
-                    dec_out = self.forward_contextual_adapter_fusion(
+                    dec_out  = dec_out.reshape(1, 1, -1)
+                    bias_vec = forward_contextual_adapter(
+                        decoder=self.decoder,
+                        contextualizer=self.contextualizer,
                         model_embed=dec_out,
                         context_idxs=contexts['blist'],
+                        ilens=contexts['ilens']
                     )
+                    dec_out = dec_out + bias_vec
                     dec_out = dec_out.reshape(-1)
 
                 logp = torch.log_softmax(
@@ -286,33 +314,3 @@ class ContextualBeamSearchTransducer(BeamSearchTransducer):
                     break
 
         return self.sort_nbest(kept_hyps)
-
-    # forward contextualizer
-    def forward_contextual_adapter_fusion(
-        self,
-        model_embed,
-        context_idxs,
-    ):
-        if isinstance(self.decoder, OpenAIWhisperDecoder):
-            decoder_embed = self.decoder.decoders.token_embedding
-        elif isinstance(self.decoder.embed, torch.nn.Sequential):
-            decoder_embed = self.decoder.embed[0]
-        else:
-            decoder_embed = self.decoder.embed
-            
-        text_embed_matrix = torch.cat([
-            decoder_embed.weight.data, 
-            self.contextualizer.encoder.oovembed.weight,
-        ], dim=0)
-
-        logging.info(f'text_embed_matrix shape: {text_embed_matrix.shape}')
-        context_embed = text_embed_matrix[context_idxs]
-        logging.info(f'model_embed shape: {model_embed.shape}')
-        logging.info(f'context_embed shape: {context_embed.shape}')
-        
-        out = self.contextualizer(
-            model_embed=model_embed,
-            context_embed=context_embed,
-        )
-        logging.info(f'fusion out shape: {out.shape}')
-        return model_embed + out

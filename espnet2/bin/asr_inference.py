@@ -952,8 +952,15 @@ def inference(
         **speech2text_kwargs,
     )
 
-    logging.info(f'-asr_train_args.contextual_conf: {speech2text.asr_train_args.contextual_conf}')
     # 3. Build data-iterator
+    logging.info([
+        data_path_and_name_and_type,
+        dtype,
+        batch_size,
+        key_file,
+        num_workers,
+        allow_variable_data_keys
+    ])
     loader = ASRTask.build_streaming_iterator(
         data_path_and_name_and_type,
         dtype=dtype,
