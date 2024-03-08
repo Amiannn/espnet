@@ -15,9 +15,11 @@ from pyscripts.utils.fileio import write_pickle
 
 from pyscripts.contextual.utils.model          import load_espnet_model
 from pyscripts.contextual.utils.rnnt_decode    import infernece
-from pyscripts.contextual.utils.rnnt_alignment import forward_backward as alignment
+from pyscripts.contextual.utils.rnnt_alignment import forward_backward as force_alignment
+from pyscripts.contextual.utils.visualize      import plot_attention_map
 
 from espnet2.asr_transducer.utils import get_transducer_task_io
+
 from espnet2.asr.contextualizer.func.contextual_adapter_func import forward_contextual_adapter
 
 seed = 12
@@ -28,36 +30,32 @@ np.random.seed(seed)
 def visualize(
     logp,
     atten,
+    text,
     target,
+    blist,
     speech,
     blank_id, 
     token_list,
     debug_path,
 ):
-    force_alignment(
+    alignments = force_alignment(
         logp, 
-        target, 
-        speech,
+        target[0], 
         blank_id, 
         token_list,
+        speech,
         debug_path
     )
+    frame2align = {start: token for token, start, end in alignments}
 
-def force_alignment(
-    logp, 
-    target, 
-    speech,
-    blank_id, 
-    token_list,
-):
-    alignments = alignment(
-        logp, 
-        target, 
-        blank_id, 
-        token_list, 
-        speech[0]
+    plot_attention_map(
+        frame2align,
+        atten,
+        text,
+        blist,
+        debug_path,
+        uttid='test',
     )
-    print(alignments)
 
 @torch.no_grad()
 def forward(
@@ -118,7 +116,7 @@ if __name__ == "__main__":
     blit_path  = "./dump/raw/test_clean/uttblist"
     ref_path   = "./data/test_clean/text"
 
-    debug_path = "/".join(model_path.split('/')[:-1])
+    debug_path = os.path.join("/".join(model_path.split('/')[:-1]), 'debug')
     if not os.path.isdir(debug_path):
         os.mkdir(debug_path)
 
@@ -167,22 +165,27 @@ if __name__ == "__main__":
         speech         = data['speech']
         speech_lengths = data['speech_lengths']
         text           = texts[uid]
-
         blist          = contexts['blist']
         ilens          = contexts['ilens']
 
         print(f'texts: {text}')
-
         print(f'uid: {uid}')
         print(f'blist:\n{blist}')
         print(f'ilens:\n{ilens}')
         print(f'speech: {speech}')
         print(f'speech_lengths: {speech_lengths}')
-
+        
+        _blist = []
         for rareword in blist:
-            btokens = " ".join([token_list[word] for word in rareword])
+            btokens = "".join([token_list[word] for word in rareword if word != 0])
             print(f'btokens: {btokens}')
-        tokens = torch.tensor(preprocessor._text_process({'text': text})['text']).long()
+            _blist.append(btokens)
+        blist = _blist
+
+        tokens = torch.tensor(
+            preprocessor._text_process(
+                {'text': text})['text']
+        ).long()
         tokens = tokens.unsqueeze(0)
         print(f'tokens: {tokens}')
 
@@ -198,7 +201,9 @@ if __name__ == "__main__":
         visualize(
             logp,
             atten,
+            text,
             target,
+            blist,
             speech,
             model.blank_id, 
             token_list,

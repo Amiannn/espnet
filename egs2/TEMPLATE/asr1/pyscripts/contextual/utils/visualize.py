@@ -1,35 +1,25 @@
 import os
+import numpy as np
 import matplotlib.pyplot as plt
 
 def plot_attention_map(
-    model,
-    speech,
-    text,
-    biasingwords,
-    target, 
-    logp, 
+    frame2align,
     attention,
-    enc_embeds,
-    cb_embeds,
+    text,
     labels,
-    cb_class,
-    cb_types,
+    debug_path,
     uttid='test',
 ):
-    attention   = attention.squeeze(0).T.detach().cpu().resolve_conj().resolve_neg().numpy()
-    frame2align = {start: token for token, start, end in alignments}
-    xlabels = [
+    attention = attention.squeeze(0).T.detach().cpu().resolve_conj().resolve_neg().numpy()
+    xlabels   = [
         f'{frame2align[i]} {i}' if i in frame2align else f'{i}' for i in range(attention.shape[1])
     ]
-    print(f'xlabels: {len(xlabels)}')
 
-    # plot_tsne(model, enc_embeds, cb_embeds, cb_class, cb_types, labels)
-    # labels = [f'{labels[i]} {int(cb_class[i])}' for i in range(len(labels))]
     labels = [f'{labels[i]}' for i in range(len(labels))]
     plt.rcParams.update({'font.size': 8})
 
     # draw attention map
-    fig, axes = plt.subplots(1, 1, figsize=(8, 2))
+    fig, axes = plt.subplots(1, 1, figsize=(30, 10))
     axes.xaxis.set_ticks(np.arange(0, attention.shape[1], 1))
     axes.yaxis.set_ticks(np.arange(0, attention.shape[0], 1))
     axes.set_xticks(np.arange(-.5, attention.shape[1], 10), minor=True)
