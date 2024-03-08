@@ -16,13 +16,6 @@ def plot_attention_map(
     cb_types,
     uttid='test',
 ):
-    alignments = alignment(
-        logp, 
-        target, 
-        model.blank_id, 
-        model.token_list, 
-        speech[0]
-    )
     attention   = attention.squeeze(0).T.detach().cpu().resolve_conj().resolve_neg().numpy()
     frame2align = {start: token for token, start, end in alignments}
     xlabels = [

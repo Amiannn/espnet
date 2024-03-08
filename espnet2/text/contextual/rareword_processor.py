@@ -120,8 +120,13 @@ class RarewordProcessor():
 
     def build_batch_contextual(self, uttblist, sampling_method=None):
         drouped_uttblist = [b for b in uttblist if random.random() > self.droup_out and len(b) > 0]
-        globalblist      = random.choices(self.blist, k = (self.blist_max - len(drouped_uttblist)))
-        blist            = drouped_uttblist + globalblist
+        globalblist      = []
+        if self.blist_max > len(drouped_uttblist):
+            globalblist = random.choices(
+                self.blist, 
+                k = (self.blist_max - len(drouped_uttblist))
+            )
+        blist = drouped_uttblist + globalblist
         # add oov
         blist = blist + [[self.oov_value]]
         return blist

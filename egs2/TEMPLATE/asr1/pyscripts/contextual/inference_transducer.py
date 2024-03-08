@@ -18,19 +18,75 @@ from pyscripts.contextual.utils.rnnt_decode    import infernece
 from pyscripts.contextual.utils.rnnt_alignment import forward_backward as alignment
 
 from espnet2.asr_transducer.utils import get_transducer_task_io
+from espnet2.asr.contextualizer.func.contextual_adapter_func import forward_contextual_adapter
 
 seed = 12
 random.seed(seed)
 torch.manual_seed(seed)
 np.random.seed(seed)
 
-@torch.no_grad()
-def forward(model, contextual_processor, speech, text):
-    speech  = speech.unsqueeze(0)
-    lengths = speech.new_full([1], dtype=torch.long, fill_value=speech.size(1))
+def visualize(
+    logp,
+    atten,
+    target,
+    speech,
+    blank_id, 
+    token_list,
+    debug_path,
+):
+    force_alignment(
+        logp, 
+        target, 
+        speech,
+        blank_id, 
+        token_list,
+        debug_path
+    )
 
+def force_alignment(
+    logp, 
+    target, 
+    speech,
+    blank_id, 
+    token_list,
+):
+    alignments = alignment(
+        logp, 
+        target, 
+        blank_id, 
+        token_list, 
+        speech[0]
+    )
+    print(alignments)
+
+@torch.no_grad()
+def forward(
+    model, 
+    speech, 
+    lengths,
+    contexts,
+    tokens,
+    text
+):
     encoder_out, enc_olens = model.encode(speech, lengths)
     print(f'encoder_out: {encoder_out.shape}')
+
+    # c1. Encoder contextualization
+    atten = None
+    if model.contextualizer_conf["contextualizer_type"] in [
+        "contextual_adapter_encoder",
+        "contextual_adapter_transformer_encoder",
+    ]:
+        bias_vec, atten = forward_contextual_adapter(
+            decoder=model.decoder,
+            contextualizer=model.contextualizer,
+            model_embed=encoder_out,
+            context_idxs=contexts['blist'],
+            ilens=contexts['ilens'],
+            return_atten=True
+        )
+        print(f'atten: {atten.shape}')
+        encoder_out = encoder_out + bias_vec
 
     decoder_in, target, t_len, u_len = get_transducer_task_io(
         tokens,
@@ -38,8 +94,18 @@ def forward(model, contextual_processor, speech, text):
         ignore_id=-1,
         blank_id=model.blank_id,
     )
-    # decoder_out = model.decoder(decoder_in)
-    # print(f'decoder_out: {decoder_out.shape}')
+    decoder_out = model.decoder(decoder_in)
+    print(f'decoder_out: {decoder_out.shape}')
+
+    joint_out = model.joint_network(
+        encoder_out.unsqueeze(2), decoder_out.unsqueeze(1)
+    )
+    print(f'joint_out: {joint_out.shape}')
+    logp = torch.log_softmax(joint_out, dim=-1)[0].transpose(1, 0)
+    print(f'logp: {logp.shape}')
+
+    return logp, target, atten
+
 
 if __name__ == "__main__":
     spm_path   = "./data/en_token_list/bpe_unigram600/bpe.model"
@@ -51,6 +117,10 @@ if __name__ == "__main__":
     scp_path   = "./dump/raw/test_clean/wav.scp"
     blit_path  = "./dump/raw/test_clean/uttblist"
     ref_path   = "./data/test_clean/text"
+
+    debug_path = "/".join(model_path.split('/')[:-1])
+    if not os.path.isdir(debug_path):
+        os.mkdir(debug_path)
 
     texts  = {d[0]: " ".join(d[1:]) for d in read_file(ref_path, sp=' ')}
 
@@ -85,6 +155,10 @@ if __name__ == "__main__":
         data_path_and_name_and_type
     )
 
+    preprocessor       = loader.dataset.preprocess
+    token_id_converter = preprocessor.token_id_converter
+    token_list         = token_id_converter.token_list + ['<oov>']
+
     model.eval()
     for data in loader:
         uid  = data[0][0]
@@ -104,4 +178,30 @@ if __name__ == "__main__":
         print(f'ilens:\n{ilens}')
         print(f'speech: {speech}')
         print(f'speech_lengths: {speech_lengths}')
+
+        for rareword in blist:
+            btokens = " ".join([token_list[word] for word in rareword])
+            print(f'btokens: {btokens}')
+        tokens = torch.tensor(preprocessor._text_process({'text': text})['text']).long()
+        tokens = tokens.unsqueeze(0)
+        print(f'tokens: {tokens}')
+
+        logp, target, atten = forward(
+            model, 
+            speech, 
+            speech_lengths,
+            contexts,
+            tokens,
+            text
+        )
+
+        visualize(
+            logp,
+            atten,
+            target,
+            speech,
+            model.blank_id, 
+            token_list,
+            debug_path,
+        )
         break
