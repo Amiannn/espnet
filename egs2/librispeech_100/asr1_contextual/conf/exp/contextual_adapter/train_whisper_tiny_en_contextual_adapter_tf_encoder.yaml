@@ -53,9 +53,9 @@ patience: none
 init: none
 best_model_criterion:
 -   - valid
-    - acc
-    - max
-keep_nbest_models: 3
+    - loss
+    - min
+keep_nbest_models: 10
 
 use_amp: true
 cudnn_deterministic: false
@@ -85,6 +85,8 @@ contextual_conf:
     structure_type: null
     # structure_type: trie
     sampling_method: null
+
+token_type: whisper_en
 
 # contextualizer settings
 contextualizer: contextual_adapter_transformer_encoder
