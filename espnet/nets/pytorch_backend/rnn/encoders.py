@@ -64,7 +64,7 @@ class RNNP(torch.nn.Module):
         for layer in range(self.elayers):
             if not isinstance(ilens, torch.Tensor):
                 ilens = torch.tensor(ilens)
-            xs_pack = pack_padded_sequence(xs_pad, ilens.cpu(), batch_first=True)
+            xs_pack = pack_padded_sequence(xs_pad, ilens.cpu(), batch_first=True, enforce_sorted=False)
             rnn = getattr(self, ("birnn" if self.bidir else "rnn") + str(layer))
             if self.training:
                 rnn.flatten_parameters()
@@ -141,7 +141,7 @@ class RNN(torch.nn.Module):
         logging.debug(self.__class__.__name__ + " input lengths: " + str(ilens))
         if not isinstance(ilens, torch.Tensor):
             ilens = torch.tensor(ilens)
-        xs_pack = pack_padded_sequence(xs_pad, ilens.cpu(), batch_first=True)
+        xs_pack = pack_padded_sequence(xs_pad, ilens.cpu(), batch_first=True, enforce_sorted=False)
         if self.training:
             self.nbrnn.flatten_parameters()
         if prev_state is not None and self.nbrnn.bidirectional:

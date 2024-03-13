@@ -132,9 +132,8 @@ class RarewordProcessor():
         return blist
 
     def build_batch_trie(self, elements):
-        texts = []
         tree, cache = self.trie_processor.build_trie(elements)
-        return tree, texts
+        return tree
 
     def sample(self, batch_data):
         uttblists         = [data['uttblist'] for data in batch_data]
@@ -149,10 +148,26 @@ class RarewordProcessor():
         elements = self.build_batch_contextual(uttblists_resolve)
 
         if self.structure_type == "trie":
-            tree, texts     = self.build_batch_trie(elements)
+            tree            = self.build_batch_trie(elements)
             output['trie']  = tree
-            output['texts'] = texts
         output['blist'] = elements
+
+        # for attention guided auxiliary CTC loss
+        if 'text' in batch_data[0]:
+            texts           = [data['text'] for data in batch_data]
+            textsegments    = [data['textsegment'] for data in batch_data]
+            rareword_labels = []
+            for i in range(batch_size):
+                word_resolve   = []
+                rareword_label = []
+                for start, end in textsegments[i]:
+                    word  = texts[i][start:end].tolist()
+                    label = elements.index(word) if word in elements else len(elements) - 1
+                    rareword_label.append([label] * (end - start))
+                    word_resolve.append(word)
+                rareword_label = [item for sublist in rareword_label for item in sublist]
+                rareword_labels.append(rareword_label)
+            output['label'] = rareword_labels
         return output
 
 if __name__ == '__main__':
@@ -612,40 +627,45 @@ if __name__ == '__main__':
         'delimiter': None, 
         'space_symbol': '<space>', 
         'non_linguistic_symbols': None, 'g2p_type': None, 'nonsplit_symbol': None, 
-        'tokenizer_language': 'en',
         'token_list': ['<blank>', '<unk>', 'THE▁', 'C', 'AND▁', 'S', 'OF▁', 'S▁', 'TO▁', 'T', 'A▁', 'G', 'I', 'ED▁', 'E', 'RE', 'D', 'IN▁', 'P', 'R', 'N', 'F', 'O', 'IN', 'B', 'T▁', 'L', 'ING▁', '▁', 'W', 'I▁', 'HE▁', 'WAS▁', 'A', 'THAT▁', 'E▁', 'IT▁', 'AR', 'U', 'H', 'ES▁', 'M', 'RI', "'", 'HIS▁', 'AN', 'D▁', 'Y▁', 'LY▁', 'ON▁', 'AS▁', 'HAD▁', 'WITH▁', 'ST', 'Y', 'EN', 'HER▁', 'YOU▁', 'K', 'DE', 'AT▁', 'FOR▁', 'V', 'UN', 'TH', 'SE', 'RO', 'LI', 'LO', 'NOT▁', 'TI', 'AL', 'BUT▁', 'IS▁', 'ER▁', 'SI', 'OR', 'CH', 'ONE▁', 'SHE▁', 'OR▁', 'ME▁', 'BE▁', 'K▁', 'LA', 'LE', 'ALL▁', 'HIM▁', 'BE', 'CON', 'HO', 'PO', 'AT', 'THEY▁', 'MY▁', 'ME', 'ON', 'BY▁', 'AN▁', 'VE▁', 'DI', 'RA', 'AC', 'MA', 'HAVE▁', 'SO▁', 'WERE▁', 'WHICH▁', 'TED▁', 'AL▁', 'THIS▁', 'FROM▁', 'AD', 'SU', 'FI', 'AS', 'SAID▁', 'ER', 'TH▁', 'SE▁', 'RY▁', 'MO', 'EN▁', 'FOR', 'HE', 'EX', 'NE', 'M▁', 'VI', 'TS▁', 'SH', 'BO', 'COM', 'PRO', 'EL', 'ARE▁', 'FE', 'WE▁', 'N▁', 'NO▁', 'ERS▁', 'QU', 'THERE▁', 'THEIR▁', 'LE▁', 'WHEN▁', 'TE', 'TA', 'TY▁', 'PER', 'THEM▁', 'TER', 'WOULD▁', 'OLD▁', 'PA', 'CO', 'IR', 'IF▁', 'WHO▁', 'WHAT▁', 'TER▁', 'MAN▁', 'ATION▁', 'ST▁', 'BEEN▁', 'OUR▁', 'CA', 'UP▁', 'OUT▁', 'PRE', 'AP', 'TION▁', 'IT', 'FA', 'US', 'AM', 'VE', 'TUR', 'DO', 'PAR', 'PE', 'NO', 'LU', 'THEN▁', 'WI', 'SO', 'HI', 'P▁', 'TO', 'COULD▁', 'RE▁', 'Z', 'WILL▁', 'KING▁', 'EAR▁', 'DIS', 'EST▁', 'LL▁', 'SP', 'HA', 'ENCE▁', 'TING▁', 'IS', 'WE', 'DU', 'AND', 'MORE▁', 'SOME▁', 'US▁', 'PI', 'ABLE▁', 'NOW▁', 'VERY▁', 'GU', 'EM', 'ITY▁', 'WA', 'H▁', 'ATE▁', 'LL', 'DO▁', 'NA', 'DER', 'ANT▁', 'LEA', 'PLA', 'BU', 'SA', 'CU', 'INTO▁', 'OWN▁', 'ET▁', 'KE', 'PU', 'LITTLE▁', 'MENT▁', 'VER', 'TE▁', 'DID▁', 'LIKE▁', 'IM', 'ABOUT▁', 'OUR', 'TRA', 'TIME▁', 'THAN▁', 'YOUR▁', 'RED▁', 'MI', 'OTHER▁', 'HU', 'ION▁', 'ANCE▁', 'STR', 'WELL▁', 'W▁', 'L▁', 'ES', 'ANY▁', 'ITS▁', 'MIS', 'AB', 'AGE▁', 'MAR', 'UPON▁', 'OVER▁', 'TU', 'DAY▁', 'TEN', 'CH▁', 'ALLY▁', 'GRA', 'CAME▁', 'MEN▁', 'STO', 'LED▁', 'AM▁', 'GA', 'ONLY▁', 'COME▁', 'TWO▁', 'UG', 'HOW▁', 'VEN', 'INE▁', 'NESS▁', 'EL▁', 'HAS▁', 'BA', 'LONG▁', 'AFTER▁', 'IC▁', 'WAY▁', 'CAR', 'SC', 'HAR', 'MADE▁', 'MIN', 'STE', 'BEFORE▁', 'MOST▁', 'ILL', 'FO', 'GE', 'DOWN▁', 'DER▁', 'BL', 'IONS▁', 'SUCH▁', 'THESE▁', 'DE▁', 'MEN', 'KED▁', 'TRU', 'WHERE▁', 'FUL▁', 'BI', 'CAN▁', 'SEE▁', 'KNOW▁', 'GO▁', 'JE', 'GREAT▁', 'LOW▁', 'MUCH▁', 'NEVER▁', 'MISTER▁', 'GOOD▁', 'SHOULD▁', 'EVEN▁', 'ICE▁', 'STA', 'LESS▁', 'JO', 'BLE▁', 'MUST▁', 'AV', 'DA', 'ISH▁', 'MON', 'TRI', 'KE▁', 'BACK▁', 'YING▁', 'AIR▁', 'AU', 'IOUS▁', 'AGAIN▁', 'MU', 'FIRST▁', 'F▁', 'GO', 'EVER▁', 'VA', 'COR', 'OUS▁', 'ATED▁', 'COUNT', 'ROUND▁', 'OVER', 'LING▁', 'HERE▁', 'HIMSELF▁', 'SHED▁', 'MIL', 'G▁', 'THOUGH▁', 'SIDE▁', 'CL', 'MAY▁', 'JUST▁', 'WENT▁', 'SAY▁', 'NG▁', 'PASS', 'HER', 'NED▁', 'MIGHT▁', 'FR', 'MAN', 'HOUSE▁', 'JU', 'SON▁', 'PEN', 'THROUGH▁', 'EYES▁', 'MAKE▁', 'TOO▁', 'THOUGHT▁', 'WITHOUT▁', 'THINK▁', 'GEN', 'THOSE▁', 'MANY▁', 'SPEC', 'INTER', 'WHILE▁', 'AWAY▁', 'LIFE▁', 'HEAD▁', 'SUR', 'NTLY▁', 'RIGHT▁', 'DON', 'TAKE▁', 'PORT', 'EVERY▁', 'NIGHT▁', 'WARD▁', 'WAR', 'IMP', 'ALL', 'GET▁', 'STILL▁', 'BEING▁', 'FOUND▁', 'NOTHING▁', 'LES▁', 'LAST▁', 'TURNED▁', 'ILL▁', 'YOUNG▁', 'SURE▁', 'INGS▁', 'PEOPLE▁', 'YET▁', 'THREE▁', 'FACE▁', 'CUR', 'OFF▁', 'ROOM▁', 'OUT', 'ASKED▁', 'SAW▁', 'END▁', 'FER', 'MISSUS▁', 'EACH▁', 'SAME▁', 'SHA', 'SENT▁', 'OUL', 'LET▁', 'SOL', 'YOU', 'PLACE▁', 'UNDER▁', 'TOOK▁', 'LIGHT▁', 'LEFT▁', 'PER▁', 'PRESS', 'USE▁', 'ANOTHER▁', 'ONCE▁', 'TELL▁', 'SHALL▁', 'OFF', 'SEEMED▁', 'ALWAYS▁', 'NEW▁', 'ATIONS▁', 'J', 'CESS', 'USED▁', 'WHY▁', 'HEARD▁', 'LOOKED▁', 'GIVE▁', 'PUT▁', 'JA', 'BECAUSE▁', 'THINGS▁', 'BODY▁', 'FATHER▁', 'SOMETHING▁', 'OWING▁', 'LOOK▁', 'ROW▁', 'GOING▁', 'MOTHER▁', 'MIND▁', 'WORK▁', 'GOT▁', 'CENT', 'HAVING▁', 'SOON▁', 'KNEW▁', 'HEART▁', 'FAR▁', 'AGAINST▁', 'WORLD▁', 'FEW▁', 'ICAL▁', 'STOOD▁', 'BEGAN▁', 'SIR▁', 'BETTER▁', 'DOOR▁', 'CALLED▁', 'YEARS▁', 'MOMENT▁', 'ENOUGH▁', 'WOMAN▁', 'TOGETHER▁', 'LIGHT', 'OWED▁', 'READ▁', 'WHOLE▁', 'COURSE▁', 'BETWEEN▁', 'FELT▁', 'LONG', 'HALF▁', 'FULLY▁', 'MORNING▁', 'DENT', 'WOOD', 'HERSELF▁', 'OLD', 'DAYS▁', 'HOWEVER▁', 'WATER▁', 'WHITE▁', 'PERHAPS▁', 'REPLIED▁', 'GIRL▁', 'QUITE▁', 'HUNDRED▁', 'WORDS▁', 'MYSELF▁', 'VOICE▁', 'EARLY▁', 'OUGHT▁', 'AIL▁', 'WORD▁', 'WHOM▁', 'EITHER▁', 'AMONG▁', 'ENDED▁', 'TAKEN▁', 'UNTIL▁', 'ANYTHING▁', 'NEXT▁', 'POSSIBLE▁', 'KIND▁', 'BROUGHT▁', 'EAST▁', 'LOOKING▁', 'ROAD▁', 'SMALL▁', 'RATHER▁', 'BELIEVE▁', 'SINCE▁', 'MONEY▁', 'OPEN▁', 'INDEED▁', 'DOUBT', 'CERTAIN▁', 'TWENTY▁', 'MATTER▁', 'HELD▁', 'EXPECT', 'DIRECT', 'ANSWERED▁', 'THERE', 'WHOSE▁', 'SHIP▁', 'HIGH▁', 'THEMSELVES▁', 'APPEARED▁', 'BLACK▁', 'NATURE▁', 'BEHIND▁', 'POWER▁', 'IZED▁', 'CHILD▁', 'UNCLE▁', 'DEATH▁', 'KNOWN▁', 'OFTEN▁', 'LADY▁', 'POSITION▁', 'KEEP▁', 'CHILDREN▁', 'WIFE▁', 'JOHN▁', 'LARGE▁', 'GIVEN▁', 'EIGHT▁', 'SHORT▁', 'SAYS▁', 'EVERYTHING▁', 'GENERAL▁', 'DOCTOR▁', 'ABOVE▁', 'HAPPY▁', 'Q', 'X', '<sos/eos>'], 'unk_symbol': '<unk>'
     }
     
-    contextual_processor = RarewordProcessorProcessor(blist_path, 0.0, **tokenizer_config)
+    contextual_processor = RarewordProcessor(blist_path, 0.0, **tokenizer_config)
     token_list  = tokenizer_config['token_list']
     
     # masks_mat, max_mask_len, masks_gate_mat, max_masks_gate_len = trie_search(batch_data)
     # print(masks_mat)
     # print(masks_mat.shape)
 
-    output = contextual_processor.sample(batch_data, structure_type='trie')
-    print(f'output: {output}')
+    output = contextual_processor.sample([batch_data[0]])
+    print(f'blist:')
+    for blist in output['blist']:
+        print(blist)
+    print(f'_' * 30)
+    print(f'label:')
+    for i, token in enumerate(batch_data[0]['text']):
+        print(f'{token} ({output["label"][0][i]})')
+    print(f'_' * 30)
+    # text = [0] + batch_data[0]['text']
 
-    text = [0] + batch_data[0]['text']
+    # previous_node  = output['trie']
+    # token_list     = contextual_processor.token_id_converter.token_list
+    # token_list_oov = token_list + ['oov']
 
-    previous_node  = output['trie']
-    token_list     = contextual_processor.token_id_converter.token_list
-    token_list_oov = token_list + ['oov']
+    # for token_ints in previous_node:
+    #     tokens = token_list_oov[token_ints]
+    #     print("".join(tokens))
 
-    for token_ints in previous_node:
-        tokens = token_list_oov[token_ints]
-        print("".join(tokens))
-
-    for i, previous_token_id in enumerate(text):
-        mask, gate_mask, now_node = TrieProcessor.search_trie_one_step(
-            previous_token_id, 
-            output['trie'], 
-            previous_node,
-            token_list
-        )
-        print(f'[{i}]' + '_' * 30)
-        print(f'previous token: {previous_token_id}, token: {token_list[previous_token_id]}')
-        print(f'gate: {gate_mask}')
-        print(f'mask: {mask[0]}')
-        print(f'mask: {[token_list_oov[m] for m in mask[0]]}')
-        previous_node = now_node
+    # for i, previous_token_id in enumerate(text):
+    #     mask, gate_mask, now_node = TrieProcessor.search_trie_one_step(
+    #         previous_token_id, 
+    #         output['trie'], 
+    #         previous_node,
+    #         token_list
+    #     )
+    #     print(f'[{i}]' + '_' * 30)
+    #     print(f'previous token: {previous_token_id}, token: {token_list[previous_token_id]}')
+    #     print(f'gate: {gate_mask}')
+    #     print(f'mask: {mask[0]}')
+    #     print(f'mask: {[token_list_oov[m] for m in mask[0]]}')
+    #     previous_node = now_node

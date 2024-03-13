@@ -20,18 +20,20 @@ class ContextualAdapterPrototype(torch.nn.Module):
         model_hidden_size: int,
         attndim: int,
         proj_hidden_size: int,
+        num_blocks: int=1,
         droup_out: float = 0.1,
+        attention_heads: int = 1,
         **kwargs
     ):
         super().__init__()
         self.encoder = ContextEncoderBiLSTM(
             hidden_size=context_embed_size,
             output_size=context_hidden_size,
+            num_blocks=num_blocks,
             droup_out=droup_out,
         )
         self.adapter = AttentionBasedAdapter(
-            model_hidden_size=model_hidden_size,
-            context_hidden_size=context_hidden_size,
+            attention_heads=attention_heads,
             attndim=attndim,
             proj_hidden_size=proj_hidden_size,
             droup_out=droup_out,
@@ -81,7 +83,9 @@ class ContextualAdapterTransformer(ContextualAdapterPrototype):
         droup_out: float = 0.1,
         num_blocks: int=2,
         linear_units: int=256,
-        attention_heads: int=1,
+        context_attention_heads: int=4,
+        adapter_attention_heads: int=1,
+        padding_idx: int=-1,
         **kwargs
     ):
         super().__init__(
@@ -91,18 +95,20 @@ class ContextualAdapterTransformer(ContextualAdapterPrototype):
             attndim=attndim,
             proj_hidden_size=proj_hidden_size,
             droup_out=droup_out,
+            attention_heads=adapter_attention_heads,
         )
         self.encoder = ContextEncoderTransformer(
             hidden_size=context_embed_size,
             output_size=context_hidden_size,
-            attention_heads=attention_heads,
+            attention_heads=context_attention_heads,
             num_blocks=num_blocks,
             linear_units=linear_units,
             droup_out=droup_out,
+            padding_idx=padding_idx,
         )
 
 if __name__ == '__main__':
-    B, U, T = 2, 3, 5
+    B, U, T, C = 2, 5, 10, 6
 
     vocab_size          = 5
     dropout             = 0.1
@@ -123,13 +129,13 @@ if __name__ == '__main__':
 
     model_out  = torch.rand(B, T, encoder_hidden_size)
     print(f'model_out: {model_out.shape}')
-    text_embed = torch.rand(B, U, encoder_hidden_size)
+    text_embed = torch.rand(C, U, encoder_hidden_size)
     print(f'text_embed: {text_embed.shape}')
     
-    bias = context_adapter_prototype(text_embed, model_out)
-    print(f'contextual adapter prototype bias: {bias.shape}')
+    ilens = torch.tensor([5, 3, 2, 4, 1, 5])
 
-    ilens = torch.tensor([5, 3])
+    bias = context_adapter_prototype(model_out, text_embed, ilens)
+    print(f'contextual adapter prototype bias: {bias.shape}')
 
     context_adapter_transformer = ContextualAdapterTransformer(
         context_embed_size=context_embed_size,
@@ -140,6 +146,6 @@ if __name__ == '__main__':
         dropout=dropout,
     )
 
-    bias, attn = context_adapter_transformer(text_embed, model_out, ilens, return_atten=True)
+    bias, attn = context_adapter_transformer(model_out, text_embed, ilens, return_atten=True)
     print(f'contextual adapter transformer bias: {bias.shape}')
     print(f'contextual adapter attn: {attn.shape}')

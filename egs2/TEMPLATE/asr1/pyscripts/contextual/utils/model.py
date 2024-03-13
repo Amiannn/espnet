@@ -17,20 +17,21 @@ def load_espnet_model(
     model_conf, 
     contextual_conf, 
     token_path, 
-    stats_path, 
-    spm_path, 
-    model_path,
-    data_path_and_name_and_type
+    stats_path=None, 
+    spm_path=None, 
+    model_path='',
+    data_path_and_name_and_type=None
 ):
     conf = read_yml(model_conf)
     conf['token_list']       = token_path
-    conf['input_size']       = None
-    conf['specaug']          = None
-    conf['normalize']        = 'global_mvn'
-    conf['frontend']         = 'default'
+    conf['input_size']       = None if 'input_size' not in conf else conf['input_size']
+    conf['specaug']          = None if 'specaug' not in conf else conf['specaug']
+    conf['normalize']        = 'global_mvn' if 'normalize' not in conf else conf['normalize']
+    conf['frontend']         = None
+    conf['frontend_conf']    = {} if 'frontend_conf' not in conf else conf['frontend_conf']
     conf['ctc_conf']         = get_default_kwargs(CTC)
     conf['init']             = None
-    conf['normalize_conf']   = {'stats_file': stats_path}
+    conf['normalize_conf']   = {'stats_file': stats_path} if stats_path is not None else {}
     conf['token_type']       = 'bpe' if 'token_type' not in conf else conf['token_type']
     conf['bpemodel']         = spm_path
     conf['g2p']              = None if 'g2p' not in conf else conf['g2p']
@@ -45,9 +46,9 @@ def load_espnet_model(
     conf['contextual_conf'].update(contextual_conf)
 
     args      = argparse.Namespace(**conf)
-    bpemodel  = spm.SentencePieceProcessor(model_file=spm_path)
-    tokenizer = build_tokenizer(token_type="bpe", bpemodel=spm_path)
-    converter = TokenIDConverter(token_list=args.token_list)
+    # bpemodel  = spm.SentencePieceProcessor(model_file=spm_path)
+    # tokenizer = build_tokenizer(token_type="bpe", bpemodel=spm_path)
+    # converter = TokenIDConverter(token_list=args.token_list)
     
     # build model
     model = ASRTask.build_model(args)
@@ -70,4 +71,5 @@ def load_espnet_model(
         allow_variable_data_keys=True,
         inference=True,
     )
-    return model, bpemodel, tokenizer, converter, loader
+    # return model, bpemodel, tokenizer, converter, loader
+    return model, loader

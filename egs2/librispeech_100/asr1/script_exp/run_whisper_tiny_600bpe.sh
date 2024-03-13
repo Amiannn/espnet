@@ -9,20 +9,18 @@ train_set="train_clean_100"
 valid_set="dev"
 test_sets="test_clean"
 
-asr_config=conf/exp/contextual_adapter/train_rnnt_contextual_adapter_encoder.yaml
-inference_config=conf/exp/decode_asr_contextual_rnnt_transducer_greedy.yaml
-asr_tag=finetune_freeze_ct_enc_cb
-
-pretrained_model=exp/asr_pretrain_rnnt/valid.loss.10epoch.pth
+asr_config=conf/exp/train_whisper_tiny_en.yaml
+inference_config=conf/decode_asr_whisper_noctc_greedy.yaml
 
 CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --lang en \
     --ngpu 1 \
     --nj 16 \
     --gpu_inference false \
-    --inference_nj 1 \
+    --inference_nj 10 \
     --nbpe 600 \
     --suffixbpe suffix \
+    --feats_normalize "" \
     --max_wav_duration 30 \
     --speed_perturb_factors "0.9 1.0 1.1" \
     --audio_format "flac.ark" \
@@ -33,13 +31,11 @@ CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --train_set "${train_set}" \
     --valid_set "${valid_set}" \
     --test_sets "${test_sets}" \
+    --asr_speech_fold_length 512 \
+    --asr_text_fold_length 150 \
     --lm_train_text "data/${train_set}/text" \
     --bpe_train_text "data/${train_set}/text" \
-    --contextualization true \
-    --pretrained_model $pretrained_model \
-    --ignore_init_mismatch true \
-    --inference_asr_model valid.loss.best.pth \
-    --asr_tag ${asr_tag} \
+    --inference_asr_model valid.acc.ave_10best.pth \
     "$@"
 
-    # --asr_args "--use_wandb true --wandb_project Contextualize_RNNT" \
+    # --asr_args "--use_wandb true --wandb_project Contextualize_Whisper" \

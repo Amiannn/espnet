@@ -12,7 +12,7 @@ test_sets="test_clean"
 asr_config=conf/exp/train_whisper_tiny_en.yaml
 inference_config=conf/decode_asr_whisper_noctc_greedy.yaml
 
-CUDA_VISIBLE_DEVICES=1 ./asr.sh \
+CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --lang en \
     --ngpu 1 \
     --nj 16 \

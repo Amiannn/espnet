@@ -82,9 +82,9 @@ class ContextualBeamSearchTransducer(BeamSearchTransducer):
             self.search_algorithm   = self.beam_search_contextual
         else:
             raise NotImplementedError
-
-        self.contextualizer      = contextualizer
-        self.contextualizer_conf = contextualizer_conf
+        self.contextualizer        = contextualizer
+        self.contextualizer_conf   = contextualizer_conf
+        self.contextual_token_list = token_list + ['oov']
 
     def __call__(
         self,
@@ -110,22 +110,28 @@ class ContextualBeamSearchTransducer(BeamSearchTransducer):
             hyp: 1-best hypotheses.
 
         """
+        # btokens = []
+        # for rareword in contexts['blist']:
+        #     btoken = "".join(
+        #         [self.contextual_token_list[word] for word in rareword if word != 0]
+        #     )
+        #     btokens.append(btoken)
+        # logging.info(f'btokens: {btokens}')
+
         # Encoder contextualization
+        enc_bias_vec = None
         if self.contextualizer_conf["contextualizer_type"] in [
             "contextual_adapter_encoder",
             "contextual_adapter_transformer_encoder",
         ]:
             logging.info(f'Encoder contextualize!')
-            enc_out  = enc_out.unsqueeze(0)
-            bias_vec = forward_contextual_adapter(
+            enc_bias_vec = forward_contextual_adapter(
                 decoder=self.decoder,
                 contextualizer=self.contextualizer,
-                model_embed=enc_out,
+                model_embed=enc_out.unsqueeze(0),
                 context_idxs=contexts['blist'],
                 ilens=contexts['ilens']
             )
-            enc_out = enc_out + bias_vec
-            enc_out = enc_out.squeeze(0)
 
         dec_state = self.decoder.init_state(1)
 
@@ -134,30 +140,37 @@ class ContextualBeamSearchTransducer(BeamSearchTransducer):
 
         dec_out, state, _ = self.decoder.score(hyp, cache)
 
-        for enc_out_t in enc_out:
+        for i, enc_out_t in enumerate(enc_out):
             # Decoder contextualization
+            dec_bias_vec = None
             if self.contextualizer_conf["contextualizer_type"] in [
                 "contextual_adapter_decoder",
                 "contextual_adapter_transformer_decoder"
             ]:
                 logging.info(f'Decoder contextualize!')
-                dec_out  = dec_out.reshape(1, 1, -1)
-                bias_vec = forward_contextual_adapter(
+                dec_bias_vec = forward_contextual_adapter(
                     decoder=self.decoder,
                     contextualizer=self.contextualizer,
-                    model_embed=dec_out,
+                    model_embed=dec_out.reshape(1, 1, -1),
                     context_idxs=contexts['blist'],
                     ilens=contexts['ilens']
                 )
-                dec_out = dec_out + bias_vec
-                dec_out = dec_out.reshape(-1)
+            bias_vec = None
+            if enc_bias_vec is not None and dec_bias_vec is not None:
+                bias_vec = enc_bias_vec + dec_bias_vec
+            elif enc_bias_vec is not None:
+                bias_vec = enc_bias_vec
+            elif dec_bias_vec is not None:
+                bias_vec = dec_bias_vec
 
             logp = torch.log_softmax(
-                self.joint_network(enc_out_t, dec_out),
+                self.joint_network(enc_out_t, dec_out, bias_out=bias_vec),
                 dim=-1,
             )
+            logging.info(f'logp: {logp}')
+            logging.info(f'logp shape: {logp.shape}')
             top_logp, pred = torch.max(logp, dim=-1)
-
+            logging.info(f'pred: {pred}')
             if pred != self.blank_id:
                 hyp.yseq.append(int(pred))
                 hyp.score += float(top_logp)

@@ -126,6 +126,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         """
         # logging.info(f'training contexts blist: {contexts["blist"].shape}')
         logging.info(f'training contexts blist: {contexts["blist"]}')
+        logging.info(f'training contexts label: {contexts["label"]}')
         assert text_lengths.dim() == 1, text_lengths.shape
         # Check that batch_size is unified
         assert (
@@ -154,19 +155,21 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         stats = dict()
 
         # c1. Encoder contextualization
+        enc_bias_vec = None
         if self.contextualizer_conf["contextualizer_type"] in [
             "contextual_adapter_encoder",
             "contextual_adapter_transformer_encoder",
         ]:
             # logging.info(f'Encoder contextualize!')
-            bias_vec = forward_contextual_adapter(
+            enc_bias_vec = forward_contextual_adapter(
                 decoder=self.decoder,
                 contextualizer=self.contextualizer,
                 model_embed=encoder_out,
                 context_idxs=contexts['blist'],
                 ilens=contexts['ilens']
             )
-            encoder_out = encoder_out + bias_vec
+            if not self.use_transducer_decoder:
+                encoder_out = encoder_out + enc_bias_vec
 
         # 1. CTC branch
         if self.ctc_weight != 0.0:
@@ -234,7 +237,8 @@ class ESPnetContextualASRModel(ESPnetASRModel):
                 encoder_out,
                 encoder_out_lens,
                 text,
-                contexts
+                contexts,
+                enc_bias_vec
             )
 
             if loss_ctc is not None:
@@ -309,7 +313,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             "contextual_adapter_decoder",
             "contextual_adapter_transformer_decoder"
         ]:
-            # logging.info(f'Decoder contextualize!')
+            logging.info(f'Decoder contextualize!')
             bias_vec = forward_contextual_adapter(
                 decoder=self.decoder,
                 contextualizer=self.contextualizer,
@@ -344,6 +348,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         encoder_out_lens: torch.Tensor,
         labels: torch.Tensor,
         contexts: dict,
+        enc_bias_vec: torch.Tensor,
     ):
         """Compute Transducer loss.
 
@@ -369,22 +374,32 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         decoder_out = self.decoder(decoder_in)
 
         # c1. Decoder contextualization
+        dec_bias_vec = None
         if self.contextualizer_conf["contextualizer_type"] in [
             "contextual_adapter_decoder",
             "contextual_adapter_transformer_decoder"
         ]:
-            # logging.info(f'Decoder contextualize!')
-            bias_vec = forward_contextual_adapter(
+            logging.info(f'Decoder contextualize!')
+            dec_bias_vec = forward_contextual_adapter(
                 decoder=self.decoder,
                 contextualizer=self.contextualizer,
                 model_embed=decoder_out,
                 context_idxs=contexts['blist'],
                 ilens=contexts['ilens']
             )
-            decoder_out = decoder_out + bias_vec
+
+        bias_vec = None
+        if enc_bias_vec is not None and dec_bias_vec is not None:
+            bias_vec = enc_bias_vec.unsqueeze(2) + dec_bias_vec.unsqueeze(1)
+        elif enc_bias_vec is not None:
+            bias_vec = enc_bias_vec.unsqueeze(2)
+        elif dec_bias_vec is not None:
+            bias_vec = dec_bias_vec.unsqueeze(1)
 
         joint_out = self.joint_network(
-            encoder_out.unsqueeze(2), decoder_out.unsqueeze(1)
+            encoder_out.unsqueeze(2), 
+            decoder_out.unsqueeze(1),
+            bias_out=bias_vec,
         )
 
         loss_transducer = self.criterion_transducer(

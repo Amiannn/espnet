@@ -5,53 +5,31 @@ import logging
 
 from typing import Optional, Tuple
 
+from espnet.nets.pytorch_backend.transformer.layer_norm import LayerNorm
+from espnet.nets.pytorch_backend.transformer.attention  import MultiHeadedAttention
+from espnet.nets.pytorch_backend.transformer.positionwise_feed_forward import (
+    PositionwiseFeedForward,
+)
+
 class AttentionBasedAdapter(torch.nn.Module):
     def __init__(
         self,
-        model_hidden_size: int,
-        context_hidden_size: int,
-        proj_hidden_size: int,
+        attention_heads: int,
         attndim: int,
+        proj_hidden_size: int,
         droup_out: float = 0.1,
         **kwargs
     ):
         super().__init__()
-        self.attndim = attndim
-        self.Qproj   = torch.nn.Linear(model_hidden_size, self.attndim)
-        self.Kproj   = torch.nn.Linear(context_hidden_size, self.attndim)
-        self.Vproj   = torch.nn.Linear(context_hidden_size, self.attndim)
-        self.proj    = torch.nn.Linear(self.attndim, proj_hidden_size)
-        self.droup_out = torch.nn.Dropout(droup_out)
-
-    def attention(
-        self, 
-        query, 
-        key, 
-        value, 
-        mask=None, 
-        return_atten=False
-    ):
-        query = self.Qproj(query)
-        key   = self.Kproj(key)
-        value = self.Vproj(value)
-
-        # attention
-        scores = torch.einsum("tk,ijk->ijt", key, query) / math.sqrt(query.size(-1))
-        if mask is not None:
-            mask      = mask.eq(1)
-            min_value = torch.finfo(scores.dtype).min
-            scores    = scores.masked_fill(mask, min_value)
-            attn      = torch.softmax(scores, dim=-1).masked_fill(mask, 0.0)
-        else:
-            attn = torch.softmax(scores, dim=-1)
-
-        p_attn = self.droup_out(attn)
-        x      = torch.einsum("tk,ijt->ijk", value, p_attn)
-        x      = self.proj(x)
-        
-        if return_atten:
-            return x, attn
-        return x
+        self.attndim         = attndim
+        self.attention_heads = attention_heads
+        self.attention_layer = MultiHeadedAttention(
+            attention_heads, attndim, droup_out
+        )
+        self.proj  = torch.nn.Linear(self.attndim, proj_hidden_size)
+        self.norm_before_x1 = LayerNorm(attndim)
+        self.norm_before_x2 = LayerNorm(attndim)
+        self.norm_after     = LayerNorm(proj_hidden_size)
 
     def forward(
         self,
@@ -60,11 +38,24 @@ class AttentionBasedAdapter(torch.nn.Module):
         mask=None,
         return_atten=False,
     ):  
-        out = self.attention(
+        # may cause some problems (softmax cross utterance)...
+        B, T, D       = model_embed.shape
+        model_embed   = self.norm_before_x1(model_embed)
+        model_embed   = model_embed.reshape(1, B*T, D)
+        context_embed = context_embed.unsqueeze(0)
+        context_embed = self.norm_before_x2(context_embed)
+
+        out = self.attention_layer(
             query=model_embed, 
             key=context_embed, 
             value=context_embed,
             mask=mask,
-            return_atten=return_atten,
         )
+        out = out.reshape(B, T, D)
+        out = self.proj(out)
+        out = self.norm_after(out)
+
+        if return_atten:
+            atten = self.attention_layer.attn
+            return out, atten
         return out

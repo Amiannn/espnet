@@ -584,6 +584,7 @@ class ASRTask(AbsTask):
 
     @classmethod
     def build_model(cls, args: argparse.Namespace) -> ESPnetASRModel:
+        logging.info(f'args: {args}')
         assert check_argument_types()
         if isinstance(args.token_list, str):
             with open(args.token_list, encoding="utf-8") as f:

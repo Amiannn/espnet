@@ -4,6 +4,7 @@ import random
 import logging
 
 from typing import List, Optional, Tuple
+from espnet2.asr.encoder.rnn_encoder                   import RNNEncoder
 from espnet2.asr.encoder.transformer_encoder           import TransformerEncoder
 from espnet.nets.pytorch_backend.nets_utils            import make_pad_mask
 from espnet.nets.pytorch_backend.transformer.embedding import PositionalEncoding
@@ -14,26 +15,28 @@ class ContextEncoderBiLSTM(torch.nn.Module):
         hidden_size : int,
         output_size : int,
         droup_out   : float = 0.1,
+        num_blocks  : int = 1,
         **kwargs
     ):
         super().__init__()
         self.oovembed  = torch.nn.Embedding(1, hidden_size)
         self.droup_out = torch.nn.Dropout(droup_out)
-        self.encoder   = torch.nn.LSTM(
-            hidden_size, 
-            output_size // 2, 
-            1, 
-            batch_first=True, 
-            bidirectional=True
+        self.encoder   = RNNEncoder(
+            input_size=output_size,
+            num_layers=num_blocks,
+            hidden_size=hidden_size,
+            output_size=output_size,
+            dropout=droup_out,
+            subsample=None,
         )
 
     def forward(
         self,
         context_embed: torch.Tensor,
-        ilens: torch.Tensor = None,
+        ilens: torch.Tensor,
     ):
-        context_embed, _ = self.encoder(context_embed)
-        context_embed    = torch.mean(context_embed, dim=1)
+        context_embed, _, _ = self.encoder(context_embed, ilens)
+        context_embed       = torch.mean(context_embed, dim=1)
         return context_embed
 
 class ContextEncoderTransformer(torch.nn.Module):
@@ -45,7 +48,7 @@ class ContextEncoderTransformer(torch.nn.Module):
         attention_heads: int = 4,
         linear_units: int = 256,
         num_blocks: int = 2,
-        padding_idx: int = 0,
+        padding_idx: int = -1,
         **kwargs
     ):
         super().__init__()
@@ -76,6 +79,17 @@ class ContextEncoderTransformer(torch.nn.Module):
 
 if __name__ == '__main__':
 
+    encoder = ContextEncoderBiLSTM(
+        hidden_size=128,
+        output_size=256,
+        num_blocks=2,
+    )
+
+    xs_pad = torch.randn(2, 3, 256)
+    ilens  = torch.tensor([1, 3])
+    context_embed = encoder(xs_pad, ilens)
+    print(f'bilstm context_embed: {context_embed.shape}')
+
     encoder = ContextEncoderTransformer(
         hidden_size=128,
         output_size=256,
@@ -87,4 +101,4 @@ if __name__ == '__main__':
     xs_pad = torch.randn(2, 3, 256)
     ilens  = torch.tensor([1, 3])
     context_embed = encoder(xs_pad, ilens)
-    print(f'context_embed: {context_embed.shape}')
+    print(f'transformer context_embed: {context_embed.shape}')
