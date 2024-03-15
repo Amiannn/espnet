@@ -136,8 +136,8 @@ def forward(
 if __name__ == "__main__":
     spm_path   = "whisper_en"
     token_path = "./data/en_token_list/whisper_en/tokens.txt"
-    model_conf = "./conf/exp/contextual_adapter/train_whisper_tiny_en_contextual_adapter_tf_decoder.yaml"
-    model_path = "./exp/asr_train_whisper_tiny_en_contextual_adapter_tf_decoder_raw_en_whisper_en_sp/47epoch.pth"
+    model_conf = "./conf/exp/contextual_adapter/train_whisper_tiny_en_contextual_adapter_tf_encoder_gactc.yaml"
+    model_path = "./exp/asr_finetune_freeze_whisper_tiny_en_enc_cb_gactc/valid.loss.best.pth"
     # stats_path = "./exp/asr_stats_raw_en_bpe600_sp_suffix/train/feats_lengths_stats.npz"
     stats_path = None
     

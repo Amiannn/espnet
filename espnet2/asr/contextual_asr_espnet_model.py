@@ -186,7 +186,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             if not self.use_transducer_decoder:
                 encoder_out = encoder_out + enc_bias_vec
 
-            # use guild attention ctc
+            # use guilded attention ctc loss
             if self.aux_ctc_ga:
                 logging.info(f'Using aux ctc ga loss!')
                 enc_attn  = torch.mean(enc_attn, dim=1)
@@ -295,12 +295,21 @@ class ESPnetContextualASRModel(ESPnetASRModel):
 
             # 3. CTC-Att loss definition
             if self.ctc_weight == 0.0:
-                loss = loss_att
+                if loss_ga_ctc is not None:
+                    loss = self.ctc_ga_weight * loss_ga_ctc + (1 - self.ctc_ga_weight) * loss_att
+                else:
+                    loss = loss_att
             elif self.ctc_weight == 1.0:
-                loss = loss_ctc
+                if loss_ga_ctc is not None:
+                    loss = self.ctc_ga_weight * loss_ga_ctc + (1 - self.ctc_ga_weight) * loss_ctc
+                else:
+                    loss = loss_ctc
             else:
-                loss = self.ctc_weight * loss_ctc + (1 - self.ctc_weight) * loss_att
-
+                if loss_ga_ctc is not None:
+                    loss = self.ctc_weight * loss_ctc + self.ctc_ga_weight * loss_ga_ctc + (1 - self.ctc_weight - self.ctc_ga_weight) * loss_att
+                else:
+                    loss = self.ctc_weight * loss_ctc + (1 - self.ctc_weight) * loss_att
+                    
             # Collect Attn branch stats
             stats["loss_att"] = loss_att.detach() if loss_att is not None else None
             stats["acc"] = acc_att
