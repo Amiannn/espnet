@@ -120,6 +120,7 @@ class RarewordProcessor():
 
     def build_batch_contextual(self, uttblist, sampling_method=None):
         drouped_uttblist = [b for b in uttblist if random.random() > self.droup_out and len(b) > 0]
+        drouped_uttblist = drouped_uttblist[:self.blist_max]
         globalblist      = []
         if self.blist_max > len(drouped_uttblist):
             globalblist = random.choices(
@@ -128,7 +129,7 @@ class RarewordProcessor():
             )
         blist = drouped_uttblist + globalblist
         # add oov
-        blist = blist + [[self.oov_value]]
+        blist = [[self.oov_value]] + blist
         return blist
 
     def build_batch_trie(self, elements):
@@ -162,10 +163,9 @@ class RarewordProcessor():
                 rareword_label = []
                 for start, end in textsegments[i]:
                     word  = texts[i][start:end].tolist()
-                    label = elements.index(word) if word in elements else len(elements) - 1
-                    rareword_label.append([label] * (end - start))
+                    if word in uttblists_resolve:
+                        rareword_label.append(elements.index(word))
                     word_resolve.append(word)
-                rareword_label = [item for sublist in rareword_label for item in sublist]
                 rareword_labels.append(rareword_label)
             output['label'] = rareword_labels
         return output

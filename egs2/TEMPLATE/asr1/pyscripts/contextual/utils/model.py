@@ -14,9 +14,10 @@ from espnet2.utils.get_default_kwargs import get_default_kwargs
 from pyscripts.utils.fileio import read_yml
 
 def load_espnet_model(
-    model_conf, 
-    contextual_conf, 
+    model_conf,
+    contextual_conf,
     token_path, 
+    frontend=None, 
     stats_path=None, 
     spm_path=None, 
     model_path='',
@@ -27,7 +28,7 @@ def load_espnet_model(
     conf['input_size']       = None if 'input_size' not in conf else conf['input_size']
     conf['specaug']          = None if 'specaug' not in conf else conf['specaug']
     conf['normalize']        = 'global_mvn' if 'normalize' not in conf else conf['normalize']
-    conf['frontend']         = None
+    conf['frontend']         = frontend
     conf['frontend_conf']    = {} if 'frontend_conf' not in conf else conf['frontend_conf']
     conf['ctc_conf']         = get_default_kwargs(CTC)
     conf['init']             = None

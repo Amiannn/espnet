@@ -42,7 +42,7 @@ class ContextualAdapterPrototype(torch.nn.Module):
     def forward_context_encoder(
         self,
         text_embed: torch.Tensor,
-        ilens     : torch.Tensor = None,
+        ilens     : torch.Tensor,
     ):
         return self.encoder(text_embed, ilens)
 

@@ -15,7 +15,7 @@ asr_tag=finetune_freeze_ct_enc_cb_gactc
 
 pretrained_model=exp/asr_pretrain_rnnt/valid.loss.10epoch.pth
 
-CUDA_VISIBLE_DEVICES=1 ./asr.sh \
+CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --lang en \
     --ngpu 1 \
     --nj 16 \
@@ -38,8 +38,8 @@ CUDA_VISIBLE_DEVICES=1 ./asr.sh \
     --contextualization true \
     --pretrained_model $pretrained_model \
     --ignore_init_mismatch true \
-    --inference_asr_model valid.loss.ave_10best.pth \
-    --asr_args "--use_wandb true --wandb_project Contextualize_RNNT" \
+    --inference_asr_model valid.loss.best.pth \
     --asr_tag ${asr_tag} \
     "$@"
 
+    # --asr_args "--use_wandb true --wandb_project Contextualize_RNNT" \

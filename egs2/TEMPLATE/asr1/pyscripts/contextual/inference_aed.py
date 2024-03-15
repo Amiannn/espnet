@@ -170,7 +170,8 @@ if __name__ == "__main__":
     model, loader = load_espnet_model(
         model_conf,
         contextual_conf, 
-        token_path, 
+        token_path,
+        None, 
         stats_path, 
         spm_path, 
         model_path,
@@ -181,7 +182,7 @@ if __name__ == "__main__":
     token_id_converter = preprocessor.token_id_converter
     token_list         = get_token_list(token_id_converter) + ['<oov>']
 
-    print(token_list)
+    # print(token_list)
 
     model.eval()
     for data in loader:

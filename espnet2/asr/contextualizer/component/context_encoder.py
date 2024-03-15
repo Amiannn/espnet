@@ -28,6 +28,7 @@ class ContextEncoderBiLSTM(torch.nn.Module):
             output_size=output_size,
             dropout=droup_out,
             subsample=None,
+            use_projection=False,
         )
 
     def forward(
@@ -37,6 +38,7 @@ class ContextEncoderBiLSTM(torch.nn.Module):
     ):
         context_embed, _, _ = self.encoder(context_embed, ilens)
         context_embed       = torch.mean(context_embed, dim=1)
+        #TODO: divid by ilens
         return context_embed
 
 class ContextEncoderTransformer(torch.nn.Module):

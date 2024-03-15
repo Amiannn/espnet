@@ -70,7 +70,8 @@ def forward(
     print(f'encoder_out: {encoder_out.shape}')
 
     # c1. Encoder contextualization
-    atten = None
+    atten    = None
+    bias_vec = None
     if model.contextualizer_conf["contextualizer_type"] in [
         "contextual_adapter_encoder",
         "contextual_adapter_transformer_encoder",
@@ -83,8 +84,8 @@ def forward(
             ilens=contexts['ilens'],
             return_atten=True
         )
+        atten = atten.squeeze(1)
         print(f'atten: {atten.shape}')
-        encoder_out = encoder_out + bias_vec
 
     decoder_in, target, t_len, u_len = get_transducer_task_io(
         tokens,
@@ -96,7 +97,9 @@ def forward(
     print(f'decoder_out: {decoder_out.shape}')
 
     joint_out = model.joint_network(
-        encoder_out.unsqueeze(2), decoder_out.unsqueeze(1)
+        encoder_out.unsqueeze(2), 
+        decoder_out.unsqueeze(1),
+        bias_out=bias_vec.unsqueeze(2),
     )
     print(f'joint_out: {joint_out.shape}')
     logp = torch.log_softmax(joint_out, dim=-1)[0].transpose(1, 0)
@@ -109,7 +112,7 @@ if __name__ == "__main__":
     spm_path   = "./data/en_token_list/bpe_unigram600/bpe.model"
     token_path = "./data/en_token_list/bpe_unigram600/tokens.txt"
     model_conf = "./conf/exp/contextual_adapter/train_rnnt_contextual_adapter_encoder.yaml"
-    model_path = "./exp/asr_train_rnnt_contextual_adapter_encoder_raw_en_bpe600_use_wandbtrue_wandb_projectContextualize_RNNT_sp_suffix/valid.loss.ave_10best.pth"
+    model_path = "./exp/asr_finetune_freeze_ct_enc_cb_suffix/latest.pth"
     stats_path = "./exp/asr_stats_raw_en_bpe600_sp_suffix/train/feats_lengths_stats.npz"
     rare_path  = "./local/contextual/rareword_f15.txt"
     scp_path   = "./dump/raw/test_clean/wav.scp"
@@ -137,16 +140,11 @@ if __name__ == "__main__":
         'sampling_method': None,
     }
     
-    (
-        model, 
-        bpemodel, 
-        tokenizer, 
-        converter, 
-        loader
-    ) = load_espnet_model(
+    model, loader = load_espnet_model(
         model_conf,
         contextual_conf, 
-        token_path, 
+        token_path,
+        'default',
         stats_path, 
         spm_path, 
         model_path,
@@ -177,7 +175,7 @@ if __name__ == "__main__":
         
         _blist = []
         for rareword in blist:
-            btokens = "".join([token_list[word] for word in rareword if word != 0])
+            btokens = "".join([token_list[word] for word in rareword if word != -1])
             print(f'btokens: {btokens}')
             _blist.append(btokens)
         blist = _blist

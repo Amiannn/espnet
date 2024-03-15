@@ -309,12 +309,19 @@ def contextual_collate_fn(
     contexts          = contextual_processor.sample(data)
     blist             = [torch.tensor(b) for b in contexts['blist']]
     contexts['blist'] = pad_sequence(blist, batch_first=True, padding_value=int_pad_value).long()
-    contexts['ilens'] = (contexts['blist'] != 0).sum(dim=-1)
+    contexts['ilens'] = (contexts['blist'] != int_pad_value).sum(dim=-1)
     
     # for attention guided auxiliary CTC loss
     if 'label' in contexts:
         label             = [torch.tensor(b) for b in contexts['label']]
-        contexts['label'] = pad_sequence(label, batch_first=True, padding_value=int_pad_value).long()
+        contexts['label'] = pad_sequence(
+            label, 
+            batch_first=True, 
+            padding_value=int_pad_value
+        ).long()
+        contexts['label_ilens'] = (
+            contexts['label'] != int_pad_value
+        ).sum(dim=-1)
 
     output = {'contexts': contexts}
 

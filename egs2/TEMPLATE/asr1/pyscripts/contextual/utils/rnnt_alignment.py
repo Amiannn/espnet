@@ -156,7 +156,7 @@ def forward_backward(logp, target, blank_id, token_list, waveform, debug_path):
     tg.tiers.append(tier_word)
     output_path = os.path.join(debug_path, 'alignment.TextGrid')
     tg.write(output_path)
-    ax2.specgram(waveform, Fs=sample_rate)
+    # ax2.specgram(waveform, Fs=sample_rate)
     ax2.set_yticks([])
     ax2.set_xlabel("time [second]")
     fig.tight_layout()

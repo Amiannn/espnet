@@ -131,7 +131,7 @@ class ContextualBeamSearchTransducer(BeamSearchTransducer):
                 model_embed=enc_out.unsqueeze(0),
                 context_idxs=contexts['blist'],
                 ilens=contexts['ilens']
-            )
+            ).squeeze(0)
 
         dec_state = self.decoder.init_state(1)
 
@@ -154,12 +154,12 @@ class ContextualBeamSearchTransducer(BeamSearchTransducer):
                     model_embed=dec_out.reshape(1, 1, -1),
                     context_idxs=contexts['blist'],
                     ilens=contexts['ilens']
-                )
+                ).squeeze(0)
             bias_vec = None
             if enc_bias_vec is not None and dec_bias_vec is not None:
-                bias_vec = enc_bias_vec + dec_bias_vec
+                bias_vec = enc_bias_vec[i] + dec_bias_vec
             elif enc_bias_vec is not None:
-                bias_vec = enc_bias_vec
+                bias_vec = enc_bias_vec[i]
             elif dec_bias_vec is not None:
                 bias_vec = dec_bias_vec
 
@@ -167,10 +167,7 @@ class ContextualBeamSearchTransducer(BeamSearchTransducer):
                 self.joint_network(enc_out_t, dec_out, bias_out=bias_vec),
                 dim=-1,
             )
-            logging.info(f'logp: {logp}')
-            logging.info(f'logp shape: {logp.shape}')
             top_logp, pred = torch.max(logp, dim=-1)
-            logging.info(f'pred: {pred}')
             if pred != self.blank_id:
                 hyp.yseq.append(int(pred))
                 hyp.score += float(top_logp)

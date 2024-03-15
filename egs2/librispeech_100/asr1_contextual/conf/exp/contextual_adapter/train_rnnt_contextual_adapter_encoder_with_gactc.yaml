@@ -34,6 +34,8 @@ joint_net_conf:
 
 model_conf:
     ctc_weight: 0.0
+    aux_ctc_ga: true
+    ctc_ga_weight: 0.5
     report_cer: False
     report_wer: False
 
@@ -46,8 +48,8 @@ seed: 2022
 num_workers: 8
 batch_type: numel
 # batch_bins: 8000000
-batch_bins: 2000000
-# batch_bins: 1000000
+# batch_bins: 2000000
+batch_bins: 1000000
 accum_grad: 32
 max_epoch: 150
 patience: none

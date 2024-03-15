@@ -44,8 +44,8 @@ num_workers: 4
 sort_in_batch: descending       # how to sort data in making batch
 sort_batch: descending          # how to sort created batches
 batch_type: numel
-batch_bins: 12000000            # good for single GPU w/ 40G mem
-accum_grad: 4
+batch_bins: 600000            # good for single GPU w/ 40G mem
+accum_grad: 32
 max_epoch: 500
 patience: none
 init: none

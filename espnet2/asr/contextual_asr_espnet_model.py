@@ -54,6 +54,8 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         contextualizer: Optional[torch.nn.Module],
         contextualizer_conf: dict,
         aux_ctc: dict = None,
+        aux_ctc_ga: bool = False,
+        ctc_ga_weight: float = 0.5,
         ctc_weight: float = 0.5,
         interctc_weight: float = 0.0,
         ignore_id: int = -1,
@@ -105,6 +107,15 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             self.use_contextual_methods = True
         else:
             self.use_contextual_methods = False
+        
+        # guild attention ctc loss
+        self.aux_ctc_ga    = aux_ctc_ga
+        self.ctc_ga_weight = ctc_ga_weight
+        if self.aux_ctc_ga:
+            self.aux_ctc_ga_loss = torch.nn.CTCLoss(
+                reduction="mean", 
+                zero_infinity=True, 
+            )
 
     def forward(
         self,
@@ -124,9 +135,11 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             text_lengths: (Batch,)
             kwargs: "utt_id" is among the input.
         """
-        # logging.info(f'training contexts blist: {contexts["blist"].shape}')
-        logging.info(f'training contexts blist: {contexts["blist"]}')
-        logging.info(f'training contexts label: {contexts["label"]}')
+        # logging.info(f'blist:\n{str(contexts["blist"])[:200]} ...')
+        # logging.info(f'ilens:\n{str(contexts["ilens"])[:200]} ...')
+        # logging.info(f'label:\n{contexts["label"]}')
+        # logging.info(f'label_ilens:\n{contexts["label_ilens"]}')
+
         assert text_lengths.dim() == 1, text_lengths.shape
         # Check that batch_size is unified
         assert (
@@ -152,6 +165,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         loss_att, acc_att, cer_att, wer_att = None, None, None, None
         loss_ctc, cer_ctc = None, None
         loss_transducer, cer_transducer, wer_transducer = None, None, None
+        loss_ga_ctc = None
         stats = dict()
 
         # c1. Encoder contextualization
@@ -161,15 +175,32 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             "contextual_adapter_transformer_encoder",
         ]:
             # logging.info(f'Encoder contextualize!')
-            enc_bias_vec = forward_contextual_adapter(
+            enc_bias_vec, enc_attn = forward_contextual_adapter(
                 decoder=self.decoder,
                 contextualizer=self.contextualizer,
                 model_embed=encoder_out,
                 context_idxs=contexts['blist'],
-                ilens=contexts['ilens']
+                ilens=contexts['ilens'],
+                return_atten=True
             )
             if not self.use_transducer_decoder:
                 encoder_out = encoder_out + enc_bias_vec
+
+            # use guild attention ctc
+            if self.aux_ctc_ga:
+                logging.info(f'Using aux ctc ga loss!')
+                enc_attn  = torch.mean(enc_attn, dim=1)
+                ga_input  = torch.log(enc_attn).transpose(0, 1)
+                ga_target = contexts['label']
+                ga_input_lengths  = encoder_out_lens
+                ga_target_lengths = contexts['label_ilens']
+                
+                loss_ga_ctc = self.aux_ctc_ga_loss(
+                    ga_input, ga_target, ga_input_lengths, ga_target_lengths
+                )
+                logging.info(f'loss_ga_ctc: {loss_ga_ctc}')
+                # Collect CTC branch stats
+                stats["loss_ga_ctc"] = loss_ga_ctc.detach() if loss_ga_ctc is not None else None
 
         # 1. CTC branch
         if self.ctc_weight != 0.0:
@@ -241,8 +272,10 @@ class ESPnetContextualASRModel(ESPnetASRModel):
                 enc_bias_vec
             )
 
-            if loss_ctc is not None:
-                loss = loss_transducer + (self.ctc_weight * loss_ctc)
+            if loss_ctc is not None and loss_ga_ctc is not None:
+                loss = loss_transducer + (self.ctc_weight * loss_ctc) + (self.ctc_ga_weight * loss_ga_ctc)
+            elif loss_ga_ctc is not None:
+                loss = loss_transducer + (self.ctc_ga_weight * loss_ga_ctc)
             else:
                 loss = loss_transducer
 
@@ -314,14 +347,15 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             "contextual_adapter_transformer_decoder"
         ]:
             logging.info(f'Decoder contextualize!')
-            bias_vec = forward_contextual_adapter(
+            dec_bias_vec, dec_attn = forward_contextual_adapter(
                 decoder=self.decoder,
                 contextualizer=self.contextualizer,
                 model_embed=decoder_hs,
                 context_idxs=contexts['blist'],
-                ilens=contexts['ilens']
+                ilens=contexts['ilens'],
+                return_atten=True
             )
-            decoder_hs = decoder_hs + bias_vec
+            decoder_hs = decoder_hs + dec_bias_vec
 
         decoder_out = self.decoder.output_layer(decoder_hs)
 
@@ -380,12 +414,13 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             "contextual_adapter_transformer_decoder"
         ]:
             logging.info(f'Decoder contextualize!')
-            dec_bias_vec = forward_contextual_adapter(
+            dec_bias_vec, dec_attn = forward_contextual_adapter(
                 decoder=self.decoder,
                 contextualizer=self.contextualizer,
                 model_embed=decoder_out,
                 context_idxs=contexts['blist'],
-                ilens=contexts['ilens']
+                ilens=contexts['ilens'],
+                return_atten=True
             )
 
         bias_vec = None
@@ -395,6 +430,9 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             bias_vec = enc_bias_vec.unsqueeze(2)
         elif dec_bias_vec is not None:
             bias_vec = dec_bias_vec.unsqueeze(1)
+        # logging.info(f'bias_vec: {bias_vec.shape}')
+        # logging.info(f'encoder_out: {encoder_out.unsqueeze(2).shape}')
+        # logging.info(f'decoder_out: {decoder_out.unsqueeze(1).shape}')
 
         joint_out = self.joint_network(
             encoder_out.unsqueeze(2), 

@@ -29,7 +29,7 @@ class AttentionBasedAdapter(torch.nn.Module):
         self.proj  = torch.nn.Linear(self.attndim, proj_hidden_size)
         self.norm_before_x1 = LayerNorm(attndim)
         self.norm_before_x2 = LayerNorm(attndim)
-        self.norm_after     = LayerNorm(proj_hidden_size)
+        self.norm_after     = LayerNorm(attndim)
 
     def forward(
         self,
@@ -42,6 +42,8 @@ class AttentionBasedAdapter(torch.nn.Module):
         B, T, D       = model_embed.shape
         model_embed   = self.norm_before_x1(model_embed)
         model_embed   = model_embed.reshape(1, B*T, D)
+
+        C, D          = context_embed.shape
         context_embed = context_embed.unsqueeze(0)
         context_embed = self.norm_before_x2(context_embed)
 
@@ -52,10 +54,11 @@ class AttentionBasedAdapter(torch.nn.Module):
             mask=mask,
         )
         out = out.reshape(B, T, D)
-        out = self.proj(out)
         out = self.norm_after(out)
+        out = self.proj(out)
 
         if return_atten:
             atten = self.attention_layer.attn
+            atten = atten.reshape(B, -1, T, C)
             return out, atten
         return out

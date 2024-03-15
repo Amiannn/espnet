@@ -1,4 +1,5 @@
 import os
+import torch
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -10,12 +11,13 @@ def plot_attention_map(
     debug_path,
     uttid='test',
 ):
+    attention = torch.flip(attention, [0, 2])
     attention = attention.squeeze(0).T.detach().cpu().resolve_conj().resolve_neg().numpy()
     xlabels   = [
         f'{frame2align[i]} {i}' if i in frame2align else f'{i}' for i in range(attention.shape[1])
     ]
 
-    labels = [f'{labels[i]}' for i in range(len(labels))]
+    labels = [f'{labels[len(labels) - i - 1]}' for i in range(len(labels))]
     plt.rcParams.update({'font.size': 8})
 
     # draw attention map
