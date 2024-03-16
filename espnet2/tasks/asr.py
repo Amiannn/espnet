@@ -98,8 +98,12 @@ from espnet2.text.contextual.rareword_processor import RarewordProcessor
 from espnet2.asr.contextual_asr_espnet_model import ESPnetContextualASRModel
 
 from espnet2.asr.contextualizer.tcpgen             import TCPGenPrototype
-from espnet2.asr.contextualizer.contextual_adapter import ContextualAdapterPrototype
-from espnet2.asr.contextualizer.contextual_adapter import ContextualAdapterTransformer
+from espnet2.asr.contextualizer.contextual_adapter import (
+    ContextualAdapterPrototype,
+    ContextualAdapterTransformer,
+    ContextualAdapterEmbedPrototype,
+    ContextualAdapterEmbedTransformer,
+)
 
 frontend_choices = ClassChoices(
     name="frontend",
@@ -211,8 +215,12 @@ contextualizer_choices = ClassChoices(
         tcpgen=TCPGenPrototype,
         contextual_adapter_encoder=ContextualAdapterPrototype,
         contextual_adapter_decoder=ContextualAdapterPrototype,
+        contextual_adapter_embed_encoder=ContextualAdapterEmbedPrototype,
+        contextual_adapter_embed_decoder=ContextualAdapterEmbedPrototype,
         contextual_adapter_transformer_encoder=ContextualAdapterTransformer,
         contextual_adapter_transformer_decoder=ContextualAdapterTransformer,
+        contextual_adapter_embed_transformer_encoder=ContextualAdapterEmbedTransformer,
+        contextual_adapter_embed_transformer_decoder=ContextualAdapterEmbedTransformer,
     ),
     default="contextual_adapter_encoder",
 )
@@ -456,9 +464,10 @@ class ASRTask(AbsTask):
     ]:
         assert check_argument_types()
         # NOTE(kamo): int value = 0 is reserved by CTC-blank symbol
-        if args.collate_fn_type == "default":
+        collate_fn_type = getattr(args, "collate_fn_type", 'default')
+        if collate_fn_type == "default":
             return CommonCollateFn(float_pad_value=0.0, int_pad_value=-1)
-        elif args.collate_fn_type == "contextual":
+        elif collate_fn_type == "contextual":
             return ContextualCollateFn(
                 float_pad_value=0.0, 
                 int_pad_value=-1, 
@@ -554,7 +563,7 @@ class ASRTask(AbsTask):
         if contextualizer_type == "tcpgen":
             raise NotImplementedError("TCPGen not implemented!")
         elif "contextual_adapter" in contextualizer_type:
-            contextualizer = contextualizer_class(**args.contextualizer_conf)
+            contextualizer = contextualizer_class(**args.contextualizer_conf, vocab_size=vocab_size)
         return contextualizer
 
     @classmethod
@@ -695,7 +704,7 @@ class ASRTask(AbsTask):
             joint_network = None
 
         # ?. contextualizer methods
-        if args.contextualizer_conf != {}:
+        if getattr(args, "contextualizer_conf", {}) != {}:
             contextualizer           = cls.build_contextualizer(vocab_size, args)
         else:
             contextualizer = None
@@ -720,7 +729,7 @@ class ASRTask(AbsTask):
             postencoder=postencoder,
             decoder=decoder,
             contextualizer=contextualizer,
-            contextualizer_conf=args.contextualizer_conf,
+            contextualizer_conf=getattr(args, "contextualizer_conf", {}),
             ctc=ctc,
             joint_network=joint_network,
             token_list=token_list,
@@ -733,7 +742,7 @@ class ASRTask(AbsTask):
             initialize(model, args.init)
         
         # ?. contextual processor methods
-        if args.contextual_conf != {}:
+        if getattr(args, "contextualizer_conf", {}) != {}:
             cls.contextual_processor = cls.build_contextual_processor(
                 args,
                 model

@@ -11,7 +11,7 @@ test_sets="test_clean"
 
 asr_config=conf/exp/contextual_adapter/train_whisper_tiny_en_contextual_adapter_tf_encoder_gactc.yaml
 inference_config=conf/exp/decode_contextual_whisper_greedy.yaml
-asr_tag=finetune_freeze_whisper_tiny_en_enc_cb_gactc
+asr_tag=finetune_freeze_whisper_tiny_en_enc_cb_gactc_dum
 
 pretrained_model=exp/asr_train_whisper_tiny_en_raw_en_whisper_en_sp/3epoch.pth
 

@@ -1348,7 +1348,12 @@ class AbsTask(ABC):
             )
         else:
             # 6. Loads pre-trained model
-            for p in args.init_param:
+            if len(args.init_param) > 0:
+                init_param = args.init_param[0]
+                init_param = [init_param] if ',' not in init_param else init_param.split(',')
+            else:
+                init_param = []
+            for p in init_param:
                 logging.info(f"Loading pretrained params from {p}")
                 load_pretrained_model(
                     model=model,

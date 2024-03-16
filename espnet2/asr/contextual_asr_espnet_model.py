@@ -173,6 +173,8 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         if self.contextualizer_conf["contextualizer_type"] in [
             "contextual_adapter_encoder",
             "contextual_adapter_transformer_encoder",
+            "contextual_adapter_embed_encoder",
+            "contextual_adapter_embed_transformer_encoder",
         ]:
             # logging.info(f'Encoder contextualize!')
             enc_bias_vec, enc_attn = forward_contextual_adapter(
@@ -353,7 +355,9 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         # c1. Decoder contextualization
         if self.contextualizer_conf["contextualizer_type"] in [
             "contextual_adapter_decoder",
-            "contextual_adapter_transformer_decoder"
+            "contextual_adapter_transformer_decoder",
+            "contextual_adapter_embed_decoder",
+            "contextual_adapter_embed_transformer_decoder"
         ]:
             logging.info(f'Decoder contextualize!')
             dec_bias_vec, dec_attn = forward_contextual_adapter(
@@ -420,7 +424,9 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         dec_bias_vec = None
         if self.contextualizer_conf["contextualizer_type"] in [
             "contextual_adapter_decoder",
-            "contextual_adapter_transformer_decoder"
+            "contextual_adapter_transformer_decoder",
+            "contextual_adapter_embed_decoder",
+            "contextual_adapter_embed_transformer_decoder"
         ]:
             logging.info(f'Decoder contextualize!')
             dec_bias_vec, dec_attn = forward_contextual_adapter(

@@ -79,6 +79,52 @@ class ContextEncoderTransformer(torch.nn.Module):
         context_embed = masks @ context_embed
         return context_embed.squeeze(1)
 
+class ContextEncoderEmbedBiLSTM(ContextEncoderBiLSTM):
+    def __init__(
+        self,
+        vocab_size  : int,
+        hidden_size : int,
+        output_size : int,
+        droup_out   : float = 0.1,
+        num_blocks  : int = 1,
+        **kwargs
+    ):
+        super().__init__(
+            vocab_size=vocab_size,
+            hidden_size=hidden_size,
+            output_size=output_size,
+            droup_out=droup_out,
+            num_blocks=num_blocks,
+            **kwargs,
+        )
+        self.embed = torch.nn.Embedding(vocab_size, hidden_size)
+
+class ContextEncoderEmbedTransformer(ContextEncoderTransformer):
+    def __init__(
+        self,
+        vocab_size  : int,
+        hidden_size : int,
+        output_size : int,
+        droup_out   : float = 0.1,
+        attention_heads: int = 4,
+        linear_units: int = 256,
+        num_blocks: int = 2,
+        padding_idx: int = -1,
+        **kwargs
+    ):
+        super().__init__(
+            vocab_size=vocab_size,
+            hidden_size=hidden_size,
+            output_size=output_size,
+            droup_out=droup_out,
+            attention_heads=attention_heads,
+            linear_units=linear_units,
+            num_blocks=num_blocks,
+            padding_idx=padding_idx,
+            **kwargs,
+        )
+        self.embed = torch.nn.Embedding(vocab_size, hidden_size)
+
 if __name__ == '__main__':
 
     encoder = ContextEncoderBiLSTM(

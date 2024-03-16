@@ -88,7 +88,7 @@ contextual_conf:
     # structure_type: trie
     sampling_method: null
 
-token_type: whisper_en
+# token_type: whisper_en
 
 # contextualizer settings
 contextualizer: contextual_adapter_transformer_encoder

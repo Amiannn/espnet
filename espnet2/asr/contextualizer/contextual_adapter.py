@@ -7,7 +7,9 @@ from typing import Optional, Tuple
 
 from espnet2.asr.contextualizer.component.context_encoder import (
     ContextEncoderBiLSTM,
-    ContextEncoderTransformer
+    ContextEncoderEmbedBiLSTM,
+    ContextEncoderTransformer,
+    ContextEncoderEmbedTransformer,
 )
 
 from espnet2.asr.contextualizer.component.attention_based_adapter import AttentionBasedAdapter
@@ -98,6 +100,79 @@ class ContextualAdapterTransformer(ContextualAdapterPrototype):
             attention_heads=adapter_attention_heads,
         )
         self.encoder = ContextEncoderTransformer(
+            hidden_size=context_embed_size,
+            output_size=context_hidden_size,
+            attention_heads=context_attention_heads,
+            num_blocks=num_blocks,
+            linear_units=linear_units,
+            droup_out=droup_out,
+            padding_idx=padding_idx,
+        )
+
+class ContextualAdapterEmbedPrototype(ContextualAdapterPrototype):
+    def __init__(
+        self,
+        vocab_size: int,
+        context_embed_size: int,
+        context_hidden_size: int,
+        model_hidden_size: int,
+        attndim: int,
+        proj_hidden_size: int,
+        droup_out: float = 0.1,
+        num_blocks: int=2,
+        linear_units: int=256,
+        context_attention_heads: int=4,
+        adapter_attention_heads: int=1,
+        padding_idx: int=-1,
+        **kwargs
+    ):
+        super().__init__(
+            context_embed_size=context_embed_size,
+            context_hidden_size=context_hidden_size,
+            model_hidden_size=model_hidden_size,
+            attndim=attndim,
+            proj_hidden_size=proj_hidden_size,
+            droup_out=droup_out,
+            attention_heads=adapter_attention_heads,
+        )
+        self.encoder = ContextEncoderEmbedBILSTM(
+            hidden_size=context_embed_size,
+            output_size=context_hidden_size,
+            attention_heads=context_attention_heads,
+            num_blocks=num_blocks,
+            linear_units=linear_units,
+            droup_out=droup_out,
+            padding_idx=padding_idx,
+        )
+
+class ContextualAdapterEmbedTransformer(ContextualAdapterPrototype):
+    def __init__(
+        self,
+        vocab_size: int,
+        context_embed_size: int,
+        context_hidden_size: int,
+        model_hidden_size: int,
+        attndim: int,
+        proj_hidden_size: int,
+        droup_out: float = 0.1,
+        num_blocks: int=2,
+        linear_units: int=256,
+        context_attention_heads: int=4,
+        adapter_attention_heads: int=1,
+        padding_idx: int=-1,
+        **kwargs
+    ):
+        super().__init__(
+            context_embed_size=context_embed_size,
+            context_hidden_size=context_hidden_size,
+            model_hidden_size=model_hidden_size,
+            attndim=attndim,
+            proj_hidden_size=proj_hidden_size,
+            droup_out=droup_out,
+            attention_heads=adapter_attention_heads,
+        )
+        self.encoder = ContextEncoderEmbedTransformer(
+            vocab_size=vocab_size,
             hidden_size=context_embed_size,
             output_size=context_hidden_size,
             attention_heads=context_attention_heads,

@@ -50,7 +50,7 @@ def load_espnet_model(
     # bpemodel  = spm.SentencePieceProcessor(model_file=spm_path)
     # tokenizer = build_tokenizer(token_type="bpe", bpemodel=spm_path)
     # converter = TokenIDConverter(token_list=args.token_list)
-    
+    print(f"conf: {conf['token_type']}")
     # build model
     model = ASRTask.build_model(args)
     model.load_state_dict(torch.load(model_path), strict=False)

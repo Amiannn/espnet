@@ -32,7 +32,7 @@ def get_token_list(token_id_converter):
     vocab_size = token_id_converter.get_num_vocabulary_size()
     vocab      = [
         token_id_converter.ids2tokens(
-            [i], skip_special_tokens=False
+            [i]
         )[0] for i in range(vocab_size)
     ]
     return vocab
@@ -47,6 +47,7 @@ def visualize(
     blank_id, 
     token_list,
     debug_path,
+    uttid,
 ):
     # alignments = force_alignment(
     #     logp, 
@@ -65,7 +66,7 @@ def visualize(
         text,
         blist,
         debug_path,
-        uttid='test',
+        uttid=uttid,
     )
 
 @torch.no_grad()
@@ -94,6 +95,7 @@ def forward(
             ilens=contexts['ilens'],
             return_atten=True
         )
+        atten = atten.squeeze(1)
         print(f'atten: {atten.shape}')
         encoder_out = encoder_out + bias_vec
     
@@ -124,6 +126,7 @@ def forward(
             ilens=contexts['ilens'],
             return_atten=True,
         )
+        atten = atten.squeeze(1)
         print(f'atten: {atten.shape}')
         decoder_hs = decoder_hs + bias_vec
 
@@ -134,12 +137,14 @@ def forward(
 
 
 if __name__ == "__main__":
-    spm_path   = "whisper_en"
-    token_path = "./data/en_token_list/whisper_en/tokens.txt"
-    model_conf = "./conf/exp/contextual_adapter/train_whisper_tiny_en_contextual_adapter_tf_encoder_gactc.yaml"
-    model_path = "./exp/asr_finetune_freeze_whisper_tiny_en_enc_cb_gactc/valid.loss.best.pth"
-    # stats_path = "./exp/asr_stats_raw_en_bpe600_sp_suffix/train/feats_lengths_stats.npz"
-    stats_path = None
+    spm_path   = "./data/en_token_list/bpe_unigram600/bpe.model"
+    token_path = "./data/en_token_list/bpe_unigram600/tokens.txt"
+    # spm_path   = "whisper_en"
+    # token_path = "./data/en_token_list/whisper_en/tokens.txt"
+    model_conf = "./conf/exp/contextual_adapter/train_conformer_contextual_adapter_encoder_with_gactc.yaml"
+    model_path = "./exp/asr_finetune_freeze_con_enc_cb_gactc_suffix/1epoch.pth"
+    stats_path = "./exp/asr_stats_raw_en_bpe600_sp_suffix/train/feats_lengths_stats.npz"
+    # stats_path = None
     
     rare_path  = "./local/contextual/rareword_f15.txt"
     scp_path   = "./dump/raw/test_clean/wav.scp"
@@ -160,7 +165,7 @@ if __name__ == "__main__":
     contextual_conf = {
         'contextual_type': 'rareword',
         'blist_path': './local/contextual/rareword_f15.txt',
-        'blist_max': 5,
+        'blist_max': 20,
         'blist_droup_out': 0.0,
         'warmup_epoch': 0,
         'structure_type': None,
@@ -171,7 +176,8 @@ if __name__ == "__main__":
         model_conf,
         contextual_conf, 
         token_path,
-        None, 
+        # None, 
+        'default',
         stats_path, 
         spm_path, 
         model_path,
@@ -185,7 +191,12 @@ if __name__ == "__main__":
     # print(token_list)
 
     model.eval()
+    count = 0
     for data in loader:
+        if count > 5:
+            break
+        count += 1
+
         uid  = data[0][0]
         data = data[1]
         contexts       = data['contexts']
@@ -204,7 +215,7 @@ if __name__ == "__main__":
         
         _blist = []
         for rareword in blist:
-            btokens = "".join([token_list[word] for word in rareword if word != 0])
+            btokens = "".join([token_list[word] for word in rareword if word != -1])
             print(f'btokens: {btokens}, {rareword}')
             _blist.append(btokens)
         blist = _blist
@@ -215,7 +226,7 @@ if __name__ == "__main__":
         )['text']).long()
 
         tokens = tokens.unsqueeze(0)
-        print(f'tokens : {tokens}')
+        # print(f'tokens : {tokens}')
 
         logp, target, atten = forward(
             model, 
@@ -236,5 +247,6 @@ if __name__ == "__main__":
             model.blank_id, 
             token_list,
             debug_path,
+            uid,
         )
-        break
+        # break

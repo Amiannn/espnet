@@ -1,13 +1,24 @@
 import torch
+import logging
 
 from espnet2.asr.decoder.whisper_decoder    import OpenAIWhisperDecoder
 from espnet.nets.pytorch_backend.nets_utils import make_pad_mask
+
+from espnet2.asr.contextualizer.component.context_encoder import (
+    ContextEncoderEmbedBiLSTM,
+    ContextEncoderEmbedTransformer,
+)
 
 def get_embedding_matrix(
     decoder,
     contextualizer,
 ):
-    if isinstance(decoder, OpenAIWhisperDecoder):
+    if isinstance(
+        contextualizer.encoder, 
+        (ContextEncoderEmbedBiLSTM, ContextEncoderEmbedTransformer)
+    ):
+        decoder_embed = contextualizer.encoder.embed
+    elif isinstance(decoder, OpenAIWhisperDecoder):
         decoder_embed = decoder.decoders.token_embedding
     elif isinstance(decoder.embed, torch.nn.Sequential):
         decoder_embed = decoder.embed[0]
