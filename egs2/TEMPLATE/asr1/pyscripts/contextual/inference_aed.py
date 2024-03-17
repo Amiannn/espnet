@@ -142,7 +142,7 @@ if __name__ == "__main__":
     # spm_path   = "whisper_en"
     # token_path = "./data/en_token_list/whisper_en/tokens.txt"
     model_conf = "./conf/exp/contextual_adapter/train_conformer_contextual_adapter_encoder_with_gactc.yaml"
-    model_path = "./exp/asr_finetune_freeze_con_enc_cb_gactc_suffix/1epoch.pth"
+    model_path = "./exp/asr_finetune_freeze_con_enc_cb_gactc_suffix/valid.acc.best.pth"
     stats_path = "./exp/asr_stats_raw_en_bpe600_sp_suffix/train/feats_lengths_stats.npz"
     # stats_path = None
     

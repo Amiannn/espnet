@@ -49,8 +49,8 @@ num_workers: 8
 batch_type: numel
 # batch_bins: 8000000
 # batch_bins: 2000000
-batch_bins: 1000000
-accum_grad: 32
+batch_bins: 500000
+accum_grad: 64
 max_epoch: 150
 patience: none
 init: none

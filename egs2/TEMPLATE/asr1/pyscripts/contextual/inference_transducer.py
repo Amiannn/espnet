@@ -75,6 +75,8 @@ def forward(
     if model.contextualizer_conf["contextualizer_type"] in [
         "contextual_adapter_encoder",
         "contextual_adapter_transformer_encoder",
+        "contextual_adapter_embed_encoder",
+        "contextual_adapter_embed_transformer_encoder",
     ]:
         bias_vec, atten = forward_contextual_adapter(
             decoder=model.decoder,
@@ -111,8 +113,8 @@ def forward(
 if __name__ == "__main__":
     spm_path   = "./data/en_token_list/bpe_unigram5000/bpe.model"
     token_path = "./data/en_token_list/bpe_unigram5000/tokens.txt"
-    model_conf = "./conf/exp/contextual_adapter/train_rnnt_contextual_adapter_tf_encoder_with_gactc.yaml"
-    model_path = "./exp/asr_finetune_freeze_ct_bpe5000_enc_cb_tf_gactc/latest.pth"
+    model_conf = "./conf/exp/contextual_adapter/train_rnnt_contextual_adapter_embed_tf_encoder_with_gactc.yaml"
+    model_path = "./exp/asr_finetune_freeze_ct_bpe5000_enc_cb_embed_tf_gactc/4epoch.pth"
     stats_path = "./exp/asr_stats_raw_en_bpe5000_sp/train/feats_lengths_stats.npz"
     rare_path  = "./local/contextual/rareword_f15.txt"
     scp_path   = "./dump/raw/test_clean/wav.scp"
