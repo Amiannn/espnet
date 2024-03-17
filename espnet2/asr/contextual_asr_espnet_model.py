@@ -26,7 +26,11 @@ from espnet.nets.pytorch_backend.transformer.label_smoothing_loss import (  # no
 )
 
 from espnet2.asr.espnet_model import ESPnetASRModel
-from espnet2.asr.contextualizer.func.contextual_adapter_func import forward_contextual_adapter
+from espnet2.asr.contextualizer.func.contextual_adapter_func   import forward_contextual_adapter
+from espnet2.asr.contextualizer.func.contextualization_choices import (
+    CONTEXTUAL_ADAPTER_ENCODER,
+    CONTEXTUAL_ADAPTER_DECODER
+)
 
 if V(torch.__version__) >= V("1.6.0"):
     from torch.cuda.amp import autocast
@@ -135,11 +139,6 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             text_lengths: (Batch,)
             kwargs: "utt_id" is among the input.
         """
-        # logging.info(f'blist:\n{str(contexts["blist"])[:200]} ...')
-        # logging.info(f'ilens:\n{str(contexts["ilens"])[:200]} ...')
-        # logging.info(f'label:\n{contexts["label"]}')
-        # logging.info(f'label_ilens:\n{contexts["label_ilens"]}')
-
         assert text_lengths.dim() == 1, text_lengths.shape
         # Check that batch_size is unified
         assert (
@@ -170,18 +169,14 @@ class ESPnetContextualASRModel(ESPnetASRModel):
 
         # c1. Encoder contextualization
         enc_bias_vec = None
-        if self.contextualizer_conf["contextualizer_type"] in [
-            "contextual_adapter_encoder",
-            "contextual_adapter_transformer_encoder",
-            "contextual_adapter_embed_encoder",
-            "contextual_adapter_embed_transformer_encoder",
-        ]:
-            # logging.info(f'Encoder contextualize!')
+        if self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_ADAPTER_ENCODER:
+            logging.info(f'Encoder contextualize!')
             enc_bias_vec, enc_attn = forward_contextual_adapter(
                 decoder=self.decoder,
                 contextualizer=self.contextualizer,
                 model_embed=encoder_out,
                 context_idxs=contexts['blist'],
+                context_xphone_idxs=contexts['blist_xphone'] if 'blist_xphone' in contexts else None,
                 ilens=contexts['ilens'],
                 return_atten=True
             )
@@ -353,12 +348,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         decoder_hs = outputs[0][1]
         
         # c1. Decoder contextualization
-        if self.contextualizer_conf["contextualizer_type"] in [
-            "contextual_adapter_decoder",
-            "contextual_adapter_transformer_decoder",
-            "contextual_adapter_embed_decoder",
-            "contextual_adapter_embed_transformer_decoder"
-        ]:
+        if self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_ADAPTER_DECODER:
             logging.info(f'Decoder contextualize!')
             dec_bias_vec, dec_attn = forward_contextual_adapter(
                 decoder=self.decoder,
@@ -422,12 +412,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
 
         # c1. Decoder contextualization
         dec_bias_vec = None
-        if self.contextualizer_conf["contextualizer_type"] in [
-            "contextual_adapter_decoder",
-            "contextual_adapter_transformer_decoder",
-            "contextual_adapter_embed_decoder",
-            "contextual_adapter_embed_transformer_decoder"
-        ]:
+        if self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_ADAPTER_DECODER:
             logging.info(f'Decoder contextualize!')
             dec_bias_vec, dec_attn = forward_contextual_adapter(
                 decoder=self.decoder,

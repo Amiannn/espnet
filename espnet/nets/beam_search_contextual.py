@@ -14,7 +14,11 @@ from espnet.nets.beam_search import BeamSearch
 
 from espnet2.asr.decoder.whisper_decoder import OpenAIWhisperDecoder
 
-from espnet2.asr.contextualizer.func.contextual_adapter_func import forward_contextual_adapter
+from espnet2.asr.contextualizer.func.contextual_adapter_func   import forward_contextual_adapter
+from espnet2.asr.contextualizer.func.contextualization_choices import (
+    CONTEXTUAL_ADAPTER_ENCODER,
+    CONTEXTUAL_ADAPTER_DECODER
+)
 
 logger = logging.getLogger(__name__)
 
@@ -169,10 +173,7 @@ class ContextualBeamSearch(BeamSearch):
         logger.info("min output length: " + str(minlen))
 
         # Encoder contextualization
-        if self.contextualizer_conf["contextualizer_type"] in [
-            "contextual_adapter_encoder",
-            "contextual_adapter_transformer_encoder",
-        ]:
+        if self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_ADAPTER_ENCODER:
             logging.info(f'Encoder contextualize!')
             x        = x.unsqueeze(0)
             bias_vec = forward_contextual_adapter(

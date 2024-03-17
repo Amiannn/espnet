@@ -10,6 +10,8 @@ from espnet2.asr.contextualizer.component.context_encoder import (
     ContextEncoderEmbedBiLSTM,
     ContextEncoderTransformer,
     ContextEncoderEmbedTransformer,
+    ContextEncoderXPhoneBiLSTM,
+    ContextEncoderXPhoneTransformer,
 )
 
 from espnet2.asr.contextualizer.component.attention_based_adapter import AttentionBasedAdapter
@@ -50,12 +52,19 @@ class ContextualAdapterPrototype(torch.nn.Module):
 
     def forward_adapter(
         self,
-        model_embed  : torch.Tensor,
-        context_embed: torch.Tensor,
-        mask         : torch.Tensor = None,
-        return_atten : bool=False,
+        model_embed        : torch.Tensor,
+        context_embed      : torch.Tensor,
+        context_embed_value: torch.Tensor = None,
+        mask               : torch.Tensor = None,
+        return_atten       : bool=False,
     ):
-        return self.adapter(model_embed, context_embed, mask, return_atten)
+        return self.adapter(
+            model_embed, 
+            context_embed, 
+            context_embed_value, 
+            mask, 
+            return_atten
+        )
 
     def forward(
         self,
@@ -63,7 +72,8 @@ class ContextualAdapterPrototype(torch.nn.Module):
         context_embed: torch.Tensor,
         ilens        : torch.Tensor = None,
         mask         : torch.Tensor = None,
-        return_atten : bool=False,
+        return_atten : bool = False,
+        **kwargs
     ):
         context_embed = self.forward_context_encoder(context_embed, ilens)
         output        = self.forward_adapter(
@@ -172,6 +182,116 @@ class ContextualAdapterEmbedTransformer(ContextualAdapterPrototype):
             attention_heads=adapter_attention_heads,
         )
         self.encoder = ContextEncoderEmbedTransformer(
+            vocab_size=vocab_size,
+            hidden_size=context_embed_size,
+            output_size=context_hidden_size,
+            attention_heads=context_attention_heads,
+            num_blocks=num_blocks,
+            linear_units=linear_units,
+            droup_out=droup_out,
+            padding_idx=padding_idx,
+        )
+
+class ContextualAdapterXPhonePrototype(ContextualAdapterPrototype):
+    def __init__(
+        self,
+        vocab_size: int,
+        context_embed_size: int,
+        context_hidden_size: int,
+        model_hidden_size: int,
+        attndim: int,
+        proj_hidden_size: int,
+        droup_out: float = 0.1,
+        num_blocks: int=2,
+        linear_units: int=256,
+        context_attention_heads: int=4,
+        adapter_attention_heads: int=1,
+        padding_idx: int=-1,
+        **kwargs
+    ):
+        super().__init__(
+            context_embed_size=context_embed_size,
+            context_hidden_size=context_hidden_size,
+            model_hidden_size=model_hidden_size,
+            attndim=attndim,
+            proj_hidden_size=proj_hidden_size,
+            droup_out=droup_out,
+            attention_heads=adapter_attention_heads,
+        )
+        self.encoder = ContextEncoderXPhoneBiLSTM(
+            vocab_size=vocab_size,
+            hidden_size=context_embed_size,
+            output_size=context_hidden_size,
+            attention_heads=context_attention_heads,
+            num_blocks=num_blocks,
+            linear_units=linear_units,
+            droup_out=droup_out,
+            padding_idx=padding_idx,
+        )
+
+    def forward_context_encoder(
+        self,
+        text_embed  : torch.Tensor,
+        xphone_embed: torch.Tensor,
+        ilens       : torch.Tensor,
+    ):
+        return self.encoder(text_embed, xphone_embed, ilens)
+
+    def forward(
+        self,
+        model_embed         : torch.Tensor,
+        context_embed       : torch.Tensor,
+        context_xphone_embed: torch.Tensor,
+        ilens               : torch.Tensor = None,
+        mask                : torch.Tensor = None,
+        return_atten        : bool=False,
+    ):
+        context_embed, context_embed_value = self.forward_context_encoder(
+            context_embed, 
+            context_xphone_embed, 
+            ilens
+        )
+        output = self.forward_adapter(
+            model_embed=model_embed,
+            context_embed=context_embed,
+            context_embed_value=context_embed_value,
+            mask=mask,
+            return_atten=return_atten,
+        )
+        return output
+
+class ContextualAdapterXPhoneTransformer(ContextualAdapterXPhonePrototype):
+    def __init__(
+        self,
+        vocab_size: int,
+        context_embed_size: int,
+        context_hidden_size: int,
+        model_hidden_size: int,
+        attndim: int,
+        proj_hidden_size: int,
+        droup_out: float = 0.1,
+        num_blocks: int=2,
+        linear_units: int=256,
+        context_attention_heads: int=4,
+        adapter_attention_heads: int=1,
+        padding_idx: int=-1,
+        **kwargs
+    ):
+        super().__init__(
+            vocab_size=vocab_size,
+            context_embed_size=context_embed_size,
+            context_hidden_size=context_hidden_size,
+            model_hidden_size=model_hidden_size,
+            attndim=attndim,
+            proj_hidden_size=proj_hidden_size,
+            droup_out=droup_out,
+            num_blocks=num_blocks,
+            linear_units=linear_units,
+            context_attention_heads=context_attention_heads,
+            adapter_attention_heads=adapter_attention_heads,
+            padding_idx=padding_idx,
+        )
+        self.encoder = ContextEncoderXPhoneTransformer(
             vocab_size=vocab_size,
             hidden_size=context_embed_size,
             output_size=context_hidden_size,

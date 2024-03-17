@@ -1,6 +1,7 @@
 # general
 *~
 *.pyc
+*.pt
 \#*\#
 .\#*
 *DS_Store

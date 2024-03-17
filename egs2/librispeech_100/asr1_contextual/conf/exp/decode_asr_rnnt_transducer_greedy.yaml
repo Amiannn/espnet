@@ -5,3 +5,9 @@ lm_weight: 0.0
 maxlenratio: 0.0
 minlenratio: 0.0
 penalty: 0.0
+
+rareword_conf:
+    blist_path: ./local/contextual/rarewords/all_rare_words.txt
+    droup_out: 0.0
+    blist_max: 1000
+    deepbiasing: true

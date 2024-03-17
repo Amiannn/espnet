@@ -1,10 +1,11 @@
+# Trained with A40 (48 GB) x 4 GPUs.
 model: contextual_asr_espnet
 
 encoder: conformer
 encoder_conf:
-    output_size: 256
-    attention_heads: 4
-    linear_units: 1024
+    output_size: 512
+    attention_heads: 8
+    linear_units: 2048
     num_blocks: 12
     dropout_rate: 0.1
     positional_dropout_rate: 0.1
@@ -19,20 +20,24 @@ encoder_conf:
     use_cnn_module: true
     cnn_module_kernel: 31
 
-decoder: transformer
+decoder: transducer
 decoder_conf:
-    attention_heads: 4
-    linear_units: 2048
-    num_blocks: 6
-    dropout_rate: 0.1
-    positional_dropout_rate: 0.1
-    self_attention_dropout_rate: 0.1
-    src_attention_dropout_rate: 0.1
+    rnn_type: lstm
+    num_layers: 1
+    hidden_size: 512
+    dropout: 0.1
+    dropout_embed: 0.2
+
+joint_net_conf:
+    joint_space_size: 640
+    joint_type: biasing
 
 model_conf:
-    ctc_weight: 0.3
-    lsm_weight: 0.1
-    length_normalized_loss: false
+    ctc_weight: 0.0
+    aux_ctc_ga: true
+    ctc_ga_weight: 0.5
+    report_cer: False
+    report_wer: False
 
 frontend_conf:
     n_fft: 512
@@ -40,32 +45,26 @@ frontend_conf:
     hop_length: 160
 
 seed: 2022
-log_interval: 400
-num_att_plot: 0
-num_workers: 4
-sort_in_batch: descending       # how to sort data in making batch
-sort_batch: descending          # how to sort created batches
+num_workers: 8
 batch_type: numel
-# batch_bins: 16000000
-batch_bins: 160000
-accum_grad: 4
-max_epoch: 70
+# batch_bins: 8000000
+# batch_bins: 2000000
+batch_bins: 500000
+accum_grad: 64
+max_epoch: 150
 patience: none
 init: none
 best_model_criterion:
 -   - valid
-    - acc
-    - max
+    - loss
+    - min
 keep_nbest_models: 10
-
-use_amp: true
-cudnn_deterministic: false
-cudnn_benchmark: false
+use_amp: false
 
 optim: adam
 optim_conf:
     lr: 0.002
-    weight_decay: 0.000001
+
 scheduler: warmuplr
 scheduler_conf:
     warmup_steps: 15000
@@ -91,23 +90,26 @@ contextual: rareword
 contextual_conf:
     contextual_type: rareword
     blist_path: ./local/contextual/rarewords/rareword_f15.txt
-    blist_max: 500
+    blist_xphone_path: ./local/contextual/ssl_features/rareword_f15.xphone.pt
+    blist_max: 200
     blist_droup_out: 0.0
     warmup_epoch: 0
     structure_type: null
     # structure_type: trie
     sampling_method: null
 
-# contextualizer settings
-contextualizer: contextual_adapter_encoder
+contextualizer: contextual_adapter_xphone_transformer_encoder
 contextualizer_conf:
-    contextualizer_type: contextual_adapter_encoder
-    context_embed_size: 256
-    context_hidden_size: 256
-    model_hidden_size: 256
-    attndim: 256
-    proj_hidden_size: 256
-    droup_out: 0.1
+    contextualizer_type: contextual_adapter_xphone_transformer_encoder
+    context_embed_size: 512
+    context_hidden_size: 512
+    model_hidden_size: 512
+    attndim: 512
+    proj_hidden_size: 640
+    droup_out: 0.0
+    num_blocks: 2
+    linear_units: 512
+    attention_heads: 1
 
 # adapter style training
-freeze_param: ["encoder", "decoder"]
+freeze_param: ["encoder", "decoder", "joint_network"]

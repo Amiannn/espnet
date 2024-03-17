@@ -524,7 +524,7 @@ class ContextualPreprocessor(CommonPreprocessor):
         speech_volume_normalize: float = None,
         speech_name: str = "speech",
         text_name: str = "text",
-        uttblist_name: str = "uttblist",
+        uttblist_name: str = "uttblist_idx",
         fs: int = 0,
         nonsplit_symbol: Iterable[str] = None,
         data_aug_effects: List = None,
@@ -714,13 +714,11 @@ class ContextualPreprocessor(CommonPreprocessor):
             uttblistsegment = []
 
             now_index = 0
-            for uttb in uttblist:
-                text = self.text_cleaner(uttb)
-                tokens = self.tokenizer.text2tokens(text)
-                text_ints = self.token_id_converter_fn(tokens)
-                uttblist2text.extend(text_ints)
-
-                end = now_index + len(text_ints)
+            for uttb_idxs in uttblist:
+                if uttb_idxs == '':
+                    continue
+                uttblist2text.append(int(uttb_idxs))
+                end = now_index + len(uttb_idxs)
                 uttblistsegment.append([now_index, end])
                 now_index = end
             data[self.uttblist_name] = np.array(uttblist2text, dtype=np.int64)

@@ -38,6 +38,7 @@ def forward_contextual_adapter(
     model_embed,
     context_idxs,
     ilens,
+    context_xphone_idxs=None,
     mask=None,
     return_atten=False,
 ):
@@ -53,6 +54,7 @@ def forward_contextual_adapter(
     out = contextualizer(
         model_embed=model_embed,
         context_embed=context_embed,
+        context_xphone_embed=context_xphone_idxs,
         ilens=ilens,
         mask=mask,
         return_atten=return_atten,

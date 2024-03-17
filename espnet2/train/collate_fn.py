@@ -326,8 +326,8 @@ def contextual_collate_fn(
     output = {'contexts': contexts}
 
     for d in data:
-        if 'uttblist' in d:
-            del d['uttblist']
+        if 'uttblist_idx' in d:
+            del d['uttblist_idx']
         if 'uttblistsegment' in d:
             del d['uttblistsegment']
         if 'textsegment' in d:

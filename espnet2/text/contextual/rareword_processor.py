@@ -1,5 +1,6 @@
 import os
 import json 
+import torch
 import random
 import logging
 import numpy as np
@@ -28,6 +29,7 @@ class RarewordProcessor():
     def __init__(
         self, 
         blist_path, 
+        blist_xphonebert_path=None, 
         droup_out=0.1,
         blist_max=500,
         for_transducer=True,
@@ -87,7 +89,16 @@ class RarewordProcessor():
         else:
             self.token_id_converter_fn = self.token_id_converter.tokens2ids
 
-        self.blist          = self.load_blist(blist_path)
+        # load rareword datas
+        self.blist                 = self.load_blist(blist_path)
+        self.blist_idxs            = [i for i in range(len(self.blist))]
+        self.blist_xphonebert_path = blist_xphonebert_path
+        logging.info(f'blist: {len(self.blist)}')
+        if blist_xphonebert_path is not None:
+            logging.info(f'Loading XPhoneBERT features...')
+            self.blist_xphone = torch.load(blist_xphonebert_path)
+            logging.info(f'xphone: {self.blist_xphone.shape}')
+
         self.droup_out      = droup_out
         self.blist_max      = blist_max
         self.pad_value      = pad_value
@@ -119,17 +130,15 @@ class RarewordProcessor():
         return blist
 
     def build_batch_contextual(self, uttblist, sampling_method=None):
-        drouped_uttblist = [b for b in uttblist if random.random() > self.droup_out and len(b) > 0]
+        drouped_uttblist = [b for b in uttblist if random.random() > self.droup_out]
         drouped_uttblist = drouped_uttblist[:self.blist_max]
         globalblist      = []
         if self.blist_max > len(drouped_uttblist):
             globalblist = random.choices(
-                self.blist, 
+                self.blist_idxs, 
                 k = (self.blist_max - len(drouped_uttblist))
             )
         blist = drouped_uttblist + globalblist
-        # add oov
-        blist = [[self.oov_value]] + blist
         return blist
 
     def build_batch_trie(self, elements):
@@ -137,21 +146,29 @@ class RarewordProcessor():
         return tree
 
     def sample(self, batch_data):
-        uttblists         = [data['uttblist'] for data in batch_data]
+        uttblists         = [data['uttblist_idx'] for data in batch_data]
         uttblistsegments  = [data['uttblistsegment'] for data in batch_data]
         batch_size        = len(uttblists)
         uttblists_resolve = []
         output            = {}
-        
         for i in range(batch_size):
             for start, end in uttblistsegments[i]:
-                uttblists_resolve.append(uttblists[i][start:end].tolist())
-        elements = self.build_batch_contextual(uttblists_resolve)
+                uttblist_idxs = uttblists[i][start:end].tolist()
+                uttblists_resolve.extend(uttblist_idxs)
+        element_idxs = self.build_batch_contextual(uttblists_resolve)
+        elements     = [self.blist[idx] for idx in element_idxs]
 
         if self.structure_type == "trie":
-            tree            = self.build_batch_trie(elements)
-            output['trie']  = tree
+            tree           = self.build_batch_trie(elements)
+            output['trie'] = tree
+        # oov
+        elements        = [[self.oov_value]] + elements
         output['blist'] = elements
+
+        # ssl features
+        if self.blist_xphonebert_path is not None:
+            elements_xphone = torch.stack([self.blist_xphone[idx] for idx in element_idxs])
+            output['blist_xphone'] = elements_xphone
 
         # for attention guided auxiliary CTC loss
         if 'text' in batch_data[0]:

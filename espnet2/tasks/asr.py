@@ -103,6 +103,8 @@ from espnet2.asr.contextualizer.contextual_adapter import (
     ContextualAdapterTransformer,
     ContextualAdapterEmbedPrototype,
     ContextualAdapterEmbedTransformer,
+    ContextualAdapterXPhonePrototype,
+    ContextualAdapterXPhoneTransformer,
 )
 
 frontend_choices = ClassChoices(
@@ -217,10 +219,14 @@ contextualizer_choices = ClassChoices(
         contextual_adapter_decoder=ContextualAdapterPrototype,
         contextual_adapter_embed_encoder=ContextualAdapterEmbedPrototype,
         contextual_adapter_embed_decoder=ContextualAdapterEmbedPrototype,
+        contextual_adapter_xphone_encoder=ContextualAdapterXPhonePrototype,
+        contextual_adapter_xphone_decoder=ContextualAdapterXPhonePrototype,
         contextual_adapter_transformer_encoder=ContextualAdapterTransformer,
         contextual_adapter_transformer_decoder=ContextualAdapterTransformer,
         contextual_adapter_embed_transformer_encoder=ContextualAdapterEmbedTransformer,
         contextual_adapter_embed_transformer_decoder=ContextualAdapterEmbedTransformer,
+        contextual_adapter_xphone_transformer_encoder=ContextualAdapterXPhoneTransformer,
+        contextual_adapter_xphone_transformer_decoder=ContextualAdapterXPhoneTransformer,
     ),
     default="contextual_adapter_encoder",
 )
@@ -573,7 +579,8 @@ class ASRTask(AbsTask):
         logging.info(f'args.contextual_conf: {args.contextual_conf}')
         if contextual_type == "rareword":
             contextual_processor = contextual_class(
-                blist_path=args.contextual_conf.get("blist_path", 0), 
+                blist_path=args.contextual_conf.get("blist_path", None), 
+                blist_xphonebert_path=args.contextual_conf.get("blist_xphone_path", None),
                 droup_out=args.contextual_conf.get("blist_droup_out", 0),
                 blist_max=args.contextual_conf.get("blist_max", 500),
                 pad_value=-1,

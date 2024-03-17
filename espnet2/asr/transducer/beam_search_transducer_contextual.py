@@ -20,7 +20,11 @@ from espnet.nets.pytorch_backend.transducer.utils import (
 from espnet2.asr.transducer.beam_search_transducer import BeamSearchTransducer
 from espnet2.asr.transducer.beam_search_transducer import Hypothesis
 
-from espnet2.asr.contextualizer.func.contextual_adapter_func import forward_contextual_adapter
+from espnet2.asr.contextualizer.func.contextual_adapter_func   import forward_contextual_adapter
+from espnet2.asr.contextualizer.func.contextualization_choices import (
+    CONTEXTUAL_ADAPTER_ENCODER,
+    CONTEXTUAL_ADAPTER_DECODER
+)
 
 @dataclass
 class ContextualHypothesis(Hypothesis):
@@ -120,10 +124,7 @@ class ContextualBeamSearchTransducer(BeamSearchTransducer):
 
         # Encoder contextualization
         enc_bias_vec = None
-        if self.contextualizer_conf["contextualizer_type"] in [
-            "contextual_adapter_encoder",
-            "contextual_adapter_transformer_encoder",
-        ]:
+        if self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_ADAPTER_ENCODER:
             logging.info(f'Encoder contextualize!')
             enc_bias_vec = forward_contextual_adapter(
                 decoder=self.decoder,
@@ -143,10 +144,7 @@ class ContextualBeamSearchTransducer(BeamSearchTransducer):
         for i, enc_out_t in enumerate(enc_out):
             # Decoder contextualization
             dec_bias_vec = None
-            if self.contextualizer_conf["contextualizer_type"] in [
-                "contextual_adapter_decoder",
-                "contextual_adapter_transformer_decoder"
-            ]:
+            if self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_ADAPTER_DECODER:
                 logging.info(f'Decoder contextualize!')
                 dec_bias_vec = forward_contextual_adapter(
                     decoder=self.decoder,
@@ -205,10 +203,7 @@ class ContextualBeamSearchTransducer(BeamSearchTransducer):
         cache_lm = {}
 
         # Encoder contextualization
-        if self.contextualizer_conf["contextualizer_type"] in [
-            "contextual_adapter_encoder",
-            "contextual_adapter_transformer_encoder",
-        ]:
+        if self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_ADAPTER_ENCODER:
             logging.info(f'Encoder contextualize!')
             enc_out  = enc_out.unsqueeze(0)
             bias_vec = forward_contextual_adapter(
@@ -247,10 +242,7 @@ class ContextualBeamSearchTransducer(BeamSearchTransducer):
 
                 dec_out, state, lm_tokens = self.decoder.score(max_hyp, cache)
                 # Decoder contextualization
-                if self.contextualizer_conf["contextualizer_type"] in [
-                    "contextual_adapter_decoder",
-                    "contextual_adapter_transformer_decoder"
-                ]:
+                if self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_ADAPTER_DECODER:
                     logging.info(f'Decoder contextualize!')
                     dec_out  = dec_out.reshape(1, 1, -1)
                     bias_vec = forward_contextual_adapter(

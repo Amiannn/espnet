@@ -1413,8 +1413,8 @@ if [ ${stage} -le 11 ] && [ ${stop_stage} -ge 11 ] && ! [[ " ${skip_stages} " =~
         _opts+="--preprocessor contextual "
         _opts+="--collate_fn_type contextual "
         _opts+="--allow_variable_data_keys True "
-        _opts+="--train_data_path_and_name_and_type ${_asr_train_dir}/uttblist,uttblist,multi_columns_text "
-        _opts+="--valid_data_path_and_name_and_type ${_asr_valid_dir}/uttblist,uttblist,multi_columns_text "
+        _opts+="--train_data_path_and_name_and_type ${_asr_train_dir}/uttblist_idx,uttblist_idx,multi_columns_text "
+        _opts+="--valid_data_path_and_name_and_type ${_asr_valid_dir}/uttblist_idx,uttblist_idx,multi_columns_text "
     fi 
 
     # shellcheck disable=SC2068
@@ -1600,7 +1600,7 @@ if [ ${stage} -le 12 ] && [ ${stop_stage} -ge 12 ] && ! [[ " ${skip_stages} " =~
             # _opts+="--collate_fn_type contextual "
             # _opts+="--speech2text_fn contextual "
             _opts+="--allow_variable_data_keys True "
-            _opts+="--data_path_and_name_and_type ${_data}/uttblist,uttblist,multi_columns_text "
+            _opts+="--data_path_and_name_and_type ${_data}/uttblist_idx,uttblist_idx,multi_columns_text "
         fi 
 
         # 2. Submit decoding jobs

@@ -20,8 +20,12 @@ from pyscripts.contextual.utils.visualize      import plot_attention_map
 
 from espnet2.asr_transducer.utils import get_transducer_task_io
 
-from espnet2.asr.contextualizer.func.contextual_adapter_func import forward_contextual_adapter
-from espnet.nets.pytorch_backend.transformer.add_sos_eos     import add_sos_eos
+from espnet2.asr.contextualizer.func.contextual_adapter_func   import forward_contextual_adapter
+from espnet.nets.pytorch_backend.transformer.add_sos_eos       import add_sos_eos
+from espnet2.asr.contextualizer.func.contextualization_choices import (
+    CONTEXTUAL_ADAPTER_ENCODER,
+    CONTEXTUAL_ADAPTER_DECODER
+)
 
 seed = 12
 random.seed(seed)
@@ -84,10 +88,7 @@ def forward(
 
     # c1. Encoder contextualization
     atten = None
-    if model.contextualizer_conf["contextualizer_type"] in [
-        "contextual_adapter_encoder",
-        "contextual_adapter_transformer_encoder",
-    ]:
+    if model.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_ADAPTER_ENCODER:
         bias_vec, atten = forward_contextual_adapter(
             decoder=model.decoder,
             contextualizer=model.contextualizer,
@@ -114,10 +115,7 @@ def forward(
     decoder_hs = outputs[0][1]
 
     # c1. Decoder contextualization
-    if model.contextualizer_conf["contextualizer_type"] in [
-        "contextual_adapter_decoder",
-        "contextual_adapter_transformer_decoder"
-    ]:
+    if model.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_ADAPTER_DECODER:
         print(f'Decoder contextualize!')
         bias_vec, atten = forward_contextual_adapter(
             decoder=model.decoder,
@@ -142,14 +140,14 @@ if __name__ == "__main__":
     # token_path = "./data/en_token_list/whisper_en/tokens.txt"
     spm_path   = "./data/en_token_list/bpe_unigram600/bpe.model"
     token_path = "./data/en_token_list/bpe_unigram600/tokens.txt"
-    model_conf = "./conf/exp/contextual_adapter/train_whisper_tiny_en_contextual_adapter_tf_encoder_gactc.yaml"
-    model_path = "./exp/asr_finetune_freeze_whisper_tiny_bpe600_cb_gactc_suffix/41epoch.pth"
+    model_conf = "./conf/exp/contextual_adapter/train_whisper_tiny_en_contextual_adapter_embed_tf_encoder_gactc.yaml"
+    model_path = "./exp/asr_finetune_freeze_whisper_tiny_bpe600_cb_embed_tf_gactc_suffix/valid.loss.best.pth"
     stats_path = "./exp/asr_stats_raw_en_bpe600_sp_suffix/train/feats_lengths_stats.npz"
     # stats_path = None
     
-    rare_path  = "./local/contextual/rareword_f15.txt"
+    rare_path  = "./local/contextual/rarewords/rareword_f15.txt"
     scp_path   = "./dump/raw/test_clean/wav.scp"
-    blit_path  = "./dump/raw/test_clean/uttblist"
+    blist_path = "./dump/raw/test_clean/uttblist_idx"
     ref_path   = "./data/test_clean/text"
 
     debug_path = os.path.join("/".join(model_path.split('/')[:-1]), 'debug')
@@ -160,12 +158,12 @@ if __name__ == "__main__":
 
     data_path_and_name_and_type = [
         (scp_path, 'speech', 'kaldi_ark'), 
-        (blit_path, 'uttblist', 'multi_columns_text')
+        (blist_path, 'uttblist_idx', 'multi_columns_text')
     ]
 
     contextual_conf = {
         'contextual_type': 'rareword',
-        'blist_path': './local/contextual/rareword_f15.txt',
+        'blist_path': './local/contextual/rarewords/all_rare_words.txt',
         'blist_max': 20,
         'blist_droup_out': 0.0,
         'warmup_epoch': 0,
@@ -183,7 +181,7 @@ if __name__ == "__main__":
         model_path,
         data_path_and_name_and_type
     )
-    print(model)
+    # print(model)
     preprocessor       = loader.dataset.preprocess
     token_id_converter = preprocessor.token_id_converter
     token_list         = get_token_list(token_id_converter) + ['<oov>']

@@ -13,7 +13,7 @@ transducer_conf:
 # contextual information settings
 contextual_conf:
     contextual_type: rareword
-    blist_path: ./local/contextual/all_rare_words.txt
+    blist_path: ./local/contextual/rarewords/all_rare_words.txt
     blist_max: 5000
     blist_droup_out: 0.0
     warmup_epoch: 0

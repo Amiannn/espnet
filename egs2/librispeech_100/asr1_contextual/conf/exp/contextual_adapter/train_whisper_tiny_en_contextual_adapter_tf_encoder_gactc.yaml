@@ -80,7 +80,7 @@ scheduler_conf:
 contextual: rareword
 contextual_conf:
     contextual_type: rareword
-    blist_path: ./local/contextual/rareword_f15.txt
+    blist_path: ./local/contextual/rarewords/rareword_f15.txt
     blist_max: 500
     blist_droup_out: 0.0
     warmup_epoch: 0
