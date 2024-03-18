@@ -131,6 +131,7 @@ class ContextualBeamSearchTransducer(BeamSearchTransducer):
                 contextualizer=self.contextualizer,
                 model_embed=enc_out.unsqueeze(0),
                 context_idxs=contexts['blist'],
+                context_xphone_idxs=contexts['blist_xphone'] if 'blist_xphone' in contexts else None,
                 ilens=contexts['ilens']
             ).squeeze(0)
 
@@ -151,6 +152,7 @@ class ContextualBeamSearchTransducer(BeamSearchTransducer):
                     contextualizer=self.contextualizer,
                     model_embed=dec_out.reshape(1, 1, -1),
                     context_idxs=contexts['blist'],
+                    context_xphone_idxs=contexts['blist_xphone'] if 'blist_xphone' in contexts else None,
                     ilens=contexts['ilens']
                 ).squeeze(0)
             bias_vec = None
@@ -211,6 +213,7 @@ class ContextualBeamSearchTransducer(BeamSearchTransducer):
                 contextualizer=self.contextualizer,
                 model_embed=enc_out,
                 context_idxs=contexts['blist'],
+                context_xphone_idxs=contexts['blist_xphone'] if 'blist_xphone' in contexts else None,
                 ilens=contexts['ilens']
             )
             enc_out = enc_out + bias_vec
@@ -250,6 +253,7 @@ class ContextualBeamSearchTransducer(BeamSearchTransducer):
                         contextualizer=self.contextualizer,
                         model_embed=dec_out,
                         context_idxs=contexts['blist'],
+                        context_xphone_idxs=contexts['blist_xphone'] if 'blist_xphone' in contexts else None,
                         ilens=contexts['ilens']
                     )
                     dec_out = dec_out + bias_vec

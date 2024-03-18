@@ -87,7 +87,7 @@ contextual: rareword
 contextual_conf:
     contextual_type: rareword
     blist_path: ./local/contextual/rarewords/rareword_f15.txt
-    blist_max: 500
+    blist_max: 200
     blist_droup_out: 0.0
     warmup_epoch: 0
     structure_type: null

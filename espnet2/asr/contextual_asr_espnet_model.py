@@ -170,7 +170,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         # c1. Encoder contextualization
         enc_bias_vec = None
         if self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_ADAPTER_ENCODER:
-            logging.info(f'Encoder contextualize!')
+            # logging.info(f'Encoder contextualize!')
             enc_bias_vec, enc_attn = forward_contextual_adapter(
                 decoder=self.decoder,
                 contextualizer=self.contextualizer,
@@ -185,7 +185,6 @@ class ESPnetContextualASRModel(ESPnetASRModel):
 
             # use guilded attention ctc loss
             if self.aux_ctc_ga:
-                logging.info(f'Using aux ctc ga loss!')
                 enc_attn  = torch.mean(enc_attn, dim=1)
                 ga_input  = torch.log(enc_attn).transpose(0, 1)
                 ga_target = contexts['label']
@@ -195,7 +194,6 @@ class ESPnetContextualASRModel(ESPnetASRModel):
                 loss_ga_ctc = self.aux_ctc_ga_loss(
                     ga_input, ga_target, ga_input_lengths, ga_target_lengths
                 )
-                logging.info(f'loss_ga_ctc: {loss_ga_ctc}')
                 # Collect CTC branch stats
                 stats["loss_ga_ctc"] = loss_ga_ctc.detach() if loss_ga_ctc is not None else None
 
@@ -355,6 +353,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
                 contextualizer=self.contextualizer,
                 model_embed=decoder_hs,
                 context_idxs=contexts['blist'],
+                context_xphone_idxs=contexts['blist_xphone'] if 'blist_xphone' in contexts else None,
                 ilens=contexts['ilens'],
                 return_atten=True
             )
@@ -419,6 +418,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
                 contextualizer=self.contextualizer,
                 model_embed=decoder_out,
                 context_idxs=contexts['blist'],
+                context_xphone_idxs=contexts['blist_xphone'] if 'blist_xphone' in contexts else None,
                 ilens=contexts['ilens'],
                 return_atten=True
             )

@@ -94,6 +94,7 @@ def forward(
             contextualizer=model.contextualizer,
             model_embed=encoder_out,
             context_idxs=contexts['blist'],
+            context_xphone_idxs=contexts['blist_xphone'] if 'blist_xphone' in contexts else None,
             ilens=contexts['ilens'],
             return_atten=True
         )
@@ -122,6 +123,7 @@ def forward(
             contextualizer=model.contextualizer,
             model_embed=decoder_hs,
             context_idxs=contexts['blist'],
+            context_xphone_idxs=contexts['blist_xphone'] if 'blist_xphone' in contexts else None,
             ilens=contexts['ilens'],
             return_atten=True,
         )
@@ -140,12 +142,12 @@ if __name__ == "__main__":
     # token_path = "./data/en_token_list/whisper_en/tokens.txt"
     spm_path   = "./data/en_token_list/bpe_unigram600/bpe.model"
     token_path = "./data/en_token_list/bpe_unigram600/tokens.txt"
-    model_conf = "./conf/exp/contextual_adapter/train_whisper_tiny_en_contextual_adapter_embed_tf_encoder_gactc.yaml"
-    model_path = "./exp/asr_finetune_freeze_whisper_tiny_bpe600_cb_embed_tf_gactc_suffix/valid.loss.best.pth"
+    model_conf = "./conf/exp/contextual_adapter/train_whisper_tiny_en_contextual_adapter_tf_xphone_encoder_gactc.yaml"
+    model_path = "./exp/asr_finetune_freeze_whisper_tiny_bpe600_cb_tf_xphone_gactc_suffix/valid.loss.ave_10best.pth"
     stats_path = "./exp/asr_stats_raw_en_bpe600_sp_suffix/train/feats_lengths_stats.npz"
     # stats_path = None
     
-    rare_path  = "./local/contextual/rarewords/rareword_f15.txt"
+    rare_path  = "./local/contextual/rarewords/all_rare_words.txt"
     scp_path   = "./dump/raw/test_clean/wav.scp"
     blist_path = "./dump/raw/test_clean/uttblist_idx"
     ref_path   = "./data/test_clean/text"
@@ -163,7 +165,8 @@ if __name__ == "__main__":
 
     contextual_conf = {
         'contextual_type': 'rareword',
-        'blist_path': './local/contextual/rarewords/all_rare_words.txt',
+        'blist_path': rare_path,
+        'blist_xphone_path': './local/contextual/ssl_features/all_rare_words.xphone.pt',
         'blist_max': 20,
         'blist_droup_out': 0.0,
         'warmup_epoch': 0,
@@ -202,11 +205,13 @@ if __name__ == "__main__":
         speech_lengths = data['speech_lengths']
         text           = texts[uid]
         blist          = contexts['blist']
+        blist_xphone   = contexts['blist_xphone']
         ilens          = contexts['ilens']
 
         print(f'texts: {text}')
         print(f'uid: {uid}')
         print(f'blist:\n{blist}')
+        print(f'blist_xphone:\n{blist_xphone.shape}')
         print(f'ilens:\n{ilens}')
         print(f'speech: {speech}')
         print(f'speech_lengths: {speech_lengths}')

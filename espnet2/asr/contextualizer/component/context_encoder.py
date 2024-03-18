@@ -191,7 +191,7 @@ class ContextEncoderXPhoneBiLSTM(ContextEncoderEmbedBiLSTM):
         x2_embed = self.norm_x2(self.droup_out(x2_embed))
 
         x_embed = self.branch_merge(x1_embed, x2_embed)
-        x_embed = self.droup_out(self.ctx_proj(x_embed)).squeeze(0)
+        x_embed = self.droup_out(self.proj(x_embed)).squeeze(0)
 
         merged_context_embed = torch.cat([oov_embed, x_embed], dim=0)
         return merged_context_embed, context_embed

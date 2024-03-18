@@ -82,6 +82,7 @@ def forward(
             contextualizer=model.contextualizer,
             model_embed=encoder_out,
             context_idxs=contexts['blist'],
+            context_xphone_idxs=contexts['blist_xphone'] if 'blist_xphone' in contexts else None,
             ilens=contexts['ilens'],
             return_atten=True
         )
@@ -110,12 +111,13 @@ def forward(
 
 
 if __name__ == "__main__":
-    spm_path   = "./data/en_token_list/bpe_unigram5000/bpe.model"
-    token_path = "./data/en_token_list/bpe_unigram5000/tokens.txt"
-    model_conf = "./conf/exp/contextual_adapter/train_rnnt_contextual_adapter_embed_tf_encoder_with_gactc.yaml"
-    model_path = "./exp/asr_finetune_freeze_ct_bpe5000_enc_cb_embed_tf_gactc/7epoch.pth"
-    stats_path = "./exp/asr_stats_raw_en_bpe5000_sp/train/feats_lengths_stats.npz"
-    rare_path  = "./local/contextual/rarewords/rareword_f15.txt"
+    spm_path   = "./data/en_token_list/bpe_unigram600/bpe.model"
+    token_path = "./data/en_token_list/bpe_unigram600/tokens.txt"
+    model_conf = "./conf/exp/contextual_adapter/train_rnnt_contextual_adapter_tf_xphone_encoder_with_gactc.yaml"
+    model_path = "./exp/asr_finetune_freeze_ct_enc_cb_tf_xphone_gactc_suffix/1epoch.pth"
+    stats_path = "./exp/asr_stats_raw_en_bpe600_sp_suffix/train/feats_lengths_stats.npz"
+    
+    rare_path  = "./local/contextual/rarewords/all_rare_words.txt"
     scp_path   = "./dump/raw/test_clean/wav.scp"
     blist_path = "./dump/raw/test_clean/uttblist_idx"
     ref_path   = "./data/test_clean/text"
@@ -133,7 +135,8 @@ if __name__ == "__main__":
 
     contextual_conf = {
         'contextual_type': 'rareword',
-        'blist_path': './local/contextual/rarewords/all_rare_words.txt',
+        'blist_path': rare_path,
+        'blist_xphone_path': './local/contextual/ssl_features/all_rare_words.xphone.pt',
         'blist_max': 20,
         'blist_droup_out': 0.0,
         'warmup_epoch': 0,

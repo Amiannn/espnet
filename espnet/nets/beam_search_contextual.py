@@ -181,6 +181,7 @@ class ContextualBeamSearch(BeamSearch):
                 contextualizer=self.contextualizer,
                 model_embed=x,
                 context_idxs=contexts['blist'],
+                context_xphone_idxs=contexts['blist_xphone'] if 'blist_xphone' in contexts else None,
                 ilens=contexts['ilens']
             )
             x = x + bias_vec
