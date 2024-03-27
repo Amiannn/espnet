@@ -15,6 +15,8 @@ from typing  import (
     Tuple, 
     Union
 )
+from torch.nn.utils.rnn import pad_sequence
+
 from espnet2.text.build_tokenizer                 import build_tokenizer
 from espnet2.text.token_id_converter              import TokenIDConverter
 from espnet2.text.whisper_token_id_converter      import OpenAIWhisperTokenIDConverter
@@ -54,6 +56,7 @@ class RarewordProcessor():
         structure_type: str = "none",
         sampling_method: str = "none",
         asr_model: object = None,
+        use_oov: bool = True,
         text_cleaner: Collection[str] = None,
     ):
         self.tokenizer = build_tokenizer(
@@ -90,13 +93,15 @@ class RarewordProcessor():
             self.token_id_converter_fn = self.token_id_converter.tokens2ids
 
         # load rareword datas
-        self.blist                 = self.load_blist(blist_path)
-        self.blist_idxs            = [i for i in range(len(self.blist))]
-        self.blist_xphonebert_path = blist_xphonebert_path
-        logging.info(f'blist: {len(self.blist)}')
+        self.blist, self.blist_words = self.load_blist(blist_path)
+        self.blist_idxs              = [i for i in range(len(self.blist))]
+        self.blist_xphonebert_path   = blist_xphonebert_path
+
         if blist_xphonebert_path is not None:
             logging.info(f'Loading XPhoneBERT features...')
-            self.blist_xphone = torch.load(blist_xphonebert_path)
+            datas = torch.load(blist_xphonebert_path)
+            self.blist_xphone         = datas['features']
+            self.blist_xphone_indexis = datas['indexis']
             logging.info(f'xphone: {self.blist_xphone.shape}')
 
         self.droup_out      = droup_out
@@ -104,6 +109,7 @@ class RarewordProcessor():
         self.pad_value      = pad_value
         self.for_transducer = for_transducer
         self.oov_value      = oov_value
+        self.use_oov        = use_oov
         # structure
         self.structure_type = structure_type
         self.trie_processor = TrieProcessor(
@@ -119,19 +125,23 @@ class RarewordProcessor():
         self.asr_model = asr_model
 
     def load_blist(self, blist_path):
-        blist = []
+        blist, blist_words = [], []
         with open(blist_path, 'r', encoding='utf-8') as frs:
             for fr in frs:
-                bword     = fr.replace('\n', '')
+                bword = fr.replace('\n', '')
+                if bword == '':
+                    continue
+                blist_words.append(bword)
+                
                 bword     = self.text_cleaner(bword)
                 tokens    = self.tokenizer.text2tokens(bword)
                 text_ints = self.token_id_converter_fn(tokens)
                 blist.append(text_ints)
-        return blist
+        return blist, blist_words
 
     def build_batch_contextual(self, uttblist, sampling_method=None):
         drouped_uttblist = [b for b in uttblist if random.random() > self.droup_out]
-        drouped_uttblist = drouped_uttblist[:self.blist_max]
+        # drouped_uttblist = drouped_uttblist[:self.blist_max]
         globalblist      = []
         if self.blist_max > len(drouped_uttblist):
             globalblist = random.choices(
@@ -145,7 +155,7 @@ class RarewordProcessor():
         tree, cache = self.trie_processor.build_trie(elements)
         return tree
 
-    def sample(self, batch_data):
+    def sample(self, batch_data, pad_value=-1):
         uttblists         = [data['uttblist_idx'] for data in batch_data]
         uttblistsegments  = [data['uttblistsegment'] for data in batch_data]
         batch_size        = len(uttblists)
@@ -158,33 +168,61 @@ class RarewordProcessor():
         element_idxs = self.build_batch_contextual(uttblists_resolve)
         elements     = [self.blist[idx] for idx in element_idxs]
 
+        # oov
+        if self.use_oov:
+            elements_oov = [[self.oov_value]] + elements
+        else:
+            elements_oov = elements
+
+        # tensorlize
+        element_tensors = pad_sequence(
+            [torch.tensor(e) for e in elements_oov], 
+            batch_first=True, 
+            padding_value=pad_value
+        ).long()
+        element_tensor_ilens = (element_tensors != pad_value).sum(dim=-1)
+        output = {
+            'blist'     : element_tensors,
+            'blist_idxs': element_idxs,
+            'ilens'     : element_tensor_ilens,
+        }
+
+        # structure blist
         if self.structure_type == "trie":
             tree           = self.build_batch_trie(elements)
             output['trie'] = tree
-        # oov
-        elements        = [[self.oov_value]] + elements
-        output['blist'] = elements
 
         # ssl features
         if self.blist_xphonebert_path is not None:
-            elements_xphone = torch.stack([self.blist_xphone[idx] for idx in element_idxs])
-            output['blist_xphone'] = elements_xphone
+            element_xphone_tensors = torch.stack(
+                [self.blist_xphone[idx] for idx in element_idxs]
+            )
+            output['blist_xphone'] = element_xphone_tensors
 
         # for attention guided auxiliary CTC loss
         if 'text' in batch_data[0]:
-            texts           = [data['text'] for data in batch_data]
-            textsegments    = [data['textsegment'] for data in batch_data]
-            rareword_labels = []
+            texts            = [data['text'] for data in batch_data]
+            textsegments     = [data['textsegment'] for data in batch_data]
+            rareword_labels  = []
             for i in range(batch_size):
                 word_resolve   = []
                 rareword_label = []
                 for start, end in textsegments[i]:
                     word  = texts[i][start:end].tolist()
-                    if word in uttblists_resolve:
+                    if word in elements:
                         rareword_label.append(elements.index(word))
                     word_resolve.append(word)
                 rareword_labels.append(rareword_label)
-            output['label'] = rareword_labels
+            label_tensors = pad_sequence(
+                [torch.tensor(b) for b in rareword_labels], 
+                batch_first=True, 
+                padding_value=pad_value
+            ).long()
+            label_tensor_ilens = (
+                label_tensors != pad_value
+            ).sum(dim=-1)
+            output['label']       = label_tensors
+            output['label_ilens'] = label_tensor_ilens
         return output
 
 if __name__ == '__main__':

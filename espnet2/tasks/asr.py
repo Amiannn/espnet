@@ -97,15 +97,7 @@ from espnet2.utils.types import float_or_none, int_or_none, str2bool, str_or_non
 from espnet2.text.contextual.rareword_processor import RarewordProcessor
 from espnet2.asr.contextual_asr_espnet_model import ESPnetContextualASRModel
 
-from espnet2.asr.contextualizer.tcpgen             import TCPGenPrototype
-from espnet2.asr.contextualizer.contextual_adapter import (
-    ContextualAdapterPrototype,
-    ContextualAdapterTransformer,
-    ContextualAdapterEmbedPrototype,
-    ContextualAdapterEmbedTransformer,
-    ContextualAdapterXPhonePrototype,
-    ContextualAdapterXPhoneTransformer,
-)
+from espnet2.asr.contextualizer import CONTEXTUALIZERS
 
 frontend_choices = ClassChoices(
     name="frontend",
@@ -213,22 +205,8 @@ decoder_choices = ClassChoices(
 )
 contextualizer_choices = ClassChoices(
     "contextualizer",
-    classes=dict(
-        tcpgen=TCPGenPrototype,
-        contextual_adapter_encoder=ContextualAdapterPrototype,
-        contextual_adapter_decoder=ContextualAdapterPrototype,
-        contextual_adapter_embed_encoder=ContextualAdapterEmbedPrototype,
-        contextual_adapter_embed_decoder=ContextualAdapterEmbedPrototype,
-        contextual_adapter_xphone_encoder=ContextualAdapterXPhonePrototype,
-        contextual_adapter_xphone_decoder=ContextualAdapterXPhonePrototype,
-        contextual_adapter_transformer_encoder=ContextualAdapterTransformer,
-        contextual_adapter_transformer_decoder=ContextualAdapterTransformer,
-        contextual_adapter_embed_transformer_encoder=ContextualAdapterEmbedTransformer,
-        contextual_adapter_embed_transformer_decoder=ContextualAdapterEmbedTransformer,
-        contextual_adapter_xphone_transformer_encoder=ContextualAdapterXPhoneTransformer,
-        contextual_adapter_xphone_transformer_decoder=ContextualAdapterXPhoneTransformer,
-    ),
-    default="contextual_adapter_encoder",
+    classes=CONTEXTUALIZERS,
+    default=list(CONTEXTUALIZERS.keys())[0],
 )
 contextual_choices = ClassChoices(
     "contextual",
@@ -566,10 +544,11 @@ class ASRTask(AbsTask):
     def build_contextualizer(cls, vocab_size: int, args: argparse.Namespace):
         contextualizer_type  = args.contextualizer_conf.get("contextualizer_type", None)
         contextualizer_class = contextualizer_choices.get_class(contextualizer_type)
-        if contextualizer_type == "tcpgen":
-            raise NotImplementedError("TCPGen not implemented!")
-        elif "contextual_adapter" in contextualizer_type:
-            contextualizer = contextualizer_class(**args.contextualizer_conf, vocab_size=vocab_size)
+        contextualizer       = contextualizer_class(
+            **args.contextualizer_conf, 
+            vocab_size=vocab_size,
+            padding_idx=-1,
+        )
         return contextualizer
 
     @classmethod
@@ -593,6 +572,7 @@ class ASRTask(AbsTask):
                 structure_type=args.contextual_conf.get("structure_type", "none"),
                 sampling_method=args.contextual_conf.get("sampling_method", "none"),
                 asr_model=model,
+                use_oov=args.contextual_conf.get("use_oov", True),
                 text_cleaner=args.cleaner,
                 **args.preprocessor_conf,
             )

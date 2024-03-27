@@ -110,6 +110,73 @@ class MultiHeadedAttention(nn.Module):
         scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(self.d_k)
         return self.forward_attention(v, scores, mask)
 
+class ColbertAttention(MultiHeadedAttention):
+
+    def forward_attention(self, value, scores, mask):
+        """Compute attention context vector.
+
+        Args:
+            value (torch.Tensor): Transformed value (#batch, n_head, time2, d_k).
+            scores (torch.Tensor): Attention score (#batch, n_head, time1, time2).
+            mask (torch.Tensor): Mask (#batch, 1, time2) or (#batch, time1, time2).
+
+        Returns:
+            torch.Tensor: Transformed value (#batch, time1, d_model)
+                weighted by the attention score (#batch, time1, time2).
+
+        """
+        n_batch = value.size(0)
+        if mask is not None:
+            mask = mask.unsqueeze(1).eq(0)  # (batch, 1, *, time2)
+            min_value = torch.finfo(scores.dtype).min
+            scores = scores.masked_fill(mask, min_value)
+            self.scores = scores
+            self.attn   = torch.softmax(scores, dim=-1).masked_fill(
+                mask, 0.0
+            )  # (batch, head, time1, time2)
+        else:
+            self.scores = scores
+            self.attn   = torch.softmax(scores, dim=-1)  # (batch, head, time1, time2)
+
+        p_attn = self.dropout(self.attn)
+        x = torch.matmul(p_attn, value)  # (batch, head, time1, d_k)
+        x = (
+            x.transpose(1, 2).contiguous().view(n_batch, -1, self.h * self.d_k)
+        )  # (batch, time1, d_model)
+
+        return self.linear_out(x)  # (batch, time1, d_model)
+
+    def forward(self, query, key, value, mask):
+        """Compute scaled dot product attention.
+
+        Args:
+            query (torch.Tensor): Query tensor (#batch, time1, size).
+            key (torch.Tensor): Key tensor (#bsize, time2, time3, size).
+            value (torch.Tensor): Value tensor (#bsize, time2, size).
+            mask (torch.Tensor): Mask tensor (#batch, 1, time2) or
+                (#batch, time1, time2).
+
+        Returns:
+            torch.Tensor: Output tensor (#batch, time1, d_model).
+
+        """
+        B, T, D  = query.shape
+        C, U, D  = key.shape
+
+        query = query.view(1, B*T, D)
+        key   = key.view(1, C*U, D)
+        value = value.view(1, C, D)
+
+        q, k, v = self.forward_qkv(query, key, value)
+
+        scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(self.d_k)
+        scores = scores.view(1, self.h, B*T, C, U)
+        scores = torch.max(scores, dim=-1).values
+        
+        out = self.forward_attention(v, scores, mask)
+        self.attn   = self.attn.view(B, self.h, T, C)
+        self.scores = self.scores.view(B, self.h, T, C)
+        return out.view(B, T, D)
 
 class LegacyRelPositionMultiHeadedAttention(MultiHeadedAttention):
     """Multi-Head Attention layer with relative position encoding (old version).

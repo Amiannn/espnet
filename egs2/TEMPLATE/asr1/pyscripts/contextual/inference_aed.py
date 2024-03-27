@@ -20,9 +20,9 @@ from pyscripts.contextual.utils.visualize      import plot_attention_map
 
 from espnet2.asr_transducer.utils import get_transducer_task_io
 
-from espnet2.asr.contextualizer.func.contextual_adapter_func   import forward_contextual_adapter
-from espnet.nets.pytorch_backend.transformer.add_sos_eos       import add_sos_eos
-from espnet2.asr.contextualizer.func.contextualization_choices import (
+from espnet.nets.pytorch_backend.transformer.add_sos_eos     import add_sos_eos
+from espnet2.asr.contextualizer.func.contextual_adapter_func import forward_contextual_adapter
+from espnet2.asr.contextualizer import (
     CONTEXTUAL_ADAPTER_ENCODER,
     CONTEXTUAL_ADAPTER_DECODER
 )
@@ -89,7 +89,6 @@ def forward(
     atten = None
     if model.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_ADAPTER_ENCODER:
         bias_vec, atten = forward_contextual_adapter(
-            decoder=model.decoder,
             contextualizer=model.contextualizer,
             model_embed=encoder_out,
             context_idxs=contexts['blist'],
@@ -140,10 +139,10 @@ if __name__ == "__main__":
     # spm_path   = "whisper_en"
     # token_path = "./data/en_token_list/whisper_en/tokens.txt"
     model_conf = "./conf/exp/contextual_adapter/train_conformer_contextual_adapter_encoder_with_gactc.yaml"
-    model_path = "./exp/asr_finetune_freeze_con_enc_cb_gactc_suffix/valid.acc.best.pth"
+    model_path = "./exp/asr_finetune_freeze_con_enc_cb_gactc_test2_suffix/latest.pth"
     stats_path = "./exp/asr_stats_raw_en_bpe600_sp_suffix/train/feats_lengths_stats.npz"
     # stats_path = None
-    
+
     rare_path  = "./local/contextual/rarewords/rareword_f15.txt"
     scp_path   = "./dump/raw/test_clean/wav.scp"
     blist_path = "./dump/raw/test_clean/uttblist_idx"
@@ -168,6 +167,7 @@ if __name__ == "__main__":
         'warmup_epoch': 0,
         'structure_type': None,
         'sampling_method': None,
+        'use_oov': True,
     }
     
     model, loader = load_espnet_model(
@@ -191,7 +191,7 @@ if __name__ == "__main__":
     model.eval()
     count = 0
     for data in loader:
-        if count > 5:
+        if count > 4:
             break
         count += 1
 
@@ -210,7 +210,7 @@ if __name__ == "__main__":
         print(f'ilens:\n{ilens}')
         print(f'speech: {speech}')
         print(f'speech_lengths: {speech_lengths}')
-        
+
         _blist = []
         for rareword in blist:
             btokens = "".join([token_list[word] for word in rareword if word != -1])

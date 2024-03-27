@@ -33,7 +33,7 @@ model_conf:
     ctc_weight: 0.3
     lsm_weight: 0.1
     aux_ctc_ga: true
-    ctc_ga_weight: 0.5
+    ctc_ga_weight: 0.1
     length_normalized_loss: false
 
 frontend_conf:
@@ -49,8 +49,9 @@ sort_in_batch: descending       # how to sort data in making batch
 sort_batch: descending          # how to sort created batches
 batch_type: numel
 # batch_bins: 16000000
-batch_bins: 160000
-accum_grad: 4
+batch_bins: 16000000
+# accum_grad: 4
+accum_grad: 1
 max_epoch: 70
 patience: none
 init: none
@@ -66,8 +67,7 @@ cudnn_benchmark: false
 
 optim: adam
 optim_conf:
-    lr: 0.002
-    weight_decay: 0.000001
+    lr: 0.0005
 scheduler: warmuplr
 scheduler_conf:
     warmup_steps: 15000
@@ -112,4 +112,4 @@ contextualizer_conf:
     droup_out: 0.1
 
 # adapter style training
-freeze_param: ["encoder", "decoder"]
+freeze_param: ["encoder", "decoder", "contextualizer.encoder.embed", "contextualizer.encoder.pad_embed"]

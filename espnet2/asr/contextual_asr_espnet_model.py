@@ -27,7 +27,7 @@ from espnet.nets.pytorch_backend.transformer.label_smoothing_loss import (  # no
 
 from espnet2.asr.espnet_model import ESPnetASRModel
 from espnet2.asr.contextualizer.func.contextual_adapter_func   import forward_contextual_adapter
-from espnet2.asr.contextualizer.func.contextualization_choices import (
+from espnet2.asr.contextualizer import (
     CONTEXTUAL_ADAPTER_ENCODER,
     CONTEXTUAL_ADAPTER_DECODER
 )
@@ -171,12 +171,12 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         enc_bias_vec = None
         if self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_ADAPTER_ENCODER:
             # logging.info(f'Encoder contextualize!')
+            context_xphone_idxs = contexts['blist_xphone'] if 'blist_xphone' in contexts else None
             enc_bias_vec, enc_attn = forward_contextual_adapter(
-                decoder=self.decoder,
                 contextualizer=self.contextualizer,
                 model_embed=encoder_out,
                 context_idxs=contexts['blist'],
-                context_xphone_idxs=contexts['blist_xphone'] if 'blist_xphone' in contexts else None,
+                context_xphone_idxs=context_xphone_idxs,
                 ilens=contexts['ilens'],
                 return_atten=True
             )
@@ -191,6 +191,12 @@ class ESPnetContextualASRModel(ESPnetASRModel):
                 ga_input_lengths  = encoder_out_lens
                 ga_target_lengths = contexts['label_ilens']
                 
+                # TODO: May cause some problem..
+                if enc_attn.shape[1] < encoder_out.shape[1]:
+                    ga_input_lengths = (
+                        1 + (encoder_out_lens - 3 + 2 * 1) // 2
+                    )
+
                 loss_ga_ctc = self.aux_ctc_ga_loss(
                     ga_input, ga_target, ga_input_lengths, ga_target_lengths
                 )
@@ -430,9 +436,6 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             bias_vec = enc_bias_vec.unsqueeze(2)
         elif dec_bias_vec is not None:
             bias_vec = dec_bias_vec.unsqueeze(1)
-        # logging.info(f'bias_vec: {bias_vec.shape}')
-        # logging.info(f'encoder_out: {encoder_out.unsqueeze(2).shape}')
-        # logging.info(f'decoder_out: {decoder_out.unsqueeze(1).shape}')
 
         joint_out = self.joint_network(
             encoder_out.unsqueeze(2), 

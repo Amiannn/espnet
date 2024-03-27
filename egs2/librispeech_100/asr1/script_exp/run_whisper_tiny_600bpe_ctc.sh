@@ -9,18 +9,17 @@ train_set="train_clean_100"
 valid_set="dev"
 test_sets="test_clean"
 
-asr_config=conf/exp/contextual_adapter/train_whisper_tiny_en_contextual_adapter_embed_tf_encoder_gactc.yaml
-inference_config=conf/exp/decode_contextual_whisper_greedy.yaml
-asr_tag=finetune_freeze_whisper_tiny_bpe600_cb_embed_tf_gactc
+asr_config=conf/exp/train_whisper_tiny_en_ctc.yaml
+inference_config=conf/decode_asr_whisper_noctc_greedy.yaml
 
-pretrained_model=/share/nas165/amian/experiments/speech/espnet/egs2/librispeech_100/asr1/exp/asr_train_whisper_tiny_en_raw_en_bpe600_sp_suffix/valid.acc.ave_10best.pth
+pretrained_model=exp/asr_train_whisper_tiny_en_raw_en_bpe600_sp_suffix/valid.acc.ave_10best.pth
 
 CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --lang en \
     --ngpu 1 \
     --nj 16 \
     --gpu_inference false \
-    --inference_nj 5 \
+    --inference_nj 10 \
     --nbpe 600 \
     --suffixbpe suffix \
     --feats_normalize "" \
@@ -37,11 +36,10 @@ CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --asr_speech_fold_length 512 \
     --asr_text_fold_length 150 \
     --lm_train_text "data/${train_set}/text" \
-    --contextualization true \
-    --pretrained_model "${pretrained_model},${pretrained_model}:decoder.decoders.token_embedding:contextualizer.encoder.embed" \
-    --inference_asr_model valid.loss.ave_10best.pth \
-    --asr_tag ${asr_tag} \
+    --bpe_train_text "data/${train_set}/text" \
+    --ignore_init_mismatch true \
+    --pretrained_model $pretrained_model \
+    --inference_asr_model valid.acc.best.pth \
     "$@"
 
     # --asr_args "--use_wandb true --wandb_project Contextualize_Whisper" \
-    # --ignore_init_mismatch true \

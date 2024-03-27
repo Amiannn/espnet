@@ -15,7 +15,7 @@ from espnet.nets.beam_search import BeamSearch
 from espnet2.asr.decoder.whisper_decoder import OpenAIWhisperDecoder
 
 from espnet2.asr.contextualizer.func.contextual_adapter_func   import forward_contextual_adapter
-from espnet2.asr.contextualizer.func.contextualization_choices import (
+from espnet2.asr.contextualizer import (
     CONTEXTUAL_ADAPTER_ENCODER,
     CONTEXTUAL_ADAPTER_DECODER
 )
@@ -162,7 +162,7 @@ class ContextualBeamSearch(BeamSearch):
             minlen = int(minlenratio * inp.size(0))
         
         # May cause some problem
-        if isinstance(self.scorers['decoder'], OpenAIWhisperDecoder):
+        if 'decoder' in self.scorers and isinstance(self.scorers['decoder'], OpenAIWhisperDecoder):
             pos_len = self.scorers['decoder'].decoders.positional_embedding.shape[0]
             if maxlen > pos_len:
                 # logging.info(f'original maxlen: {maxlen}, after: {pos_len}')
@@ -177,7 +177,6 @@ class ContextualBeamSearch(BeamSearch):
             logging.info(f'Encoder contextualize!')
             x        = x.unsqueeze(0)
             bias_vec = forward_contextual_adapter(
-                decoder=self.decoder,
                 contextualizer=self.contextualizer,
                 model_embed=x,
                 context_idxs=contexts['blist'],

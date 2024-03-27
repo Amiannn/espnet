@@ -13,36 +13,58 @@ from espnet.nets.pytorch_backend.transformer.embedding  import PositionalEncodin
 class ContextEncoderBiLSTM(torch.nn.Module):
     def __init__(
         self,
+        vocab_size  : int,
         hidden_size : int,
         output_size : int,
-        droup_out   : float = 0.1,
+        droup_out   : float = 0.0,
         num_blocks  : int = 1,
+        padding_idx : int = -1,
         **kwargs
     ):
         super().__init__()
-        self.oovembed  = torch.nn.Embedding(1, hidden_size)
-        self.droup_out = torch.nn.Dropout(droup_out)
-        self.encoder   = RNNEncoder(
+        self.vocab_size  = vocab_size
+        self.padding_idx = padding_idx
+        self.embed       = torch.nn.Embedding(
+            vocab_size, 
+            hidden_size, 
+        )
+        self.oov_embed = torch.nn.Linear(hidden_size, 1, bias=False)
+        self.pad_embed = torch.nn.Linear(hidden_size, 1, bias=False)
+        with torch.no_grad():
+            self.pad_embed.weight.fill_(0)
+
+        self.encoder = RNNEncoder(
             input_size=output_size,
             num_layers=num_blocks,
             hidden_size=hidden_size,
             output_size=output_size,
-            dropout=droup_out,
+            dropout=0.0,
             subsample=None,
             use_projection=False,
         )
+
+    def forward_embed(self, x: torch.Tensor):
+        embedding_matrix = torch.cat([
+            self.embed.weight, 
+            self.oov_embed.weight,
+            self.pad_embed.weight,
+        ], dim=0)
+        out = embedding_matrix[x]
+        return out
 
     def forward(
         self,
         context_embed: torch.Tensor,
         ilens: torch.Tensor,
     ):
-        context_embed, _, _ = self.encoder(context_embed, ilens)
-        context_embed       = torch.mean(context_embed, dim=1)
-        #TODO: divid by ilens
-        return context_embed
+        context_embed           = self.forward_embed(context_embed)
+        context_embed, ilens, _ = self.encoder(context_embed, ilens)
+        
+        ilens = ilens.to(context_embed.device)
+        context_embed_mean      = torch.sum(context_embed, dim=1) / ilens.unsqueeze(1)
+        return context_embed_mean, context_embed, ilens
 
-class ContextEncoderTransformer(torch.nn.Module):
+class ContextEncoderTransformer(ContextEncoderBiLSTM):
     def __init__(
         self,
         hidden_size : int,
@@ -54,10 +76,17 @@ class ContextEncoderTransformer(torch.nn.Module):
         padding_idx: int = -1,
         **kwargs
     ):
-        super().__init__()
-        self.oovembed  = torch.nn.Embedding(1, hidden_size)
-        self.pos_enc   = PositionalEncoding(output_size, 0.1)
-        self.encoder   = TransformerEncoder(
+        super().__init__(
+            vocab_size=vocab_size,
+            hidden_size=hidden_size,
+            output_size=output_size,
+            droup_out=droup_out,
+            num_blocks=num_blocks,
+            padding_idx=padding_idx,
+            **kwargs
+        )
+        self.pos_enc = PositionalEncoding(output_size, 0.1)
+        self.encoder = TransformerEncoder(
             input_size=output_size,
             output_size=output_size,
             attention_heads=attention_heads,
@@ -73,206 +102,83 @@ class ContextEncoderTransformer(torch.nn.Module):
         context_embed: torch.Tensor,
         ilens: torch.Tensor
     ):
+        context_embed       = self.forward_embed(context_embed)
         context_embed       = self.pos_enc(context_embed)
         context_embed, _, _ = self.encoder(xs_pad=context_embed, ilens=ilens)
 
         masks = (~make_pad_mask(ilens)[:, None, :]).float().to(context_embed.device)
-        context_embed = masks @ context_embed
-        return context_embed.squeeze(1)
+        context_embed_mean = (masks @ context_embed).squeeze(1) / ilens.unsqueeze(1)
+        return context_embed_mean, context_embed, ilens
 
-class ContextEncoderEmbedBiLSTM(ContextEncoderBiLSTM):
-    def __init__(
-        self,
-        vocab_size  : int,
-        hidden_size : int,
-        output_size : int,
-        droup_out   : float = 0.1,
-        num_blocks  : int = 1,
-        **kwargs
-    ):
-        super().__init__(
-            vocab_size=vocab_size,
-            hidden_size=hidden_size,
-            output_size=output_size,
-            droup_out=droup_out,
-            num_blocks=num_blocks,
-            **kwargs,
-        )
-        self.embed = torch.nn.Embedding(vocab_size, hidden_size)
-
-class ContextEncoderEmbedTransformer(ContextEncoderTransformer):
-    def __init__(
-        self,
-        vocab_size  : int,
-        hidden_size : int,
-        output_size : int,
-        droup_out   : float = 0.1,
-        attention_heads: int = 4,
-        linear_units: int = 256,
-        num_blocks: int = 2,
-        padding_idx: int = -1,
-        **kwargs
-    ):
-        super().__init__(
-            vocab_size=vocab_size,
-            hidden_size=hidden_size,
-            output_size=output_size,
-            droup_out=droup_out,
-            attention_heads=attention_heads,
-            linear_units=linear_units,
-            num_blocks=num_blocks,
-            padding_idx=padding_idx,
-            **kwargs,
-        )
-        self.embed = torch.nn.Embedding(vocab_size, hidden_size)
-
-class ContextEncoderXPhoneBiLSTM(ContextEncoderEmbedBiLSTM):
-    def __init__(
-        self,
-        vocab_size  : int,
-        hidden_size : int,
-        output_size : int,
-        droup_out   : float = 0.1,
-        num_blocks  : int = 1,
-        xphone_hidden_size: int = 768,
-        merge_conv_kernel : int = 3,
-        **kwargs
-    ):
-        super().__init__(
-            vocab_size=vocab_size,
-            hidden_size=hidden_size,
-            output_size=output_size,
-            droup_out=droup_out,
-            num_blocks=num_blocks,
-            **kwargs,
-        )
-        self.norm_x1 = LayerNorm(hidden_size)
-        self.norm_x2 = LayerNorm(xphone_hidden_size)
-        self.merge_conv_kernel     = merge_conv_kernel
-        self.depthwise_conv_fusion = torch.nn.Conv1d(
-            hidden_size + xphone_hidden_size,
-            hidden_size + xphone_hidden_size,
-            kernel_size=self.merge_conv_kernel,
-            stride=1,
-            padding=(self.merge_conv_kernel - 1) // 2,
-            groups=hidden_size + xphone_hidden_size,
-            bias=True,
-        )
-        self.proj = torch.nn.Linear(
-            hidden_size + xphone_hidden_size, 
-            hidden_size
-        )
+# class ContextEncoderXPhoneBiLSTM(ContextEncoderEmbedBiLSTM):
+#     def __init__(
+#         self,
+#         vocab_size  : int,
+#         hidden_size : int,
+#         output_size : int,
+#         droup_out   : float = 0.1,
+#         num_blocks  : int = 1,
+#         xphone_hidden_size: int = 768,
+#         merge_conv_kernel : int = 3,
+#         **kwargs
+#     ):
+#         super().__init__(
+#             vocab_size=vocab_size,
+#             hidden_size=hidden_size,
+#             output_size=output_size,
+#             droup_out=droup_out,
+#             num_blocks=num_blocks,
+#             **kwargs,
+#         )
+#         self.norm_x1 = LayerNorm(hidden_size)
+#         self.norm_x2 = LayerNorm(xphone_hidden_size)
+#         self.merge_conv_kernel     = merge_conv_kernel
+#         self.depthwise_conv_fusion = torch.nn.Conv1d(
+#             hidden_size + xphone_hidden_size,
+#             hidden_size + xphone_hidden_size,
+#             kernel_size=self.merge_conv_kernel,
+#             stride=1,
+#             padding=(self.merge_conv_kernel - 1) // 2,
+#             groups=hidden_size + xphone_hidden_size,
+#             bias=True,
+#         )
+#         self.proj = torch.nn.Linear(
+#             hidden_size + xphone_hidden_size, 
+#             hidden_size
+#         )
     
-    def branch_merge(self, x1_embed, x2_embed):
-        # Merge two branches
-        x     = torch.cat([x1, x2], dim=-1).unsqueeze(0)
-        x_tmp = x.transpose(1, 2)
-        x_tmp = self.depthwise_conv_fusion(x_tmp)
-        x_tmp = x_tmp.transpose(1, 2)
-        return x + x_tmp
+#     def branch_merge(self, x1_embed, x2_embed):
+#         # Merge two branches
+#         x     = torch.cat([x1, x2], dim=-1).unsqueeze(0)
+#         x_tmp = x.transpose(1, 2)
+#         x_tmp = self.depthwise_conv_fusion(x_tmp)
+#         x_tmp = x_tmp.transpose(1, 2)
+#         return x + x_tmp
 
-    def forward(
-        self,
-        context_embed: torch.Tensor,
-        context_xphone_embed: torch.Tensor,
-        ilens: torch.Tensor,
-    ):
-        context_embed = super().forward(
-            context_embed=context_embed,
-            ilens=ilens,
-        )
+#     def forward(
+#         self,
+#         context_embed: torch.Tensor,
+#         context_xphone_embed: torch.Tensor,
+#         ilens: torch.Tensor,
+#     ):
+#         context_embed = super().forward(
+#             context_embed=context_embed,
+#             ilens=ilens,
+#         )
         
-        oov_embed = context_embed[:1, :]
-        x1_embed  = context_embed[1:, :]
-        x2_embed  = context_xphone_embed
+#         oov_embed = context_embed[:1, :]
+#         x1_embed  = context_embed[1:, :]
+#         x2_embed  = context_xphone_embed
 
-        # layer normalize and dropout
-        x1_embed = self.norm_x1(self.droup_out(x1_embed))
-        x2_embed = self.norm_x2(self.droup_out(x2_embed))
+#         # layer normalize and dropout
+#         x1_embed = self.norm_x1(self.droup_out(x1_embed))
+#         x2_embed = self.norm_x2(self.droup_out(x2_embed))
 
-        x_embed = self.branch_merge(x1_embed, x2_embed)
-        x_embed = self.droup_out(self.proj(x_embed)).squeeze(0)
+#         x_embed = self.branch_merge(x1_embed, x2_embed)
+#         x_embed = self.droup_out(self.proj(x_embed)).squeeze(0)
 
-        merged_context_embed = torch.cat([oov_embed, x_embed], dim=0)
-        return merged_context_embed, context_embed
-
-class ContextEncoderXPhoneTransformer(ContextEncoderEmbedTransformer):
-    def __init__(
-        self,
-        vocab_size  : int,
-        hidden_size : int,
-        output_size : int,
-        droup_out   : float = 0.1,
-        attention_heads: int = 4,
-        linear_units: int = 256,
-        num_blocks: int = 2,
-        padding_idx: int = -1,
-        xphone_hidden_size: int = 768,
-        merge_conv_kernel : int = 3,
-        **kwargs
-    ):
-        super().__init__(
-            vocab_size=vocab_size,
-            hidden_size=hidden_size,
-            output_size=output_size,
-            droup_out=droup_out,
-            attention_heads=attention_heads,
-            linear_units=linear_units,
-            num_blocks=num_blocks,
-            padding_idx=padding_idx,
-            **kwargs,
-        )
-        self.droup_out = torch.nn.Dropout(droup_out)
-
-        self.norm_x1 = LayerNorm(hidden_size)
-        self.norm_x2 = LayerNorm(xphone_hidden_size)
-        self.merge_conv_kernel     = merge_conv_kernel
-        self.depthwise_conv_fusion = torch.nn.Conv1d(
-            hidden_size + xphone_hidden_size,
-            hidden_size + xphone_hidden_size,
-            kernel_size=self.merge_conv_kernel,
-            stride=1,
-            padding=(self.merge_conv_kernel - 1) // 2,
-            groups=hidden_size + xphone_hidden_size,
-            bias=True,
-        )
-        self.proj = torch.nn.Linear(
-            hidden_size + xphone_hidden_size, 
-            hidden_size
-        )
-    
-    def branch_merge(self, x1_embed, x2_embed):
-        # Merge two branches
-        x     = torch.cat([x1_embed, x2_embed], dim=-1).unsqueeze(0)
-        x_tmp = x.transpose(1, 2)
-        x_tmp = self.depthwise_conv_fusion(x_tmp)
-        x_tmp = x_tmp.transpose(1, 2)
-        return x + x_tmp
-
-    def forward(
-        self,
-        context_embed: torch.Tensor,
-        context_xphone_embed: torch.Tensor,
-        ilens: torch.Tensor,
-    ):
-        context_embed = super().forward(
-            context_embed=context_embed,
-            ilens=ilens,
-        )
-        
-        oov_embed = context_embed[:1, :]
-        x1_embed  = context_embed[1:, :]
-        x2_embed  = context_xphone_embed
-
-        # layer normalize and dropout
-        x1_embed = self.norm_x1(self.droup_out(x1_embed))
-        x2_embed = self.norm_x2(self.droup_out(x2_embed))
-
-        x_embed = self.branch_merge(x1_embed, x2_embed)
-        x_embed = self.droup_out(self.proj(x_embed)).squeeze(0)
-
-        merged_context_embed = torch.cat([oov_embed, x_embed], dim=0)
-        return merged_context_embed, context_embed
+#         merged_context_embed = torch.cat([oov_embed, x_embed], dim=0)
+#         return merged_context_embed, context_embed
 
 if __name__ == '__main__':
 

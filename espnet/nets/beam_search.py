@@ -428,7 +428,7 @@ class BeamSearch(torch.nn.Module):
             minlen = int(minlenratio * inp.size(0))
 
         # May cause some problem
-        if isinstance(self.scorers['decoder'], OpenAIWhisperDecoder):
+        if 'decoder' in self.scorers and isinstance(self.scorers['decoder'], OpenAIWhisperDecoder):
             pos_len = self.scorers['decoder'].decoders.positional_embedding.shape[0]
             if maxlen > pos_len:
                 # logging.info(f'original maxlen: {maxlen}, after: {pos_len}')

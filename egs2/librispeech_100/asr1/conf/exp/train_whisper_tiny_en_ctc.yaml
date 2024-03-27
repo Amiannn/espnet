@@ -1,10 +1,8 @@
-model: contextual_asr_espnet
-
 normalize: null
 
 encoder: whisper
 encoder_conf:
-    whisper_model: tiny
+    whisper_model: tiny.en
     dropout_rate: 0.0
     use_specaug: true
     specaug_conf:
@@ -25,14 +23,12 @@ encoder_conf:
 
 decoder: whisper
 decoder_conf:
-    whisper_model: tiny
+    whisper_model: tiny.en
     dropout_rate: 0.0
 
 model_conf:
-    ctc_weight: 0.0
+    ctc_weight: 0.3
     lsm_weight: 0.1
-    aux_ctc_ga: true
-    ctc_ga_weight: 0.5
     length_normalized_loss: false
     sym_sos: "<|startoftranscript|>"
     sym_eos: "<|endoftext|>"
@@ -48,16 +44,16 @@ num_workers: 4
 sort_in_batch: descending       # how to sort data in making batch
 sort_batch: descending          # how to sort created batches
 batch_type: numel
-batch_bins: 12000000            # good for single GPU w/ 40G mem
-accum_grad: 4
-max_epoch: 50
+batch_bins: 6000000            # good for single GPU w/ 40G mem
+accum_grad: 8
+max_epoch: 500
 patience: none
 init: none
 best_model_criterion:
 -   - valid
     - acc
     - max
-keep_nbest_models: 3
+keep_nbest_models: 10
 
 use_amp: true
 cudnn_deterministic: false
@@ -75,29 +71,3 @@ optim_conf:
 scheduler: warmuplr
 scheduler_conf:
     warmup_steps: 1500
-
-# contextual information settings
-contextual: rareword
-contextual_conf:
-    contextual_type: rareword
-    blist_path: ./local/contextual/rarewords/rareword_f15.txt
-    blist_max: 200
-    blist_droup_out: 0.0
-    warmup_epoch: 0
-    structure_type: null
-    # structure_type: trie
-    sampling_method: null
-
-# contextualizer settings
-contextualizer: contextual_adapter_encoder
-contextualizer_conf:
-    contextualizer_type: contextual_adapter_encoder
-    context_embed_size: 384
-    context_hidden_size: 384
-    model_hidden_size: 384
-    attndim: 384
-    proj_hidden_size: 384
-    droup_out: 0.0
-
-# adapter style training
-freeze_param: ["encoder", "decoder"]

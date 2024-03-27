@@ -21,7 +21,8 @@ from pyscripts.contextual.utils.visualize      import plot_attention_map
 from espnet2.asr_transducer.utils import get_transducer_task_io
 
 from espnet2.asr.contextualizer.func.contextual_adapter_func   import forward_contextual_adapter
-from espnet2.asr.contextualizer import (
+from espnet.nets.pytorch_backend.transformer.add_sos_eos       import add_sos_eos
+from espnet2.asr.contextualizer.func.contextualization_choices import (
     CONTEXTUAL_ADAPTER_ENCODER,
     CONTEXTUAL_ADAPTER_DECODER
 )
@@ -30,6 +31,16 @@ seed = 12
 random.seed(seed)
 torch.manual_seed(seed)
 np.random.seed(seed)
+
+def get_token_list(token_id_converter):
+    vocab_size = token_id_converter.get_num_vocabulary_size()
+    vocab      = [
+        token_id_converter.ids2tokens(
+            [i], 
+            # skip_special_tokens=False
+        )[0] for i in range(vocab_size)
+    ]
+    return vocab
 
 def visualize(
     logp,
@@ -41,16 +52,9 @@ def visualize(
     blank_id, 
     token_list,
     debug_path,
+    uttid,
 ):
-    alignments = force_alignment(
-        logp, 
-        target[0], 
-        blank_id, 
-        token_list,
-        speech,
-        debug_path
-    )
-    frame2align = {start: token for token, start, end in alignments}
+    frame2align = {}
 
     plot_attention_map(
         frame2align,
@@ -58,7 +62,7 @@ def visualize(
         text,
         blist,
         debug_path,
-        uttid='test',
+        uttid=uttid,
     )
 
 @torch.no_grad()
@@ -74,8 +78,7 @@ def forward(
     print(f'encoder_out: {encoder_out.shape}')
 
     # c1. Encoder contextualization
-    atten    = None
-    bias_vec = None
+    atten = None
     if model.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_ADAPTER_ENCODER:
         bias_vec, atten = forward_contextual_adapter(
             decoder=model.decoder,
@@ -88,34 +91,52 @@ def forward(
         )
         atten = atten.squeeze(1)
         print(f'atten: {atten.shape}')
-
-    decoder_in, target, t_len, u_len = get_transducer_task_io(
-        tokens,
-        enc_olens,
-        ignore_id=-1,
-        blank_id=model.blank_id,
+        encoder_out = encoder_out + bias_vec
+    
+    ys_pad_lens = torch.tensor([d.shape[0] for d in tokens]).long()
+    print(ys_pad_lens)
+    ys_in_pad, ys_out_pad = add_sos_eos(
+        tokens, model.sos, model.eos, model.ignore_id
     )
-    decoder_out = model.decoder(decoder_in)
-    print(f'decoder_out: {decoder_out.shape}')
+    ys_in_lens = ys_pad_lens + 1
 
-    joint_out = model.joint_network(
-        encoder_out.unsqueeze(2), 
-        decoder_out.unsqueeze(1),
-        bias_out=bias_vec.unsqueeze(2),
+    # 1. Forward decoder
+    outputs = model.decoder(
+        encoder_out, enc_olens, ys_in_pad, ys_in_lens, return_hs=True
     )
-    print(f'joint_out: {joint_out.shape}')
-    logp = torch.log_softmax(joint_out, dim=-1)[0].transpose(1, 0)
-    print(f'logp: {logp.shape}')
+    decoder_hs = outputs[0][1]
 
+    # c1. Decoder contextualization
+    if model.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_ADAPTER_DECODER:
+        print(f'Decoder contextualize!')
+        bias_vec, atten = forward_contextual_adapter(
+            decoder=model.decoder,
+            contextualizer=model.contextualizer,
+            model_embed=decoder_hs,
+            context_idxs=contexts['blist'],
+            context_xphone_idxs=contexts['blist_xphone'] if 'blist_xphone' in contexts else None,
+            ilens=contexts['ilens'],
+            return_atten=True,
+        )
+        atten = atten.squeeze(1)
+        print(f'atten: {atten.shape}')
+        decoder_hs = decoder_hs + bias_vec
+
+    decoder_out = model.decoder.output_layer(decoder_hs)
+    logp        = None
+    target      = None
     return logp, target, atten
 
 
 if __name__ == "__main__":
+    # spm_path   = "whisper_en"
+    # token_path = "./data/en_token_list/whisper_en/tokens.txt"
     spm_path   = "./data/en_token_list/bpe_unigram600/bpe.model"
     token_path = "./data/en_token_list/bpe_unigram600/tokens.txt"
-    model_conf = "./conf/exp/contextual_adapter/train_rnnt_contextual_adapter_tf_encoder_with_gactc.yaml"
-    model_path = "./exp/asr_finetune_freeze_ct_enc_cb_tf_gactc_suffix/30epoch.pth"
+    model_conf = "./conf/exp/contextual_adapter/train_whisper_tiny_en_contextual_adapter_tf_xphone_encoder_gactc.yaml"
+    model_path = "./exp/asr_finetune_freeze_whisper_tiny_bpe600_cb_tf_xphone_gactc_suffix/valid.loss.ave_10best.pth"
     stats_path = "./exp/asr_stats_raw_en_bpe600_sp_suffix/train/feats_lengths_stats.npz"
+    # stats_path = None
     
     rare_path  = "./local/contextual/rarewords/all_rare_words.txt"
     scp_path   = "./dump/raw/test_clean/wav.scp"
@@ -136,7 +157,7 @@ if __name__ == "__main__":
     contextual_conf = {
         'contextual_type': 'rareword',
         'blist_path': rare_path,
-        # 'blist_xphone_path': './local/contextual/ssl_features/all_rare_words.xphone.seq.pt',
+        'blist_xphone_path': './local/contextual/ssl_features/all_rare_words.xphone.pt',
         'blist_max': 20,
         'blist_droup_out': 0.0,
         'warmup_epoch': 0,
@@ -148,20 +169,26 @@ if __name__ == "__main__":
         model_conf,
         contextual_conf, 
         token_path,
-        'default',
+        None, 
         stats_path, 
         spm_path, 
         model_path,
         data_path_and_name_and_type
     )
-
+    # print(model)
     preprocessor       = loader.dataset.preprocess
     token_id_converter = preprocessor.token_id_converter
-    token_list         = token_id_converter.token_list + ['<oov>']
-    print(f'token_list: {len(token_list)}')
-    
+    token_list         = get_token_list(token_id_converter) + ['<oov>']
+
+    # print(token_list)
+
     model.eval()
+    count = 0
     for data in loader:
+        if count > 5:
+            break
+        count += 1
+
         uid  = data[0][0]
         data = data[1]
         contexts       = data['contexts']
@@ -169,11 +196,13 @@ if __name__ == "__main__":
         speech_lengths = data['speech_lengths']
         text           = texts[uid]
         blist          = contexts['blist']
+        blist_xphone   = contexts['blist_xphone']
         ilens          = contexts['ilens']
 
         print(f'texts: {text}')
         print(f'uid: {uid}')
         print(f'blist:\n{blist}')
+        print(f'blist_xphone:\n{blist_xphone.shape}')
         print(f'ilens:\n{ilens}')
         print(f'speech: {speech}')
         print(f'speech_lengths: {speech_lengths}')
@@ -181,7 +210,7 @@ if __name__ == "__main__":
         _blist = []
         for rareword in blist:
             btokens = "".join([token_list[word] for word in rareword if word != -1])
-            print(f'btokens: {btokens}')
+            print(f'btokens: {btokens}, {rareword}')
             _blist.append(btokens)
         blist = _blist
 
@@ -191,7 +220,7 @@ if __name__ == "__main__":
         )['text']).long()
 
         tokens = tokens.unsqueeze(0)
-        print(f'tokens : {tokens}')
+        # print(f'tokens : {tokens}')
 
         logp, target, atten = forward(
             model, 
@@ -212,5 +241,6 @@ if __name__ == "__main__":
             model.blank_id, 
             token_list,
             debug_path,
+            uid,
         )
-        break
+        # break

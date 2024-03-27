@@ -3,6 +3,8 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 
+from sklearn.manifold import TSNE
+
 def plot_attention_map(
     frame2align,
     attention,
@@ -33,5 +35,29 @@ def plot_attention_map(
     axes.grid(which='minor', color='w', linewidth=0.5, alpha=0.3)
     plt.title(text)
     output_path = os.path.join(debug_path, f'{uttid}_attention_map.pdf')
+    plt.savefig(output_path, format="pdf", bbox_inches="tight")
+    plt.clf()
+
+def plot_tsne(
+        X,
+        label,
+        debug_path,
+        uttid='test',
+    ):
+    # tsne = TSNE(n_components=2, verbose=1, perplexity=5)
+    tsne = TSNE(n_components=2, verbose=1)
+    X    = tsne.fit_transform(X.detach())
+
+    fig, axes = plt.subplots(1, 1, figsize=(20, 20))
+    plt.scatter(x=X[:, 0], y=X[:, 1], s=10)
+
+    if label is not None:
+        texts = []
+        plt.rcParams.update({'font.size': 8})
+        for i in range(X.shape[0]):
+            x, y = X[i, 0], X[i, 1]
+            texts.append(plt.text(x, y, label[i]))
+
+    output_path = os.path.join(debug_path, f'{uttid}_tsne.pdf')
     plt.savefig(output_path, format="pdf", bbox_inches="tight")
     plt.clf()
