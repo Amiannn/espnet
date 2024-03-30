@@ -111,6 +111,5 @@ def load_pretrained_model(
     dst_state = obj.state_dict()
     if ignore_init_mismatch:
         src_state = filter_state_dict(dst_state, src_state)
-    logging.info(f'src_state: {src_state}')
     dst_state.update(src_state)
     obj.load_state_dict(dst_state)

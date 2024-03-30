@@ -78,7 +78,6 @@ def forward(
     bias_vec = None
     if model.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_ADAPTER_ENCODER:
         bias_vec, atten = forward_contextual_adapter(
-            decoder=model.decoder,
             contextualizer=model.contextualizer,
             model_embed=encoder_out,
             context_idxs=contexts['blist'],
@@ -113,8 +112,8 @@ def forward(
 if __name__ == "__main__":
     spm_path   = "./data/en_token_list/bpe_unigram600/bpe.model"
     token_path = "./data/en_token_list/bpe_unigram600/tokens.txt"
-    model_conf = "./conf/exp/contextual_adapter/train_rnnt_contextual_adapter_tf_encoder_with_gactc.yaml"
-    model_path = "./exp/asr_finetune_freeze_ct_enc_cb_tf_gactc_suffix/30epoch.pth"
+    model_conf = "./conf/exp/contextual_adapter/train_conformer_contextual_adapter_colbert_encoder_with_gactc.yaml"
+    model_path = "./exp/asr_finetune_freeze_con_enc_cb_colbert_gactc_suffix/2epoch.pth"
     stats_path = "./exp/asr_stats_raw_en_bpe600_sp_suffix/train/feats_lengths_stats.npz"
     
     rare_path  = "./local/contextual/rarewords/all_rare_words.txt"

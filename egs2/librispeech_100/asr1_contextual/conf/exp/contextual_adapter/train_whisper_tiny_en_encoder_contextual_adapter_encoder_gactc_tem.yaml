@@ -25,7 +25,7 @@ encoder_conf:
 model_conf:
     ctc_weight: 1.0
     aux_ctc_ga: true
-    ctc_ga_weight: 0.3
+    ctc_ga_weight: 0.5
 
 frontend: null
 input_size: 1                   # to prevent build_model() from complaining
@@ -52,11 +52,15 @@ use_amp: true
 cudnn_deterministic: false
 cudnn_benchmark: false
 
-optim: adam
+optim: adamw
 grad_clip: 1.0
 optim_conf:
     lr: 1.0e-05
     weight_decay: 0.01
+    betas:
+    - 0.9
+    - 0.99
+    eps: 1.0e-06
 scheduler: warmuplr
 scheduler_conf:
     warmup_steps: 1500
@@ -66,7 +70,7 @@ contextual: rareword
 contextual_conf:
     contextual_type: rareword
     blist_path: ./local/contextual/rarewords/rareword_f15.txt
-    blist_max: 500
+    blist_max: 200
     blist_droup_out: 0.0
     warmup_epoch: 0
     structure_type: null
@@ -74,14 +78,15 @@ contextual_conf:
     sampling_method: null
 
 # contextualizer settings
-contextualizer: contextual_convatten_adapter_encoder
+contextualizer: contextual_adapter_encoder
 contextualizer_conf:
-    contextualizer_type: contextual_convatten_adapter_encoder
+    contextualizer_type: contextual_adapter_encoder
     context_embed_size: 384
     context_hidden_size: 384
     model_hidden_size: 384
     attndim: 384
     proj_hidden_size: 384
+    atten_temperature: 5.0
     droup_out: 0.0
 
 # adapter style training

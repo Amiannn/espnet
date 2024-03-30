@@ -107,7 +107,6 @@ def forward(
             return_atten=True
         )
         atten = atten.squeeze(1)
-        print(f'atten:\n{atten}')
         print(f'atten: {atten.shape}')
         encoder_out = encoder_out + bias_vec
 
@@ -159,8 +158,8 @@ if __name__ == "__main__":
     # token_path = "./data/en_token_list/whisper_en/tokens.txt"
     spm_path   = "./data/en_token_list/bpe_unigram600/bpe.model"
     token_path = "./data/en_token_list/bpe_unigram600/tokens.txt"
-    model_conf = "./conf/exp/contextual_adapter/train_whisper_tiny_en_encoder_contextual_adapter_encoder.yaml"
-    model_path = "./exp/asr_finetune_freeze_whisper_tiny_encoder_bpe600_cb_gactc_suffix/latest.pth"
+    model_conf = "./conf/exp/contextual_adapter/train_whisper_tiny_en_encoder_contextual_adapter_encoder_gactc_tem.yaml"
+    model_path = "./exp/asr_finetune_freeze_whisper_tiny_encoder_bpe600_cb_gactc_big_tem_suffix/30epoch.pth"
     stats_path = "./exp/asr_stats_raw_en_bpe600_sp_suffix/train/feats_lengths_stats.npz"
     # stats_path = None
     
@@ -169,9 +168,10 @@ if __name__ == "__main__":
     blist_path = "./dump/raw/test_clean/uttblist_idx"
     ref_path   = "./data/test_clean/text"
 
-    debug_path = os.path.join("/".join(model_path.split('/')[:-1]), 'debug')
+    folder_name = model_path.split('/')[-1].split('.')[0]
+    debug_path = os.path.join("/".join(model_path.split('/')[:-1]), 'debug', folder_name)
     if not os.path.isdir(debug_path):
-        os.mkdir(debug_path)
+        os.makedirs(debug_path)
 
     texts  = {d[0]: " ".join(d[1:]) for d in read_file(ref_path, sp=' ')}
 
@@ -205,6 +205,8 @@ if __name__ == "__main__":
     preprocessor       = loader.dataset.preprocess
     token_id_converter = preprocessor.token_id_converter
     token_list         = get_token_list(token_id_converter) + ['<oov>']
+
+    model.contextualizer.adapter.temperature = 1.0
 
     # print(token_list)
     model.eval()

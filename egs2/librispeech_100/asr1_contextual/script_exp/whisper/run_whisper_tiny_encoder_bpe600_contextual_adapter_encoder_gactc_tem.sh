@@ -9,9 +9,9 @@ train_set="train_clean_100"
 valid_set="dev"
 test_sets="test_clean"
 
-asr_config=conf/exp/contextual_adapter/train_whisper_tiny_en_encoder_contextual_adapter_convattn_encoder.yaml
+asr_config=conf/exp/contextual_adapter/train_whisper_tiny_en_encoder_contextual_adapter_encoder_gactc_tem.yaml
 inference_config=conf/exp/decode_contextual_whisper_encoder_greedy.yaml
-asr_tag=finetune_freeze_whisper_tiny_encoder_bpe600_cb_convattn_gactc_test2
+asr_tag=finetune_freeze_whisper_tiny_encoder_bpe600_cb_gactc_tem_test3
 
 pretrained_ed_model=/share/nas165/amian/experiments/speech/espnet/egs2/librispeech_100/asr1/exp/asr_train_whisper_tiny_en_raw_en_bpe600_sp_suffix/valid.acc.ave_10best.pth
 pretrained_e_model=/share/nas165/amian/experiments/speech/espnet/egs2/librispeech_100/asr1/exp/asr_train_whisper_tiny_encoder_en_ctc_raw_en_bpe600_sp_suffix/175epoch_.pth
@@ -41,8 +41,8 @@ CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --contextualization true \
     --pretrained_model "${pretrained_e_model},${pretrained_ed_model}:decoder.decoders.token_embedding:contextualizer.encoder.embed" \
     --inference_asr_model 45epoch.pth \
+    --ignore_init_mismatch true \
     --asr_tag ${asr_tag} \
     "$@"
 
-    # --ignore_init_mismatch true \
     # --asr_args "--use_wandb true --wandb_project Contextualize_Whisper" \

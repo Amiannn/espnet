@@ -30,6 +30,7 @@ class ContextualAdapterPrototype(torch.nn.Module):
         attention_heads: int = 1,
         use_value_norm: bool = False,
         padding_idx: int = -1,
+        atten_temperature: float = 1.0,
         **kwargs
     ):
         super().__init__()
@@ -47,6 +48,7 @@ class ContextualAdapterPrototype(torch.nn.Module):
             proj_hidden_size=proj_hidden_size,
             droup_out=droup_out,
             use_value_norm=use_value_norm,
+            atten_temperature=atten_temperature,
         )
 
     def forward_context_encoder(
@@ -108,6 +110,7 @@ class ContextualAdapterTransformer(ContextualAdapterPrototype):
         context_attention_heads: int=4,
         adapter_attention_heads: int=1,
         padding_idx: int=-1,
+        atten_temperature: float = 1.0,
         **kwargs
     ):
         super().__init__(
@@ -118,6 +121,7 @@ class ContextualAdapterTransformer(ContextualAdapterPrototype):
             proj_hidden_size=proj_hidden_size,
             droup_out=droup_out,
             attention_heads=adapter_attention_heads,
+            atten_temperature=atten_temperature,
         )
         self.encoder = ContextEncoderTransformer(
             hidden_size=context_embed_size,
@@ -145,6 +149,7 @@ class ContextualConvAttenAdapter(ContextualAdapterPrototype):
         adapter_attention_heads: int=1,
         padding_idx: int=-1,
         use_value_norm: bool=False,
+        atten_temperature: float = 1.0,
         **kwargs
     ):
         super().__init__(
@@ -160,6 +165,7 @@ class ContextualConvAttenAdapter(ContextualAdapterPrototype):
             context_attention_heads=context_attention_heads,
             adapter_attention_heads=adapter_attention_heads,
             padding_idx=padding_idx,
+            atten_temperature=atten_temperature,
             **kwargs
         )
         self.adapter = ConvAttentionAdapter(
@@ -186,6 +192,7 @@ class ContextualColbertAdapter(ContextualAdapterPrototype):
         adapter_attention_heads: int=1,
         padding_idx: int=-1,
         use_value_norm: bool=False,
+        atten_temperature: float = 1.0,
         **kwargs
     ):
         super().__init__(
@@ -201,6 +208,7 @@ class ContextualColbertAdapter(ContextualAdapterPrototype):
             context_attention_heads=context_attention_heads,
             adapter_attention_heads=adapter_attention_heads,
             padding_idx=padding_idx,
+            atten_temperature=atten_temperature,
             **kwargs
         )
         self.adapter = ColbertAdapter(

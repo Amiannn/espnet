@@ -136,21 +136,19 @@ def forward(
 if __name__ == "__main__":
     spm_path   = "./data/en_token_list/bpe_unigram600/bpe.model"
     token_path = "./data/en_token_list/bpe_unigram600/tokens.txt"
-    # spm_path   = "whisper_en"
-    # token_path = "./data/en_token_list/whisper_en/tokens.txt"
-    model_conf = "./conf/exp/contextual_adapter/train_conformer_contextual_adapter_encoder_with_gactc.yaml"
-    model_path = "./exp/asr_finetune_freeze_con_enc_cb_gactc_test2_suffix/latest.pth"
+    model_conf = "./conf/exp/contextual_adapter/train_conformer_contextual_adapter_encoder_with_gactc_tem.yaml"
+    model_path = "./exp/asr_finetune_freeze_con_enc_cb_gactc_tem_suffix/70epoch.pth"
     stats_path = "./exp/asr_stats_raw_en_bpe600_sp_suffix/train/feats_lengths_stats.npz"
-    # stats_path = None
 
     rare_path  = "./local/contextual/rarewords/rareword_f15.txt"
     scp_path   = "./dump/raw/test_clean/wav.scp"
     blist_path = "./dump/raw/test_clean/uttblist_idx"
     ref_path   = "./data/test_clean/text"
 
-    debug_path = os.path.join("/".join(model_path.split('/')[:-1]), 'debug')
+    folder_name = model_path.split('/')[-1].split('.')[0]
+    debug_path = os.path.join("/".join(model_path.split('/')[:-1]), 'debug', folder_name)
     if not os.path.isdir(debug_path):
-        os.mkdir(debug_path)
+        os.makedirs(debug_path)
 
     texts  = {d[0]: " ".join(d[1:]) for d in read_file(ref_path, sp=' ')}
 
@@ -167,7 +165,7 @@ if __name__ == "__main__":
         'warmup_epoch': 0,
         'structure_type': None,
         'sampling_method': None,
-        'use_oov': True,
+        'use_oov': False,
     }
     
     model, loader = load_espnet_model(
@@ -185,6 +183,8 @@ if __name__ == "__main__":
     preprocessor       = loader.dataset.preprocess
     token_id_converter = preprocessor.token_id_converter
     token_list         = get_token_list(token_id_converter) + ['<oov>']
+    
+    model.contextualizer.adapter.temperature = 1.0
 
     # print(token_list)
 

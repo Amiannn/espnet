@@ -7,7 +7,7 @@ from typing import Optional, Tuple
 
 from espnet.nets.pytorch_backend.transformer.layer_norm import LayerNorm
 from espnet.nets.pytorch_backend.transformer.attention  import (
-    MultiHeadedAttention,
+    CustomMultiHeadedAttention,
     ColbertAttention,
 )
 from espnet.nets.pytorch_backend.transformer.positionwise_feed_forward import (
@@ -22,14 +22,16 @@ class AttentionBasedAdapter(torch.nn.Module):
         proj_hidden_size: int,
         droup_out: float = 0.1,
         use_value_norm: bool = False,
+        atten_temperature: float = 1.0,
         **kwargs
     ):
         super().__init__()
         self.attndim         = attndim
         self.attention_heads = attention_heads
-        self.attention_layer = MultiHeadedAttention(
+        self.attention_layer = CustomMultiHeadedAttention(
             attention_heads, attndim, droup_out
         )
+        self.temperature    = atten_temperature
         self.proj           = torch.nn.Linear(self.attndim, proj_hidden_size)
         self.norm_before_x1 = LayerNorm(attndim)
         self.norm_before_x2 = LayerNorm(attndim)
@@ -68,11 +70,17 @@ class AttentionBasedAdapter(torch.nn.Module):
             mask=mask,
         )
         out = out.reshape(B, T, D)
-        out = self.proj(out)
         out = self.norm_after(out)
+        out = self.proj(out)
 
         if return_atten:
-            atten = self.attention_layer.attn
+            atten = torch.softmax(
+                self.attention_layer.scores * self.temperature, 
+                dim=-1
+            )
+            if mask is not None:
+                mask  = mask.unsqueeze(1).eq(0)
+                atten = atten.masked_fill(mask, 0.0)
             atten = atten.reshape(B, -1, T, C)
             return out, atten
         return out
@@ -85,6 +93,7 @@ class ConvAttentionAdapter(AttentionBasedAdapter):
         proj_hidden_size: int,
         droup_out: float = 0.1,
         use_value_norm: bool = False,
+        atten_temperature: float = 1.0,
         **kwargs
     ):
         super().__init__(
@@ -93,14 +102,15 @@ class ConvAttentionAdapter(AttentionBasedAdapter):
             proj_hidden_size=proj_hidden_size,
             droup_out=droup_out,
             use_value_norm=use_value_norm,
+            atten_temperature=atten_temperature,
             **kwargs,
         )
         self.query_conv = torch.nn.Conv1d(
             in_channels=attndim,
             out_channels=attndim, 
             kernel_size=3, 
-            # stride=2, 
-            stride=1, 
+            stride=2, 
+            # stride=1, 
             padding=1
         )
 
@@ -136,6 +146,7 @@ class ColbertAdapter(AttentionBasedAdapter):
         attndim: int,
         proj_hidden_size: int,
         droup_out: float = 0.1,
+        atten_temperature: float = 1.0,
         **kwargs
     ):  
         super().__init__(
@@ -144,6 +155,7 @@ class ColbertAdapter(AttentionBasedAdapter):
             proj_hidden_size=proj_hidden_size,
             droup_out=droup_out,
             use_value_norm=True,
+            atten_temperature=atten_temperature,
             **kwargs,
         )
         self.attention_layer = ColbertAttention(
@@ -176,10 +188,17 @@ class ColbertAdapter(AttentionBasedAdapter):
             value=value,
             mask=mask,
         )
-        out = self.proj(out)
         out = self.norm_after(out)
+        out = self.proj(out)
+        
         if return_atten:
-            atten = self.attention_layer.attn
+            atten = torch.softmax(
+                self.attention_layer.scores / self.temperature, 
+                dim=-1
+            )
+            if mask is not None:
+                mask  = mask.unsqueeze(1).eq(0)
+                atten = atten.masked_fill(mask, 0.0)
             return out, atten
         return out
 

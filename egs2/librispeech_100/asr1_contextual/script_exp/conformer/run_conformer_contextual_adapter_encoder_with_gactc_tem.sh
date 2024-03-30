@@ -9,9 +9,9 @@ train_set="train_clean_100"
 valid_set="dev"
 test_sets="test_clean"
 
-asr_config=conf/exp/contextual_adapter/train_conformer_contextual_adapter_encoder_with_gactc.yaml
+asr_config=conf/exp/contextual_adapter/train_conformer_contextual_adapter_encoder_with_gactc_tem.yaml
 inference_config=conf/exp/decode_asr_greedy.yaml
-asr_tag=finetune_freeze_con_enc_cb_gactc
+asr_tag=finetune_freeze_con_enc_cb_gactc_tem_test2
 
 pretrained_model=/share/nas165/amian/experiments/speech/espnet/egs2/librispeech_100/asr1/exp/asr_train_conformer_raw_en_bpe600_sp_suffix/valid.acc.best.pth
 
