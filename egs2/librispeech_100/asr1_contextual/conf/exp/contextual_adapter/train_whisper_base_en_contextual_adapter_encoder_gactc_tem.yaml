@@ -4,7 +4,7 @@ normalize: null
 
 encoder: whisper
 encoder_conf:
-    whisper_model: tiny.en
+    whisper_model: base.en
     dropout_rate: 0.0
     use_specaug: true
     specaug_conf:
@@ -22,10 +22,19 @@ encoder_conf:
         - 0.12
         num_time_mask: 5
 
+decoder: whisper
+decoder_conf:
+    whisper_model: base.en
+    dropout_rate: 0.0
+
 model_conf:
-    ctc_weight: 1.0
+    ctc_weight: 0.0
     aux_ctc_ga: true
     ctc_ga_weight: 0.5
+    lsm_weight: 0.1
+    length_normalized_loss: false
+    sym_sos: "<|startoftranscript|>"
+    sym_eos: "<|endoftext|>"
 
 frontend: null
 input_size: 1                   # to prevent build_model() from complaining
@@ -71,7 +80,7 @@ contextual_conf:
     contextual_type: rareword
     blist_path: ./local/contextual/rarewords/rareword_f15.txt
     blist_max: 200
-    blist_droup_out: 0.0
+    blist_drop_out: 0.0
     warmup_epoch: 0
     structure_type: null
     # structure_type: trie
@@ -81,13 +90,13 @@ contextual_conf:
 contextualizer: contextual_adapter_encoder
 contextualizer_conf:
     contextualizer_type: contextual_adapter_encoder
-    context_embed_size: 384
-    context_hidden_size: 384
-    model_hidden_size: 384
-    attndim: 384
-    proj_hidden_size: 384
-    atten_temperature: 20.0
-    droup_out: 0.0
+    context_embed_size: 512
+    context_hidden_size: 512
+    model_hidden_size: 512
+    attndim: 512
+    proj_hidden_size: 512
+    atten_temperature: 5.0
+    drop_out: 0.0
 
 # adapter style training
-freeze_param: ["encoder", "contextualizer.encoder.embed", "contextualizer.encoder.pad_embed"]
+freeze_param: ["encoder", "decoder", "contextualizer.encoder.embed", "contextualizer.encoder.pad_embed"]

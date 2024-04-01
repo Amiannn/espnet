@@ -91,7 +91,7 @@ contextual_conf:
     contextual_type: rareword
     blist_path: ./local/contextual/rarewords/rareword_f15.txt
     blist_max: 200
-    blist_droup_out: 0.0
+    blist_drop_out: 0.0
     warmup_epoch: 0
     structure_type: null
     # structure_type: trie
@@ -106,7 +106,7 @@ contextualizer_conf:
     model_hidden_size: 512
     attndim: 512
     proj_hidden_size: 640
-    droup_out: 0.1
+    drop_out: 0.1
 
 # adapter style training
 freeze_param: ["encoder", "decoder", "joint_network"]

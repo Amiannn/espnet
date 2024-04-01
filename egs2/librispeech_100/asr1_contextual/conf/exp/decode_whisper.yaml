@@ -11,7 +11,7 @@ penalty: 0.0
 #     contextual_type: rareword
 #     blist_path: ./local/contextual/rareword_f15.txt
 #     blist_max: 5
-#     blist_droup_out: 0.0
+#     blist_drop_out: 0.0
 #     warmup_epoch: 0
 #     structure_type: null
 #     sampling_method: null

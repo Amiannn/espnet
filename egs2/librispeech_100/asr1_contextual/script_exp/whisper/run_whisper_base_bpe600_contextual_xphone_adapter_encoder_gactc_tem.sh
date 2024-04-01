@@ -9,19 +9,18 @@ train_set="train_clean_100"
 valid_set="dev"
 test_sets="test_clean"
 
-asr_config=conf/exp/contextual_adapter/train_whisper_tiny_en_encoder_contextual_adapter_encoder_gactc_tem.yaml
-inference_config=conf/exp/decode_contextual_whisper_encoder_greedy.yaml
-asr_tag=finetune_freeze_whisper_tiny_encoder_bpe600_cb_gactc_tem
+asr_config=conf/exp/contextual_adapter/train_whisper_base_en_contextual_xphone_adapter_encoder_gactc_tem.yaml
+inference_config=conf/exp/decode_contextual_whisper_xphone_greedy.yaml
+asr_tag=finetune_freeze_whisper_base_bpe600_cb_xphone_gactc_tem
 
-pretrained_ed_model=/share/nas165/amian/experiments/speech/espnet/egs2/librispeech_100/asr1/exp/asr_train_whisper_tiny_en_raw_en_bpe600_sp_suffix/valid.acc.ave_10best.pth
-pretrained_e_model=/share/nas165/amian/experiments/speech/espnet/egs2/librispeech_100/asr1/exp/asr_train_whisper_tiny_encoder_en_ctc_raw_en_bpe600_sp_suffix/175epoch_.pth
+pretrained_model=/share/nas165/amian/experiments/speech/espnet/egs2/librispeech_100/asr1/exp/asr_train_whisper_base_en_raw_en_bpe600_sp_suffix/valid.acc.ave_10best.pth
 
 CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --lang en \
     --ngpu 1 \
     --nj 16 \
     --gpu_inference false \
-    --inference_nj 10 \
+    --inference_nj 1 \
     --nbpe 600 \
     --suffixbpe suffix \
     --feats_normalize "" \
@@ -39,8 +38,8 @@ CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --asr_text_fold_length 150 \
     --lm_train_text "data/${train_set}/text" \
     --contextualization true \
-    --pretrained_model "${pretrained_e_model},${pretrained_ed_model}:decoder.decoders.token_embedding:contextualizer.encoder.embed" \
-    --inference_asr_model 45epoch.pth \
+    --pretrained_model "${pretrained_model},${pretrained_model}:decoder.decoders.token_embedding:contextualizer.encoder.embed" \
+    --inference_asr_model 116epoch.pth \
     --ignore_init_mismatch true \
     --asr_tag ${asr_tag} \
     "$@"

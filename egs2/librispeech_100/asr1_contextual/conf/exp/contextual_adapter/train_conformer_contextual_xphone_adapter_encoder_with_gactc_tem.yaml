@@ -49,9 +49,9 @@ sort_in_batch: descending       # how to sort data in making batch
 sort_batch: descending          # how to sort created batches
 batch_type: numel
 # batch_bins: 16000000
-batch_bins: 16000000
+batch_bins: 8000000
 # accum_grad: 4
-accum_grad: 1
+accum_grad: 2
 max_epoch: 70
 patience: none
 init: none
@@ -66,8 +66,10 @@ cudnn_deterministic: false
 cudnn_benchmark: false
 
 optim: adam
+grad_clip: 1.0
 optim_conf:
-    lr: 0.0005
+    lr: 0.002
+    weight_decay: 0.000001
 scheduler: warmuplr
 scheduler_conf:
     warmup_steps: 15000
@@ -93,6 +95,7 @@ contextual: rareword
 contextual_conf:
     contextual_type: rareword
     blist_path: ./local/contextual/rarewords/rareword_f15.txt
+    blist_xphone_path: ./local/contextual/ssl_features/rareword_f15.xphone.seq.pt
     blist_max: 200
     blist_drop_out: 0.0
     warmup_epoch: 0
@@ -101,14 +104,15 @@ contextual_conf:
     sampling_method: null
 
 # contextualizer settings
-contextualizer: contextual_colbert_adapter_encoder
+contextualizer: contextual_xphone_adapter_encoder
 contextualizer_conf:
-    contextualizer_type: contextual_colbert_adapter_encoder
+    contextualizer_type: contextual_xphone_adapter_encoder
     context_embed_size: 256
     context_hidden_size: 256
     model_hidden_size: 256
     attndim: 256
     proj_hidden_size: 256
+    atten_temperature: 2.0
     drop_out: 0.1
 
 # adapter style training

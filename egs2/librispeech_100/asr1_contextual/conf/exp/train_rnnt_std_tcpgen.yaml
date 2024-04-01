@@ -85,7 +85,7 @@ model: espnet_biasing
 rareword: tcpgen
 rareword_conf:
     blist_path: ./local/rareword/rareword_f15.txt
-    droup_out: 0.0
+    drop_out: 0.0
     blist_max: 500
     attndim: 256
     deepbiasing: true
