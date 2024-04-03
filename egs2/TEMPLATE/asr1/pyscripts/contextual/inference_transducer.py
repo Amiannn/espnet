@@ -81,7 +81,7 @@ def forward(
             contextualizer=model.contextualizer,
             model_embed=encoder_out,
             context_idxs=contexts['blist'],
-            context_xphone_idxs=contexts['blist_xphone'] if 'blist_xphone' in contexts else None,
+            context_xphone_idxs=contexts['blist_xphone_mean'],
             ilens=contexts['ilens'],
             return_atten=True
         )
@@ -137,7 +137,7 @@ if __name__ == "__main__":
         'blist_path': rare_path,
         # 'blist_xphone_path': './local/contextual/ssl_features/all_rare_words.xphone.seq.pt',
         'blist_max': 20,
-        'blist_droup_out': 0.0,
+        'blist_drop_out': 0.0,
         'warmup_epoch': 0,
         'structure_type': None,
         'sampling_method': None,

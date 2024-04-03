@@ -114,14 +114,6 @@ class ContextualBeamSearchTransducer(BeamSearchTransducer):
             hyp: 1-best hypotheses.
 
         """
-        # btokens = []
-        # for rareword in contexts['blist']:
-        #     btoken = "".join(
-        #         [self.contextual_token_list[word] for word in rareword if word != 0]
-        #     )
-        #     btokens.append(btoken)
-        # logging.info(f'btokens: {btokens}')
-
         # Encoder contextualization
         enc_bias_vec = None
         if self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_ADAPTER_ENCODER:
@@ -130,7 +122,7 @@ class ContextualBeamSearchTransducer(BeamSearchTransducer):
                 contextualizer=self.contextualizer,
                 model_embed=enc_out.unsqueeze(0),
                 context_idxs=contexts['blist'],
-                context_xphone_idxs=contexts['blist_xphone'] if 'blist_xphone' in contexts else None,
+                context_xphone_idxs=contexts['blist_xphone_mean'],
                 ilens=contexts['ilens']
             ).squeeze(0)
 
@@ -147,11 +139,10 @@ class ContextualBeamSearchTransducer(BeamSearchTransducer):
             if self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_ADAPTER_DECODER:
                 logging.info(f'Decoder contextualize!')
                 dec_bias_vec = forward_contextual_adapter(
-                    decoder=self.decoder,
                     contextualizer=self.contextualizer,
                     model_embed=dec_out.reshape(1, 1, -1),
                     context_idxs=contexts['blist'],
-                    context_xphone_idxs=contexts['blist_xphone'] if 'blist_xphone' in contexts else None,
+                    context_xphone_idxs=contexts['blist_xphone_mean'],
                     ilens=contexts['ilens']
                 ).squeeze(0)
             bias_vec = None

@@ -173,18 +173,17 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         loss_ctc, cer_ctc = None, None
         loss_transducer, cer_transducer, wer_transducer = None, None, None
         loss_ga_ctc = None
-        loss_kl_ctc = None
+        loss_ga_kl = None
         stats = dict()
 
         # c1. Encoder contextualization
         enc_bias_vec = None
         if self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_ADAPTER_ENCODER:
-            context_xphone_idxs = contexts['blist_xphone'] if 'blist_xphone' in contexts else None
             enc_bias_vec, enc_attn = forward_contextual_adapter(
                 contextualizer=self.contextualizer,
                 model_embed=encoder_out,
                 context_idxs=contexts['blist'],
-                context_xphone_idxs=context_xphone_idxs,
+                context_xphone_idxs=contexts['blist_xphone_mean'],
                 ilens=contexts['ilens'],
                 return_atten=True
             )
@@ -223,10 +222,6 @@ class ESPnetContextualASRModel(ESPnetASRModel):
                 ga_kl_input  = torch.log(enc_kl_attn)
                 ga_kl_target = contexts['label_kl'] 
                 loss_ga_kl   = self.aux_kl_ga_loss(ga_kl_input, ga_kl_target)
-                # logging.info(f'aux kl attention map:\n{enc_kl_attn}')
-                # logging.info(f'aux kl target:\n{ga_kl_target}')
-                # logging.info(f'aux kl attention map shape:\n{enc_kl_attn.shape}')
-                # logging.info(f'aux kl target shape:\n{ga_kl_target.shape}')
                 # Collect CTC branch stats
                 stats["loss_ga_kl"] = loss_ga_kl.detach()
 
@@ -337,7 +332,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             # 3. CTC-Att loss definition
             if self.ctc_weight == 0.0:
                 if loss_ga is not None:
-                    loss = self.ga_weight * ga_ctc + (1 - self.ga_weight) * loss_att
+                    loss = self.ga_weight * loss_ga + (1 - self.ga_weight) * loss_att
                 else:
                     loss = loss_att
             elif self.ctc_weight == 1.0:

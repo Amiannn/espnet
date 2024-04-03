@@ -10,7 +10,7 @@ valid_set="dev"
 test_sets="test_clean"
 
 asr_config=conf/exp/contextual_adapter/train_whisper_base_en_contextual_xphone_adapter_encoder_gactc_tem.yaml
-inference_config=conf/exp/decode_contextual_whisper_xphone_greedy.yaml
+inference_config=conf/exp/decode_contextual_whisper_xphone_greedy_small.yaml
 asr_tag=finetune_freeze_whisper_base_bpe600_cb_xphone_gactc_tem
 
 pretrained_model=/share/nas165/amian/experiments/speech/espnet/egs2/librispeech_100/asr1/exp/asr_train_whisper_base_en_raw_en_bpe600_sp_suffix/valid.acc.ave_10best.pth
@@ -39,7 +39,7 @@ CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --lm_train_text "data/${train_set}/text" \
     --contextualization true \
     --pretrained_model "${pretrained_model},${pretrained_model}:decoder.decoders.token_embedding:contextualizer.encoder.embed" \
-    --inference_asr_model 116epoch.pth \
+    --inference_asr_model valid.loss.ave_10best.pth \
     --ignore_init_mismatch true \
     --asr_tag ${asr_tag} \
     "$@"

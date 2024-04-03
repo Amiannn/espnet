@@ -20,7 +20,7 @@ class AttentionBasedAdapter(torch.nn.Module):
         attention_heads: int,
         attndim: int,
         proj_hidden_size: int,
-        droup_out: float = 0.1,
+        drop_out: float = 0.1,
         use_value_norm: bool = False,
         atten_temperature: float = 1.0,
         **kwargs
@@ -29,7 +29,7 @@ class AttentionBasedAdapter(torch.nn.Module):
         self.attndim         = attndim
         self.attention_heads = attention_heads
         self.attention_layer = CustomMultiHeadedAttention(
-            attention_heads, attndim, droup_out
+            attention_heads, attndim, drop_out
         )
         self.temperature    = atten_temperature
         self.proj           = torch.nn.Linear(self.attndim, proj_hidden_size)
@@ -91,7 +91,7 @@ class ConvAttentionAdapter(AttentionBasedAdapter):
         attention_heads: int,
         attndim: int,
         proj_hidden_size: int,
-        droup_out: float = 0.1,
+        drop_out: float = 0.1,
         use_value_norm: bool = False,
         atten_temperature: float = 1.0,
         **kwargs
@@ -100,19 +100,30 @@ class ConvAttentionAdapter(AttentionBasedAdapter):
             attention_heads=attention_heads,
             attndim=attndim,
             proj_hidden_size=proj_hidden_size,
-            droup_out=droup_out,
+            drop_out=drop_out,
             use_value_norm=use_value_norm,
             atten_temperature=atten_temperature,
             **kwargs,
         )
-        self.query_conv = torch.nn.Conv1d(
+        downproj_rate = 2
+        self.conv_1x1 = torch.nn.Conv1d(
             in_channels=attndim,
+            out_channels=(attndim // downproj_rate), 
+            kernel_size=1, 
+        )
+        self.conv = torch.nn.Conv1d(
+            in_channels=(attndim // downproj_rate),
             out_channels=attndim, 
             kernel_size=3, 
-            stride=2, 
+            stride=1, 
             # stride=1, 
             padding=1
         )
+        
+    def forward_conv(self, query):
+        query = self.conv_1x1(query.transpose(1, 2))
+        query = self.conv(query)
+        return query.transpose(1, 2)
 
     def forward(
         self,
@@ -123,9 +134,7 @@ class ConvAttentionAdapter(AttentionBasedAdapter):
         return_atten=False,
     ):  
         # extract local information
-        query_embed = self.query_conv(
-            model_embed.transpose(1, 2)
-        ).transpose(1, 2)
+        query_embed = self.forward_conv(model_embed)
 
         logging.info(f'model_embed shape: {model_embed.shape}')
         logging.info(f'query_embed shape: {query_embed.shape}')
@@ -145,7 +154,7 @@ class ColbertAdapter(AttentionBasedAdapter):
         attention_heads: int,
         attndim: int,
         proj_hidden_size: int,
-        droup_out: float = 0.1,
+        drop_out: float = 0.1,
         atten_temperature: float = 1.0,
         **kwargs
     ):  
@@ -153,13 +162,13 @@ class ColbertAdapter(AttentionBasedAdapter):
             attention_heads=attention_heads,
             attndim=attndim,
             proj_hidden_size=proj_hidden_size,
-            droup_out=droup_out,
+            drop_out=drop_out,
             use_value_norm=True,
             atten_temperature=atten_temperature,
             **kwargs,
         )
         self.attention_layer = ColbertAttention(
-            attention_heads, attndim, droup_out
+            attention_heads, attndim, drop_out
         )
 
     def forward(
@@ -206,13 +215,13 @@ if __name__ == '__main__':
     attention_heads  = 1 
     attndim          = 4
     proj_hidden_size = 3
-    droup_out        = 0.1
+    drop_out        = 0.1
 
     adapter = ColbertAdapter(
         attention_heads=attention_heads,
         attndim=attndim,
         proj_hidden_size=proj_hidden_size,
-        droup_out=droup_out,
+        drop_out=drop_out,
     )
 
     B, T, D = 2, 5, attndim

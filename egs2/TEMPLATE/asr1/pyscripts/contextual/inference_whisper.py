@@ -69,13 +69,13 @@ def visualize(
         uttid=uttid,
     )
 
-    pred_ctc = [token_list[p] if p != 0 else ' ' for p in pred_ctc]
-    plot_tsne(
-        enc_out.squeeze(0),
-        pred_ctc,
-        debug_path,
-        uttid=uttid,
-    )
+    # pred_ctc = [token_list[p] if p != 0 else ' ' for p in pred_ctc]
+    # plot_tsne(
+    #     enc_out.squeeze(0),
+    #     pred_ctc,
+    #     debug_path,
+    #     uttid=uttid,
+    # )
 
 @torch.no_grad()
 def forward(
@@ -102,7 +102,7 @@ def forward(
             contextualizer=model.contextualizer,
             model_embed=encoder_out,
             context_idxs=contexts['blist'],
-            context_xphone_idxs=contexts['blist_xphone'] if 'blist_xphone' in contexts else None,
+            context_xphone_idxs=contexts['blist_xphone_mean'],
             ilens=contexts['ilens'],
             return_atten=True
         )
@@ -141,7 +141,7 @@ def forward(
             contextualizer=model.contextualizer,
             model_embed=decoder_hs,
             context_idxs=contexts['blist'],
-            context_xphone_idxs=contexts['blist_xphone'] if 'blist_xphone' in contexts else None,
+            context_xphone_idxs=contexts['blist_xphone_mean'],
             ilens=contexts['ilens'],
             return_atten=True,
         )
@@ -158,8 +158,8 @@ if __name__ == "__main__":
     # token_path = "./data/en_token_list/whisper_en/tokens.txt"
     spm_path   = "./data/en_token_list/bpe_unigram600/bpe.model"
     token_path = "./data/en_token_list/bpe_unigram600/tokens.txt"
-    model_conf = "./conf/exp/contextual_adapter/train_whisper_tiny_en_encoder_contextual_adapter_encoder_gactc_tem.yaml"
-    model_path = "./exp/asr_finetune_freeze_whisper_tiny_encoder_bpe600_cb_gactc_big_tem_suffix/30epoch.pth"
+    model_conf = "./conf/exp/contextual_adapter/train_whisper_base_en_contextual_conv_xphone_adapter_encoder_gactc_bigtem.yaml"
+    model_path = "./exp/asr_finetune_freeze_whisper_base_bpe600_cb_conv_xphone_gactc_bigtem_suffix/8epoch.pth"
     stats_path = "./exp/asr_stats_raw_en_bpe600_sp_suffix/train/feats_lengths_stats.npz"
     # stats_path = None
     
@@ -183,12 +183,13 @@ if __name__ == "__main__":
     contextual_conf = {
         'contextual_type': 'rareword',
         'blist_path': rare_path,
+        'blist_xphone_path': './local/contextual/ssl_features/all_rare_words.xphone.seq.pt',
         'blist_max': 20,
-        'blist_droup_out': 0.0,
+        'blist_drop_out': 0.0,
         'warmup_epoch': 0,
         'structure_type': None,
         'sampling_method': None,
-        'use_oov': False,
+        'use_oov': True,
     }
     
     model, loader = load_espnet_model(

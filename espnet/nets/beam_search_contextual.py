@@ -66,7 +66,11 @@ class ContextualBeamSearch(BeamSearch):
         self.contextualizer      = contextualizer
         self.contextualizer_conf = contextualizer_conf
 
-        self.decoder = self.scorers['decoder']
+        self.use_ctc_only_deocding = ('decoder' not in self.scorers)
+        if not self.use_ctc_only_deocding:
+            self.decoder = self.scorers['decoder']
+        else:
+            self.return_hs = False
         logging.info(f'Doing contextual asr beam search class!')
 
     def score_full(
@@ -162,7 +166,7 @@ class ContextualBeamSearch(BeamSearch):
             minlen = int(minlenratio * inp.size(0))
         
         # May cause some problem
-        if 'decoder' in self.scorers and isinstance(self.scorers['decoder'], OpenAIWhisperDecoder):
+        if not self.use_ctc_only_deocding and isinstance(self.scorers['decoder'], OpenAIWhisperDecoder):
             pos_len = self.scorers['decoder'].decoders.positional_embedding.shape[0]
             if maxlen > pos_len:
                 # logging.info(f'original maxlen: {maxlen}, after: {pos_len}')
@@ -180,7 +184,7 @@ class ContextualBeamSearch(BeamSearch):
                 contextualizer=self.contextualizer,
                 model_embed=x,
                 context_idxs=contexts['blist'],
-                context_xphone_idxs=contexts['blist_xphone'] if 'blist_xphone' in contexts else None,
+                context_xphone_idxs=contexts['blist_xphone_mean'],
                 ilens=contexts['ilens']
             )
             x = x + bias_vec

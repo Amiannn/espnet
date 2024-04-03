@@ -32,7 +32,7 @@ class RarewordProcessor():
         self, 
         blist_path, 
         blist_xphonebert_path=None, 
-        droup_out=0.1,
+        drop_out=0.1,
         blist_max=500,
         for_transducer=True,
         pad_value=-1,
@@ -99,12 +99,14 @@ class RarewordProcessor():
 
         if blist_xphonebert_path is not None:
             logging.info(f'Loading XPhoneBERT features...')
+            print(f'Loading XPhoneBERT features...')
             datas = torch.load(blist_xphonebert_path)
             self.blist_xphone         = datas['features']
             self.blist_xphone_indexis = datas['indexis']
             logging.info(f'xphone: {self.blist_xphone.shape}')
+            print(f'xphone: {self.blist_xphone.shape}')
 
-        self.droup_out      = droup_out
+        self.drop_out      = drop_out
         self.blist_max      = blist_max
         self.pad_value      = pad_value
         self.for_transducer = for_transducer
@@ -140,15 +142,15 @@ class RarewordProcessor():
         return blist, blist_words
 
     def build_batch_contextual(self, uttblist, sampling_method=None):
-        drouped_uttblist = [b for b in uttblist if random.random() > self.droup_out]
-        # drouped_uttblist = drouped_uttblist[:self.blist_max]
+        droped_uttblist = [b for b in uttblist if random.random() > self.drop_out]
+        # droped_uttblist = droped_uttblist[:self.blist_max]
         globalblist      = []
-        if self.blist_max > len(drouped_uttblist):
+        if self.blist_max > len(droped_uttblist):
             globalblist = random.choices(
                 self.blist_idxs, 
-                k = (self.blist_max - len(drouped_uttblist))
+                k = (self.blist_max - len(droped_uttblist))
             )
-        blist = drouped_uttblist + globalblist
+        blist = droped_uttblist + globalblist
         return blist
 
     def build_batch_trie(self, elements):
@@ -238,11 +240,16 @@ class RarewordProcessor():
             tree           = self.build_batch_trie(elements)
             output['trie'] = tree
         # ssl features
+        element_xphone_mean_tensors = None
         if self.blist_xphonebert_path is not None:
-            element_xphone_tensors = torch.stack(
-                [self.blist_xphone[idx] for idx in element_idxs]
-            )
-            output['blist_xphone'] = element_xphone_tensors
+            # mean pooling
+            element_xphone_idx = [self.blist_xphone_indexis[idx] for idx in element_idxs]
+            element_xphone_mean_tensors = torch.stack([
+                torch.mean(
+                    self.blist_xphone[start:end, :], dim=0
+                ) for start, end in element_xphone_idx
+            ])
+        output['blist_xphone_mean'] = element_xphone_mean_tensors
         # for attention guided auxiliary loss
         if 'text' in batch_data[0]:
             texts        = [data['text'] for data in batch_data]

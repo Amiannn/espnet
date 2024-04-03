@@ -560,7 +560,7 @@ class ASRTask(AbsTask):
             contextual_processor = contextual_class(
                 blist_path=args.contextual_conf.get("blist_path", None), 
                 blist_xphonebert_path=args.contextual_conf.get("blist_xphone_path", None),
-                droup_out=args.contextual_conf.get("blist_droup_out", 0),
+                drop_out=args.contextual_conf.get("blist_drop_out", 0),
                 blist_max=args.contextual_conf.get("blist_max", 500),
                 pad_value=-1,
                 oov_value=len(args.token_list),

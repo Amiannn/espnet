@@ -50,7 +50,10 @@ def load_espnet_model(
     args      = argparse.Namespace(**conf)
     # build model
     model = ASRTask.build_model(args)
-    model.load_state_dict(torch.load(model_path), strict=False)
+    model.load_state_dict(
+        torch.load(model_path, map_location=torch.device('cpu')), 
+        strict=False, 
+    )
     model.eval()
     # build loader
     collate_fn           = ASRTask.build_collate_fn(args, False)
