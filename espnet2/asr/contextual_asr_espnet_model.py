@@ -24,6 +24,7 @@ from espnet.nets.pytorch_backend.transformer.add_sos_eos import add_sos_eos
 from espnet.nets.pytorch_backend.transformer.label_smoothing_loss import (  # noqa: H301
     LabelSmoothingLoss,
 )
+from espnet.nets.pytorch_backend.nets_utils import make_pad_mask
 
 from espnet2.asr.espnet_model import ESPnetASRModel
 from espnet2.asr.contextualizer.func.contextual_adapter_func import forward_contextual_adapter
@@ -58,10 +59,6 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         contextualizer: Optional[torch.nn.Module],
         contextualizer_conf: dict,
         aux_ctc: dict = None,
-        aux_ctc_ga: bool = False,
-        aux_kl_ga : bool = False,
-        ctc_ga_weight: float = 0.5,
-        kl_ga_weight: float = 0.5,
         ctc_weight: float = 0.5,
         interctc_weight: float = 0.0,
         ignore_id: int = -1,
@@ -79,9 +76,9 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         sym_eos: str = "<sos/eos>",
         extract_feats_in_collect_stats: bool = True,
         lang_token_id: int = -1,
+        **kwargs
     ):
         assert check_argument_types()
-
         super().__init__(
             vocab_size=vocab_size,
             token_list=token_list,
@@ -94,6 +91,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             decoder=decoder,
             ctc=ctc,
             joint_network=joint_network,
+            aux_ctc=aux_ctc,
             ctc_weight=ctc_weight,
             interctc_weight=interctc_weight,
             ignore_id=ignore_id,
@@ -103,30 +101,40 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             report_wer=report_wer,
             sym_space=sym_space,
             sym_blank=sym_blank,
+            transducer_multi_blank_durations=transducer_multi_blank_durations,
+            transducer_multi_blank_sigma=transducer_multi_blank_sigma,
+            sym_sos=sym_sos,
+            sym_eos=sym_eos,
             extract_feats_in_collect_stats=extract_feats_in_collect_stats,
+            lang_token_id=lang_token_id,
+            **kwargs
         )
+        self.epoch               = 1
         self.contextualizer      = contextualizer
         self.contextualizer_conf = contextualizer_conf
-        self.epoch               = 0
+        self.warmup_epoch        = contextualizer_conf['warmup_epoch'] if 'warmup_epoch' in contextualizer_conf else 0
 
-        if self.contextualizer is not None:
-            self.use_contextual_methods = True
-        else:
-            self.use_contextual_methods = False
+        # contextualizer loss
+        self.contextualizer_weight = self.contextualizer_conf[
+            'contextualizer_weight'
+        ] if 'contextualizer_weight' in self.contextualizer_conf else 0.0
+        self.contextualizer_losses = self.contextualizer_conf[
+            'contextualizer_losses'
+        ] if 'contextualizer_losses' in self.contextualizer_conf else {}
         
-        # guild attention ctc loss
-        self.aux_ctc_ga   = aux_ctc_ga
-        self.ga_weight    = ctc_ga_weight
-        self.aux_kl_ga    = aux_kl_ga
-        self.kl_ga_weight = kl_ga_weight
-        if self.aux_ctc_ga:
-            self.aux_ctc_ga_loss = torch.nn.CTCLoss(
+        if 'loss_contextualizer_ga_ctc' in self.contextualizer_losses:
+            self.contextualizer_ctc_ga_loss = torch.nn.CTCLoss(
                 reduction="mean", 
                 zero_infinity=True, 
             )
-        if self.aux_kl_ga:
-            self.aux_kl_ga_loss = torch.nn.KLDivLoss(
-                reduction="batchmean",
+        if 'loss_contextualizer_ga_ctc_lp' in self.contextualizer_losses:
+            self.contextualizer_ctc_ga_loss = torch.nn.CTCLoss(
+                reduction="mean", 
+                zero_infinity=True, 
+            )
+        if 'loss_contextualizer_gate_bce' in self.contextualizer_losses:
+            self.contextualizer_gate_bce_loss = torch.nn.L1Loss(
+                reduction="none",
             )
 
     def forward(
@@ -172,8 +180,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         loss_att, acc_att, cer_att, wer_att = None, None, None, None
         loss_ctc, cer_ctc = None, None
         loss_transducer, cer_transducer, wer_transducer = None, None, None
-        loss_ga_ctc = None
-        loss_ga_kl = None
+        loss_contextualizer = None
         stats = dict()
 
         # c1. Encoder contextualization
@@ -187,56 +194,28 @@ class ESPnetContextualASRModel(ESPnetASRModel):
                 ilens=contexts['ilens'],
                 return_atten=True
             )
-            if not self.use_transducer_decoder and (encoder_out.shape[1] == enc_bias_vec.shape[1]):
-                encoder_out = encoder_out + enc_bias_vec
-            else:
-                logging.info(f'Warning: the shape of enc_out: {encoder_out.shape} is different from bias_vec: {enc_bias_vec.shape} !')
-
-            # use guilded attention ctc loss
-            if self.aux_ctc_ga:
-                enc_ctc_attn  = torch.mean(enc_attn, dim=1)
-                ga_ctc_input  = torch.log(enc_ctc_attn).transpose(0, 1)
-                ga_ctc_target = contexts['label_ctc']
-                ga_ctc_input_lengths  = encoder_out_lens
-                ga_ctc_target_lengths = contexts['label_ctc_ilens']
-                
-                # TODO: When kernel or stride size is different, this may cause some problems 
-                if enc_ctc_attn.shape[1] < encoder_out.shape[1]:
-                    ga_ctc_input_lengths = (
-                        1 + (encoder_out_lens - 3 + 2 * 1) // 2
-                    )
-                loss_ga_ctc = self.aux_ctc_ga_loss(
-                    ga_ctc_input, 
-                    ga_ctc_target, 
-                    ga_ctc_input_lengths, 
-                    ga_ctc_target_lengths
+            if (self.epoch >= self.warmup_epoch) and (not self.use_transducer_decoder):
+                if encoder_out.shape[1] == enc_bias_vec.shape[1]:
+                    encoder_out = encoder_out + enc_bias_vec
+                else:
+                    logging.info(f'Warning: the shape of enc_out: {encoder_out.shape} is different from bias_vec: {enc_bias_vec.shape} !')
+            stats["contextualizer_warmup"] = (self.epoch >= self.warmup_epoch)
+            # use adapter aux loss
+            if len(self.contextualizer_losses) > 0:
+                loss_contextualizer, losses_contextualizers = self._calc_contextualizer_loss(
+                    contexts,
+                    enc_attn,
+                    encoder_out,
+                    encoder_out_lens,
+                    self.contextualizer.gate_prob if hasattr(self.contextualizer, 'gate_prob') else None,
                 )
-                # Collect CTC branch stats
-                stats["loss_ga_ctc"] = loss_ga_ctc.detach()
+                for loss_name in losses_contextualizers:
+                    stats[loss_name] = losses_contextualizers[loss_name].detach()
 
-            if self.aux_kl_ga:
-                # batch, atten_heand, time, rarewords
-                # frist mean atten_heand direction
-                # then mean time direction
-                enc_kl_attn  = torch.mean(torch.mean(enc_attn, dim=1), dim=1)
-                ga_kl_input  = torch.log(enc_kl_attn)
-                ga_kl_target = contexts['label_kl'] 
-                loss_ga_kl   = self.aux_kl_ga_loss(ga_kl_input, ga_kl_target)
-                # Collect CTC branch stats
-                stats["loss_ga_kl"] = loss_ga_kl.detach()
-
-            # combine the aux loss
-            loss_ga = None
-            if (loss_ga_ctc is not None) and (loss_ga_kl is not None):
-                loss_ga = (1 - self.kl_ga_weight) * loss_ga_ctc + self.kl_ga_weight * loss_ga_kl
-            elif loss_ga_ctc is not None:
-                loss_ga = loss_ga_ctc
-            elif loss_ga_kl is not None:
-                loss_ga = loss_ga_kl
-            # Collect Guilded Attention Loss stats
-            stats["loss_ga"] = (
-                loss_ga.detach() if loss_ga is not None else None
-            )
+                # Collect total adapter aux losses
+                stats["loss_contextualizer"] = (
+                    loss_contextualizer.detach() if loss_contextualizer is not None else None
+                )
                 
         # 1. CTC branch
         if self.ctc_weight != 0.0:
@@ -308,10 +287,10 @@ class ESPnetContextualASRModel(ESPnetASRModel):
                 enc_bias_vec
             )
 
-            if loss_ctc is not None and loss_ga is not None:
-                loss = loss_transducer + (self.ctc_weight * loss_ctc) + (self.ga_weight * loss_ga)
-            elif loss_ga is not None:
-                loss = loss_transducer + (self.ga_weight * loss_ga)
+            if loss_ctc is not None and loss_contextualizer is not None:
+                loss = loss_transducer + (self.ctc_weight * loss_ctc) + (self.contextualizer_weight * loss_contextualizer)
+            elif loss_contextualizer is not None:
+                loss = loss_transducer + (self.contextualizer_weight * loss_contextualizer)
             else:
                 loss = loss_transducer
 
@@ -326,23 +305,23 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             # 2b. Attention decoder branch
             if self.ctc_weight != 1.0:
                 loss_att, acc_att, cer_att, wer_att = self._calc_att_loss(
-                    encoder_out, encoder_out_lens, text, text_lengths, contexts
+                    encoder_out, encoder_out_lens, text, text_lengths
                 )
 
             # 3. CTC-Att loss definition
             if self.ctc_weight == 0.0:
-                if loss_ga is not None:
-                    loss = self.ga_weight * loss_ga + (1 - self.ga_weight) * loss_att
+                if loss_contextualizer is not None:
+                    loss = self.contextualizer_weight * loss_contextualizer + (1 - self.contextualizer_weight) * loss_att
                 else:
                     loss = loss_att
             elif self.ctc_weight == 1.0:
-                if loss_ga is not None:
-                    loss = self.ga_weight * loss_ga + (1 - self.ga_weight) * loss_ctc
+                if loss_contextualizer is not None:
+                    loss = self.contextualizer_weight * loss_contextualizer + (1 - self.contextualizer_weight) * loss_ctc
                 else:
                     loss = loss_ctc
             else:
-                if loss_ga is not None:
-                    loss = self.ctc_weight * loss_ctc + self.ga_weight * loss_ga + (1 - self.ctc_weight - self.ga_weight) * loss_att
+                if loss_contextualizer is not None:
+                    loss = self.ctc_weight * loss_ctc + self.contextualizer_weight * loss_contextualizer + (1 - self.ctc_weight - self.contextualizer_weight) * loss_att
                 else:
                     loss = self.ctc_weight * loss_ctc + (1 - self.ctc_weight) * loss_att
                     
@@ -358,66 +337,6 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         # force_gatherable: to-device and to-tensor if scalar for DataParallel
         loss, stats, weight = force_gatherable((loss, stats, batch_size), loss.device)
         return loss, stats, weight
-
-    def _calc_att_loss(
-        self,
-        encoder_out: torch.Tensor,
-        encoder_out_lens: torch.Tensor,
-        ys_pad: torch.Tensor,
-        ys_pad_lens: torch.Tensor,
-        contexts: dict,
-    ):
-        if hasattr(self, "lang_token_id") and self.lang_token_id is not None:
-            ys_pad = torch.cat(
-                [
-                    self.lang_token_id.repeat(ys_pad.size(0), 1).to(ys_pad.device),
-                    ys_pad,
-                ],
-                dim=1,
-            )
-            ys_pad_lens += 1
-
-        ys_in_pad, ys_out_pad = add_sos_eos(ys_pad, self.sos, self.eos, self.ignore_id)
-        ys_in_lens = ys_pad_lens + 1
-
-        # 1. Forward decoder
-        outputs = self.decoder(
-            encoder_out, encoder_out_lens, ys_in_pad, ys_in_lens, return_hs=True
-        )
-        decoder_hs = outputs[0][1]
-        
-        # c1. Decoder contextualization
-        if self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_ADAPTER_DECODER:
-            logging.info(f'Decoder contextualize!')
-            dec_bias_vec, dec_attn = forward_contextual_adapter(
-                decoder=self.decoder,
-                contextualizer=self.contextualizer,
-                model_embed=decoder_hs,
-                context_idxs=contexts['blist'],
-                context_xphone_idxs=contexts['blist_xphone'] if 'blist_xphone' in contexts else None,
-                ilens=contexts['ilens'],
-                return_atten=True
-            )
-            decoder_hs = decoder_hs + dec_bias_vec
-
-        decoder_out = self.decoder.output_layer(decoder_hs)
-
-        # 2. Compute attention loss
-        loss_att = self.criterion_att(decoder_out, ys_out_pad)
-        acc_att = th_accuracy(
-            decoder_out.view(-1, self.vocab_size),
-            ys_out_pad,
-            ignore_label=self.ignore_id,
-        )
-
-        # Compute cer/wer using attention-decoder
-        if self.training or self.error_calculator is None:
-            cer_att, wer_att = None, None
-        else:
-            ys_hat = decoder_out.argmax(dim=-1)
-            cer_att, wer_att = self.error_calculator(ys_hat.cpu(), ys_pad.cpu())
-
-        return loss_att, acc_att, cer_att, wer_att
 
     def _calc_transducer_loss(
         self,
@@ -492,6 +411,72 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             )
 
         return loss_transducer, cer_transducer, wer_transducer
+
+    def _calc_contextualizer_loss(
+        self, 
+        contexts,
+        enc_attn,
+        encoder_out,
+        encoder_out_lens,
+        gate_value=None,
+    ):
+        # use guilded attention ctc loss
+        losses_contextualizers = {}
+        if 'loss_contextualizer_ga_ctc' in self.contextualizer_losses:
+            enc_ctc_attn  = torch.mean(enc_attn, dim=1)
+            ga_ctc_input  = torch.log(enc_ctc_attn).transpose(0, 1)
+            ga_ctc_target = contexts['label_ctc']
+            ga_ctc_input_lengths  = encoder_out_lens
+            ga_ctc_target_lengths = contexts['label_ctc_ilens']
+            loss_ga_ctc = self.contextualizer_ctc_ga_loss(
+                ga_ctc_input, 
+                ga_ctc_target, 
+                ga_ctc_input_lengths, 
+                ga_ctc_target_lengths
+            )
+            losses_contextualizers['loss_contextualizer_ga_ctc'] = loss_ga_ctc
+        # ctc with label prior
+        if 'loss_contextualizer_ga_ctc_lp' in self.contextualizer_losses:
+            alpha     = 0.3
+            lp_warmup = 1
+            enc_ctc_attn  = torch.mean(enc_attn, dim=1)
+            ga_ctc_input  = torch.log(enc_ctc_attn).transpose(0, 1)
+            ga_ctc_target = contexts['label_ctc']
+            ga_ctc_input_lengths  = encoder_out_lens
+            ga_ctc_target_lengths = contexts['label_ctc_ilens']
+            
+            # warm-up (1 epoch)
+            if self.epoch > lp_warmup:
+                label_prior     = torch.mean(enc_ctc_attn, dim=1)
+                label_prior_log = alpha * torch.log(label_prior)
+                ga_ctc_input    = ga_ctc_input - label_prior_log
+
+            loss_ga_ctc = self.contextualizer_ctc_ga_loss(
+                ga_ctc_input, 
+                ga_ctc_target, 
+                ga_ctc_input_lengths, 
+                ga_ctc_target_lengths
+            )
+            losses_contextualizers['loss_contextualizer_ga_ctc_lp'] = loss_ga_ctc
+        if 'loss_contextualizer_gate_bce' in self.contextualizer_losses:
+            B, T, _     = gate_value.shape
+            gate_value  = gate_value.view(B, T)
+            gate_target = torch.zeros(B, T).float().to(gate_value.device)
+            loss_gate_bce = self.contextualizer_gate_bce_loss(gate_value, gate_target)
+            # mask out pad
+            loss_gate_bce.masked_fill_(
+                make_pad_mask(encoder_out_lens, loss_gate_bce, 1), 
+                0.0
+            )
+            loss_gate_bce = (loss_gate_bce / encoder_out_lens.unsqueeze(-1)).sum() / B
+            losses_contextualizers['loss_contextualizer_gate_bce'] = loss_gate_bce
+        # combine the adapter aux loss
+        loss_contextualizer = 0.0
+        assert sum(list(self.contextualizer_losses.values())) == 1.0
+        for loss_name in self.contextualizer_losses:
+            loss_weight = self.contextualizer_losses[loss_name]
+            loss_contextualizer += loss_weight * losses_contextualizers[loss_name]
+        return loss_contextualizer, losses_contextualizers
 
 if __name__ == '__main__':
     # test kl ga loss

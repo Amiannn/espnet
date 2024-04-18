@@ -180,6 +180,60 @@ class ContextEncoderXPhoneBiLSTM(ContextEncoderBiLSTM):
         merged_context_embed = torch.cat([oov_embed, x_embed], dim=0)
         return merged_context_embed, context_embed_mean, ilens
 
+class ContextEncoderXPhone(ContextEncoderBiLSTM):
+    def __init__(
+        self,
+        vocab_size        : int,
+        hidden_size       : int,
+        output_size       : int,
+        drop_out         : float = 0.0,
+        num_blocks        : int = 1,
+        padding_idx       : int = -1,
+        xphone_hidden_size: int = 768,
+        **kwargs
+    ):
+        super().__init__(
+            vocab_size=vocab_size,
+            hidden_size=hidden_size,
+            output_size=output_size,
+            drop_out=drop_out,
+            num_blocks=num_blocks,
+            padding_idx=padding_idx,
+            **kwargs,
+        )
+        self.vocab_size  = vocab_size
+        self.padding_idx = padding_idx
+        self.embed       = torch.nn.Embedding(
+            vocab_size, 
+            hidden_size, 
+        )
+        self.oov_embed = torch.nn.Linear(hidden_size, 1, bias=False)
+        self.drop_out  = torch.nn.Dropout(p=drop_out)
+        self.norm_x2   = LayerNorm(xphone_hidden_size)
+
+        self.proj = torch.nn.Linear(
+            xphone_hidden_size, 
+            hidden_size
+        )
+
+    def forward(
+        self,
+        context_embed: torch.Tensor,
+        context_xphone_embed: torch.Tensor,
+        ilens: torch.Tensor,
+    ):
+        context_embed_mean, context_embed, ilens = super().forward(
+            context_embed=context_embed,
+            ilens=ilens,
+        )
+        oov_embed = context_embed_mean[:1, :]
+        x2_embed  = context_xphone_embed
+        # layer normalize and dropout
+        x2_embed = self.norm_x2(self.drop_out(x2_embed))
+        x_embed  = self.drop_out(self.proj(x2_embed)).squeeze(0)
+        merged_context_embed = torch.cat([oov_embed, x_embed], dim=0)
+        return merged_context_embed, context_embed_mean, ilens
+
 if __name__ == '__main__':
 
     encoder = ContextEncoderBiLSTM(

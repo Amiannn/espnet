@@ -706,6 +706,7 @@ class ASRTask(AbsTask):
             model_class = model_choices.get_class(args.model)
         except AttributeError:
             model_class = model_choices.get_class("espnet")
+        contextualizer_conf = getattr(args, "contextualizer_conf", {})
         model = model_class(
             vocab_size=vocab_size,
             frontend=frontend,
@@ -716,7 +717,7 @@ class ASRTask(AbsTask):
             postencoder=postencoder,
             decoder=decoder,
             contextualizer=contextualizer,
-            contextualizer_conf=getattr(args, "contextualizer_conf", {}),
+            contextualizer_conf=contextualizer_conf,
             ctc=ctc,
             joint_network=joint_network,
             token_list=token_list,
@@ -729,7 +730,7 @@ class ASRTask(AbsTask):
             initialize(model, args.init)
         
         # ?. contextual processor methods
-        if getattr(args, "contextualizer_conf", {}) != {}:
+        if getattr(args, "contextual_conf", {}) != {}:
             cls.contextual_processor = cls.build_contextual_processor(
                 args,
                 model

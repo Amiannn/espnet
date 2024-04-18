@@ -80,6 +80,7 @@ class RarewordProcessor():
                 unk_symbol=unk_symbol,
             )
         else:
+            print(f'bpemodel: {bpemodel}')
             self.token_id_converter = OpenAIWhisperTokenIDConverter(
                 model_type=bpemodel,
                 added_tokens_txt=non_linguistic_symbols,
@@ -134,7 +135,6 @@ class RarewordProcessor():
                 if bword == '':
                     continue
                 blist_words.append(bword)
-                
                 bword     = self.text_cleaner(bword)
                 tokens    = self.tokenizer.text2tokens(bword)
                 text_ints = self.token_id_converter_fn(tokens)
@@ -151,25 +151,35 @@ class RarewordProcessor():
                 k = (self.blist_max - len(droped_uttblist))
             )
         blist = droped_uttblist + globalblist
+        # remove empty bword
+        blist = [b for b in blist if len(self.blist[b]) > 0]
         return blist
 
     def build_batch_trie(self, elements):
         tree, cache = self.trie_processor.build_trie(elements)
         return tree
 
-    def build_auxiliary_loss_label(self, texts, textsegments, elements, pad_value):
-        batch_size       = len(texts)
+    def build_auxiliary_loss_label(
+        self, 
+        # texts, 
+        # textsegments, 
+        uttblist_batch,
+        # elements, 
+        element_idxs, 
+        pad_value,
+        use_oov=True
+    ):
+        batch_size       = len(uttblist_batch)
         rareword_labels  = []
         # build ctc label
         for i in range(batch_size):
-            word_resolve   = []
-            rareword_label = []
-            for start, end in textsegments[i]:
-                word  = texts[i][start:end].tolist()
-                if word in elements:
-                    rareword_label.append(elements.index(word))
-                word_resolve.append(word)
+            rareword_label = [
+                (
+                    element_idxs.index(b_idx) + (1 if use_oov else 0)
+                ) for b_idx in uttblist_batch[i] if b_idx in element_idxs
+            ]
             rareword_labels.append(rareword_label)
+
         # to tensor
         label_ctc_tensors = pad_sequence(
             [torch.tensor(b) for b in rareword_labels], 
@@ -181,24 +191,26 @@ class RarewordProcessor():
         ).sum(dim=-1)
 
         # build kl label
-        C_batch     = len(elements)
+        C_batch     = len(element_idxs)
         C_batch_pad = C_batch + 1
         C_utt       = label_ctc_tensors.shape[1]
 
-        label_kl_tensors = torch.zeros(batch_size * C_batch_pad)
-        # select index add
-        source = torch.ones(batch_size * C_utt)
-        steps  = (torch.arange(batch_size) * C_batch_pad).view(batch_size, 1)
-        index  = torch.clone(label_ctc_tensors)
-        # resolve padding
-        index[(index == pad_value)] = C_batch
-        index = (index + steps).view(-1)
-        label_kl_tensors.index_add_(0, index, source)
-        label_kl_tensors = label_kl_tensors.view(batch_size, C_batch_pad)[:, :-1]
+        label_kl_tensors = torch.zeros(batch_size).long()
+        # label_kl_tensors = torch.zeros(batch_size * C_batch_pad)
+        # # select index add
+        # source = torch.ones(batch_size * C_utt)
+        # steps  = (torch.arange(batch_size) * C_batch_pad).view(batch_size, 1)
+        # index  = torch.clone(label_ctc_tensors)
+        # # resolve padding
+        # index[(index == pad_value)] = C_batch
+        # index = (index + steps).view(-1)
+        # label_kl_tensors.index_add_(0, index, source)
+        # label_kl_tensors = label_kl_tensors.view(batch_size, C_batch_pad)[:, :-1]
         # set oov to 1 (TODO: may need to consider balance settings)
-        label_kl_tensors[:, 0] = 1
+        # label_kl_tensors[:, 0] = 1
         # turn labels into a distribution
-        label_kl_dist_tensors       = torch.softmax(label_kl_tensors, dim=1)
+        label_kl_dist_tensors       = label_kl_tensors
+        # label_kl_dist_tensors       = torch.softmax(label_kl_tensors, dim=1)
         label_kl_dist_tensors_ilens = torch.zeros(batch_size) + C_batch
         return (
             label_ctc_tensors, 
@@ -209,14 +221,15 @@ class RarewordProcessor():
 
     def sample(self, batch_data, pad_value=-1):
         uttblists         = [data['uttblist_idx'] for data in batch_data]
-        uttblistsegments  = [data['uttblistsegment'] for data in batch_data]
         batch_size        = len(uttblists)
-        uttblists_resolve = []
         output            = {}
+        
+        uttblists_resolve       = []
+        uttblists_batch_resolve = []
         for i in range(batch_size):
-            for start, end in uttblistsegments[i]:
-                uttblist_idxs = uttblists[i][start:end].tolist()
-                uttblists_resolve.extend(uttblist_idxs)
+            uttblists_resolve.extend(uttblists[i])
+            uttblists_batch_resolve.append(uttblists[i])
+        
         element_idxs = self.build_batch_contextual(uttblists_resolve)
         elements     = [self.blist[idx] for idx in element_idxs]
         # oov
@@ -235,10 +248,6 @@ class RarewordProcessor():
             'blist_idxs': element_idxs,
             'ilens'     : element_tensor_ilens,
         }
-        # structure blist
-        if self.structure_type == "trie":
-            tree           = self.build_batch_trie(elements)
-            output['trie'] = tree
         # ssl features
         element_xphone_mean_tensors = None
         if self.blist_xphonebert_path is not None:
@@ -250,25 +259,29 @@ class RarewordProcessor():
                 ) for start, end in element_xphone_idx
             ])
         output['blist_xphone_mean'] = element_xphone_mean_tensors
+        # structure blist
+        if self.structure_type == "trie":
+            tree           = self.build_batch_trie(elements)
+            output['trie'] = tree
         # for attention guided auxiliary loss
-        if 'text' in batch_data[0]:
-            texts        = [data['text'] for data in batch_data]
-            textsegments = [data['textsegment'] for data in batch_data]
-            (
-                label_ctc_tensors, 
-                label_ctc_tensor_ilens, 
-                label_kl_dist_tensors,
-                label_kl_dist_tensors_ilens,
-            ) = self.build_auxiliary_loss_label(
-                texts, 
-                textsegments, 
-                elements, 
-                pad_value
-            )
-            output['label_ctc']       = label_ctc_tensors
-            output['label_ctc_ilens'] = label_ctc_tensor_ilens
-            output['label_kl']        = label_kl_dist_tensors
-            output['label_kl_ilens']  = label_kl_dist_tensors_ilens
+        (
+            label_ctc_tensors, 
+            label_ctc_tensor_ilens, 
+            label_kl_dist_tensors,
+            label_kl_dist_tensors_ilens,
+        ) = self.build_auxiliary_loss_label(
+            # texts, 
+            # textsegments,
+            uttblists_batch_resolve,
+            # elements, 
+            element_idxs,
+            pad_value,
+            use_oov=self.use_oov,
+        )
+        output['label_ctc']       = label_ctc_tensors
+        output['label_ctc_ilens'] = label_ctc_tensor_ilens
+        output['label_kl']        = label_kl_dist_tensors
+        output['label_kl_ilens']  = label_kl_dist_tensors_ilens
         return output
 
 if __name__ == '__main__':

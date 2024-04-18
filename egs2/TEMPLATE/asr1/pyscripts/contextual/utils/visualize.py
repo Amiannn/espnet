@@ -61,3 +61,13 @@ def plot_tsne(
     output_path = os.path.join(debug_path, f'{uttid}_tsne.pdf')
     plt.savefig(output_path, format="pdf", bbox_inches="tight")
     plt.clf()
+
+def plot_gate(
+    gate_prob,
+    debug_path,
+    uttid='test',
+):
+    plt.plot(gate_prob)
+    output_path = os.path.join(debug_path, f'{uttid}_gate.pdf')
+    plt.savefig(output_path, format="pdf", bbox_inches="tight")
+    plt.clf()

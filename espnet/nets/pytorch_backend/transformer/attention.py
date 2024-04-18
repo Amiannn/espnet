@@ -7,6 +7,7 @@
 """Multi-Head Attention layer definition."""
 
 import math
+import logging
 
 import torch
 from torch import nn
@@ -111,20 +112,20 @@ class MultiHeadedAttention(nn.Module):
         return self.forward_attention(v, scores, mask)
 
 class CustomMultiHeadedAttention(MultiHeadedAttention):
-
-    def forward_attention(self, value, scores, mask):
+    
+    def forward_attention(self, value, scores, mask, temperature=1.0):
         n_batch = value.size(0)
         if mask is not None:
             mask = mask.unsqueeze(1).eq(0)  # (batch, 1, *, time2)
             min_value   = torch.finfo(scores.dtype).min
             scores      = scores.masked_fill(mask, min_value)
             self.scores = scores
-            self.attn   = torch.softmax(scores, dim=-1).masked_fill(
+            self.attn   = torch.softmax(scores / temperature, dim=-1).masked_fill(
                 mask, 0.0
             )  # (batch, head, time1, time2)
         else:
             self.scores = scores
-            self.attn   = torch.softmax(scores, dim=-1)  # (batch, head, time1, time2)
+            self.attn   = torch.softmax(scores / temperature, dim=-1)  # (batch, head, time1, time2)
 
         p_attn = self.dropout(self.attn)
         x = torch.matmul(p_attn, value)  # (batch, head, time1, d_k)
@@ -133,6 +134,11 @@ class CustomMultiHeadedAttention(MultiHeadedAttention):
         )  # (batch, time1, d_model)
 
         return self.linear_out(x)  # (batch, time1, d_model)
+
+    def forward(self, query, key, value, mask, temperature=1.0):
+        q, k, v = self.forward_qkv(query, key, value)
+        scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(self.d_k)
+        return self.forward_attention(v, scores, mask, temperature)
 
 class ColbertAttention(MultiHeadedAttention):
 

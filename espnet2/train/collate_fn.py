@@ -312,8 +312,6 @@ def contextual_collate_fn(
     for d in data:
         if 'uttblist_idx' in d:
             del d['uttblist_idx']
-        if 'uttblistsegment' in d:
-            del d['uttblistsegment']
         if 'textsegment' in d:
             del d['textsegment']
 

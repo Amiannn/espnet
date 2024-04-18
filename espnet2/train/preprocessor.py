@@ -573,156 +573,13 @@ class ContextualPreprocessor(CommonPreprocessor):
         else:
             self.token_id_converter_fn = self.token_id_converter.tokens2ids
 
-    def _speech_process(
-        self, data: Dict[str, Union[str, np.ndarray, Tuple]]
-    ) -> Dict[str, Union[str, np.ndarray, Tuple]]:
-        assert check_argument_types()
-        if self.speech_name in data:
-            if self.train and (self.rirs is not None or self.noises is not None):
-                speech = data[self.speech_name]
-
-                # speech: (Nmic, Time)
-                if speech.ndim == 1:
-                    speech = speech[None, :]
-                else:
-                    speech = speech.T
-                # Calc power on non silence region
-                power = (speech[detect_non_silence(speech)] ** 2).mean()
-
-                # 1. Convolve RIR
-                if self.rirs is not None and self.rir_apply_prob >= np.random.random():
-                    speech, _ = self._convolve_rir(speech, power, self.rirs)
-
-                # 2. Add Noise
-                if (
-                    self.noises is not None
-                    and self.noise_apply_prob >= np.random.random()
-                ):
-                    speech, _ = self._add_noise(
-                        speech,
-                        power,
-                        self.noises,
-                        self.noise_db_low,
-                        self.noise_db_high,
-                    )
-
-                speech = speech.T
-                ma = np.max(np.abs(speech))
-                if ma > 1.0:
-                    speech /= ma
-                data[self.speech_name] = speech
-
-            if self.train and self.data_aug:
-                if self.data_aug_prob > 0 and self.data_aug_prob >= np.random.random():
-                    data[self.speech_name] = self.data_aug(
-                        data[self.speech_name], self.fs
-                    )
-
-            if self.speech_volume_normalize is not None:
-                speech = data[self.speech_name]
-                ma = np.max(np.abs(speech))
-                data[self.speech_name] = speech * self.speech_volume_normalize / ma
-        assert check_return_type(data)
-        return data
-
-    def _text_process(
-        self, data: Dict[str, Union[str, np.ndarray]]
-    ) -> Dict[str, Union[np.ndarray, Tuple]]:
-        if self.text_name in data and self.tokenizer is not None:
-            text = data[self.text_name]
-            if isinstance(text, np.ndarray):
-                return data
-            text = self.text_cleaner(text)
-            word2tokens    = [self.tokenizer.text2tokens(word) for word in text.split(' ')]
-            word2text_ints = [self.token_id_converter.tokens2ids(token) for token in word2tokens]
-            
-            now_index      = 0
-            textsegment    = []
-            for i in range(len(word2text_ints)):
-                end = now_index + len(word2text_ints[i])
-                textsegment.append([now_index, end])
-                now_index = end
-            tokens         = sum(word2tokens, [])
-            text_ints      = sum(word2text_ints, [])
-
-            if len(text_ints) > 500:
-                logging.warning(
-                    "The length of the text output exceeds 500, "
-                    "which may cause OOM on the GPU."
-                    "Please ensure that the data processing is correct and verify it."
-                )
-            if "prompt" in data:
-                actual_token = (
-                    self.token_id_converter.tokenizer.tokenizer.convert_ids_to_tokens(
-                        text_ints
-                    )
-                )
-                if self.use_lang_prompt:
-                    if data["prompt"] == "<|nospeech|>":
-                        actual_token = [data["prompt"]]
-                    else:
-                        actual_token = data["prompt"].split() + actual_token[2:]
-                elif self.use_nlp_prompt:
-                    prompt_tokens = self.tokenizer.text2tokens(data["prompt"])
-                    actual_token = [actual_token[0]] + prompt_tokens + actual_token[2:]
-                else:
-                    if len(data["prompt"].split()) > 1:
-                        actual_token = (
-                            [actual_token[0]]
-                            + data["prompt"].split()
-                            + actual_token[2:]
-                        )
-                    else:
-                        actual_token[1] = data["prompt"]
-                text_ints = (
-                    self.token_id_converter.tokenizer.tokenizer.convert_tokens_to_ids(
-                        actual_token
-                    )
-                )
-            data[self.text_name] = np.array(text_ints, dtype=np.int64)
-            data['textsegment']  = np.array(textsegment, dtype=np.int64)
-
-            if "prompt" in data:
-                whisper_tokenizer = self.token_id_converter.tokenizer.tokenizer
-                if len(data["prompt"].split()) > 1:
-                    data["prompt"] = np.array(
-                        whisper_tokenizer.convert_tokens_to_ids(data["prompt"].split()),
-                        dtype=np.int64,
-                    )
-                else:
-                    data["prompt"] = np.array(
-                        [whisper_tokenizer.convert_tokens_to_ids(data["prompt"])],
-                        dtype=np.int64,
-                    )
-        if self.aux_task_names is not None and self.tokenizer is not None:
-            for name in self.aux_task_names:
-                if name in data:
-                    text = data[name]
-                    text = self.text_cleaner(text)
-                    tokens = self.tokenizer.text2tokens(text)
-                    text_ints = self.token_id_converter.tokens2ids(tokens)
-                    data[name] = np.array(text_ints, dtype=np.int64)
-        assert check_return_type(data)
-        return data
-
     def _uttblist_process(
         self, data: Dict[str, Union[str, np.ndarray, Tuple]]
-    ) -> Dict[str, Union[np.ndarray, Tuple]]:
+    ) -> Dict[str, Union[str, np.ndarray, Tuple]]:
         if self.uttblist_name in data and self.tokenizer is not None:
-            uttblist = data[self.uttblist_name]
-            uttblist2text   = []
-            uttblistsegment = []
-
-            now_index = 0
-            for uttb_idxs in uttblist:
-                if uttb_idxs == '':
-                    continue
-                uttblist2text.append(int(uttb_idxs))
-                end = now_index + len(uttb_idxs)
-                uttblistsegment.append([now_index, end])
-                now_index = end
+            uttblist      = data[self.uttblist_name]
+            uttblist2text = [int(uttb_idxs) for uttb_idxs in uttblist if uttb_idxs != '']
             data[self.uttblist_name] = np.array(uttblist2text, dtype=np.int64)
-            data['uttblistsegment']  = np.array(uttblistsegment, dtype=np.int64)
         assert check_return_type(data)
         return data
         
@@ -730,9 +587,9 @@ class ContextualPreprocessor(CommonPreprocessor):
         self, uid: str, data: Dict[str, Union[str, np.ndarray, Tuple]]
     ) -> Dict[str, np.ndarray]:
         assert check_argument_types()
+        data = self._uttblist_process(data)
         data = self._speech_process(data)
         data = self._text_process(data)
-        data = self._uttblist_process(data)
         return data
 
 class SLUPreprocessor(CommonPreprocessor):

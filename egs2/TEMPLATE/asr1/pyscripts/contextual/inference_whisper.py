@@ -59,7 +59,8 @@ def visualize(
     uttid,
 ):
     frame2align = {}
-
+    # atten = atten[:, :, 1:]
+    # blist = blist[1:]
     plot_attention_map(
         frame2align,
         atten,
@@ -158,11 +159,11 @@ if __name__ == "__main__":
     # token_path = "./data/en_token_list/whisper_en/tokens.txt"
     spm_path   = "./data/en_token_list/bpe_unigram600/bpe.model"
     token_path = "./data/en_token_list/bpe_unigram600/tokens.txt"
-    model_conf = "./conf/exp/contextual_adapter/train_whisper_base_en_contextual_conv_xphone_adapter_encoder_gactc_bigtem.yaml"
-    model_path = "./exp/asr_finetune_freeze_whisper_base_bpe600_cb_conv_xphone_gactc_bigtem_suffix/8epoch.pth"
+    model_conf = "./conf/exp/contextual_adapter/train_whisper_base_en_contextual_conv_xphone_only_adapter_encoder_gactc_fixtinytem.yaml"
+    model_path = "./exp/asr_finetune_freeze_whisper_base_bpe600_cb_conv_xphone_only_gactc_fixtinytem_debug_suffix/6epoch.pth"
     stats_path = "./exp/asr_stats_raw_en_bpe600_sp_suffix/train/feats_lengths_stats.npz"
     # stats_path = None
-    
+
     rare_path  = "./local/contextual/rarewords/all_rare_words.txt"
     scp_path   = "./dump/raw/test_clean/wav.scp"
     blist_path = "./dump/raw/test_clean/uttblist_idx"
@@ -200,14 +201,15 @@ if __name__ == "__main__":
         stats_path, 
         spm_path, 
         model_path,
-        data_path_and_name_and_type
+        data_path_and_name_and_type,
+        use_local_attn_conv=False,
     )
-    # print(model)
+    print(model)
     preprocessor       = loader.dataset.preprocess
     token_id_converter = preprocessor.token_id_converter
     token_list         = get_token_list(token_id_converter) + ['<oov>']
 
-    model.contextualizer.adapter.temperature = 1.0
+    model.contextualizer.adapter.temperature = 1
 
     # print(token_list)
     model.eval()
