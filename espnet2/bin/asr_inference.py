@@ -127,7 +127,7 @@ class Speech2Text:
         lang_prompt_token: Optional[str] = None,
         nlp_prompt_token: Optional[str] = None,
         prompt_token_file: Optional[str] = None,
-        contextual_conf: dict = {}
+        contextual_conf: dict = {},
     ):
         assert check_argument_types()
 
@@ -498,7 +498,6 @@ class Speech2Text:
                 beam_search.set_hyp_primer(
                     list(converter.tokenizer.tokenizer.convert_tokens_to_ids(a1))
                 )
-        logging.info(f"Text tokenizer: {tokenizer}")
 
         self.asr_model = asr_model
         self.asr_train_args = asr_train_args
@@ -520,9 +519,22 @@ class Speech2Text:
         # contextual asr
         self.contextual_conf = contextual_conf
 
+    def set_prompt(self, prompt_idx):
+        a1 = self.converter.tokenizer.tokenizer.convert_ids_to_tokens(
+            self.converter.tokenizer.sot_sequence_including_notimestamps
+        )
+        prompt_tokens = self.converter.tokenizer.tokenizer.convert_ids_to_tokens(prompt_idx)
+        a1 = a1[:2] + prompt_tokens + a1[3:]
+        self.beam_search.set_hyp_primer(
+            list(self.converter.tokenizer.tokenizer.convert_tokens_to_ids(a1))
+        )
+
     @torch.no_grad()
     def __call__(
-        self, speech: Union[torch.Tensor, np.ndarray], contexts: Dict={},
+        self, 
+        speech: Union[torch.Tensor, np.ndarray], 
+        contexts: Dict={}, 
+        prompt: Union[torch.Tensor, np.ndarray]=None, 
     ) -> Union[
         ListOfHypothesis,
         Tuple[
@@ -539,7 +551,6 @@ class Speech2Text:
 
         """
         assert check_argument_types()
-
         # Input as audio signal
         if isinstance(speech, np.ndarray):
             speech = torch.tensor(speech)
@@ -585,6 +596,10 @@ class Speech2Text:
                 intermediate_outs = enc[1]
                 enc = enc[0]
             assert len(enc) == 1, len(enc)
+            
+            # Ground truth prompting
+            if prompt is not None:
+                self.set_prompt(prompt)
 
             # c. Passed the encoder result and the beam search
             if len(self.contextual_conf) == 0:
@@ -886,6 +901,7 @@ def inference(
     lang_prompt_token: Optional[str],
     nlp_prompt_token: Optional[str],
     prompt_token_file: Optional[str],
+    use_nlp_prompt: bool = False,
 ):
     assert check_argument_types()
     if batch_size > 1:
@@ -961,13 +977,15 @@ def inference(
         num_workers,
         allow_variable_data_keys
     ])
+    preprocess_fn = ASRTask.build_preprocess_fn(speech2text.asr_train_args, False)
+    preprocess_fn.use_nlp_prompt = use_nlp_prompt
     loader = ASRTask.build_streaming_iterator(
         data_path_and_name_and_type,
         dtype=dtype,
         batch_size=batch_size,
         key_file=key_file,
         num_workers=num_workers,
-        preprocess_fn=ASRTask.build_preprocess_fn(speech2text.asr_train_args, False),
+        preprocess_fn=preprocess_fn,
         collate_fn=ASRTask.build_collate_fn(speech2text.asr_train_args, False),
         allow_variable_data_keys=allow_variable_data_keys,
         inference=True,
@@ -1296,6 +1314,12 @@ def get_parser():
         type=str2bool,
         default=False,
         help="If true, best hypothesis is selected by length-normalized scores",
+    )
+    group.add_argument(
+        "--use_nlp_prompt",
+        type=str2bool,
+        default=False,
+        help="Use natural language phrases as prompt",
     )
     return parser
 

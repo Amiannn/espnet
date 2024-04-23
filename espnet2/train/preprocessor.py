@@ -449,8 +449,9 @@ class CommonPreprocessor(AbsPreprocessor):
                     else:
                         actual_token = data["prompt"].split() + actual_token[2:]
                 elif self.use_nlp_prompt:
-                    prompt_tokens = self.tokenizer.text2tokens(data["prompt"])
-                    actual_token = [actual_token[0]] + prompt_tokens + actual_token[2:]
+                    prompt_tokens  = self.tokenizer.text2tokens(data["prompt"])
+                    actual_token   = [actual_token[0]] + prompt_tokens + actual_token[2:]
+                    data["prompt"] = " ".join(prompt_tokens)
                 else:
                     if len(data["prompt"].split()) > 1:
                         actual_token = (

@@ -1596,12 +1596,14 @@ if [ ${stage} -le 12 ] && [ ${stop_stage} -ge 12 ] && ! [[ " ${skip_stages} " =~
         utils/split_scp.pl "${key_file}" ${split_scps}
 
         if [ "${contextualization}" == true ]; then
-            # _opts+="--preprocessor contextual "
-            # _opts+="--collate_fn_type contextual "
-            # _opts+="--speech2text_fn contextual "
             _opts+="--allow_variable_data_keys True "
             _opts+="--data_path_and_name_and_type ${_data}/uttblist_idx,uttblist_idx,multi_columns_text "
         fi 
+
+        if ${use_prompt}; then
+            _opts+="--data_path_and_name_and_type ${_data}/prompt,prompt,text "
+            _opts+="--use_nlp_prompt ${use_nlp_prompt} "
+        fi
 
         # 2. Submit decoding jobs
         log "Decoding started... log: '${_logdir}/asr_inference.*.log'"

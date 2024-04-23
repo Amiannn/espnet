@@ -29,6 +29,7 @@ from espnet.nets.pytorch_backend.nets_utils import make_pad_mask
 from espnet2.asr.espnet_model import ESPnetASRModel
 from espnet2.asr.contextualizer.func.contextual_adapter_func import forward_contextual_adapter
 from espnet2.asr.contextualizer import (
+    CONTEXTUAL_RETRIEVER,
     CONTEXTUAL_ADAPTER_ENCODER,
     CONTEXTUAL_ADAPTER_DECODER
 )
@@ -184,7 +185,18 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         stats = dict()
 
         # c1. Encoder contextualization
+        # c1.1 Contextual Retriever
+        if self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_RETRIEVER:
+            context_prob = self.contextualizer(
+                model_embed=encoder_out,
+                context_embed=contexts['blist'],
+                context_xphone_embed=contexts['blist_xphone_mean'],
+                ilens=contexts['ilens'],
+            )
+
+        # c1.2 Contextual Adapter
         enc_bias_vec = None
+        gate_prob    = None
         if self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_ADAPTER_ENCODER:
             enc_bias_vec, enc_attn = forward_contextual_adapter(
                 contextualizer=self.contextualizer,
@@ -194,28 +206,35 @@ class ESPnetContextualASRModel(ESPnetASRModel):
                 ilens=contexts['ilens'],
                 return_atten=True
             )
+            # mean across attention heads
+            context_prob = torch.mean(enc_attn, dim=1)
+            gate_prob    = self.contextualizer.gate_prob if hasattr(self.contextualizer, 'gate_prob') else None
             if (self.epoch >= self.warmup_epoch) and (not self.use_transducer_decoder):
                 if encoder_out.shape[1] == enc_bias_vec.shape[1]:
                     encoder_out = encoder_out + enc_bias_vec
                 else:
                     logging.info(f'Warning: the shape of enc_out: {encoder_out.shape} is different from bias_vec: {enc_bias_vec.shape} !')
             stats["contextualizer_warmup"] = (self.epoch >= self.warmup_epoch)
-            # use adapter aux loss
-            if len(self.contextualizer_losses) > 0:
-                loss_contextualizer, losses_contextualizers = self._calc_contextualizer_loss(
-                    contexts,
-                    enc_attn,
-                    encoder_out,
-                    encoder_out_lens,
-                    self.contextualizer.gate_prob if hasattr(self.contextualizer, 'gate_prob') else None,
-                )
-                for loss_name in losses_contextualizers:
-                    stats[loss_name] = losses_contextualizers[loss_name].detach()
+        
+        # c1.3 Contextualizer Loss
+        if len(self.contextualizer_losses) > 0:
+            (
+                loss_contextualizer, 
+                losses_contextualizers
+            ) = self._calc_contextualizer_loss(
+                contexts,
+                context_prob,
+                encoder_out,
+                encoder_out_lens,
+                gate_prob,
+            )
+            for loss_name in losses_contextualizers:
+                stats[loss_name] = losses_contextualizers[loss_name].detach()
 
-                # Collect total adapter aux losses
-                stats["loss_contextualizer"] = (
-                    loss_contextualizer.detach() if loss_contextualizer is not None else None
-                )
+            # Collect total adapter aux losses
+            stats["loss_contextualizer"] = (
+                loss_contextualizer.detach() if loss_contextualizer is not None else None
+            )
                 
         # 1. CTC branch
         if self.ctc_weight != 0.0:
@@ -338,6 +357,48 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         loss, stats, weight = force_gatherable((loss, stats, batch_size), loss.device)
         return loss, stats, weight
 
+    def _calc_att_loss(
+        self,
+        encoder_out: torch.Tensor,
+        encoder_out_lens: torch.Tensor,
+        ys_pad: torch.Tensor,
+        ys_pad_lens: torch.Tensor,
+    ):
+        if hasattr(self, "lang_token_id") and self.lang_token_id is not None:
+            ys_pad = torch.cat(
+                [
+                    self.lang_token_id.repeat(ys_pad.size(0), 1).to(ys_pad.device),
+                    ys_pad,
+                ],
+                dim=1,
+            )
+            ys_pad_lens += 1
+
+        ys_in_pad, ys_out_pad = add_sos_eos(ys_pad, self.sos, self.eos, self.ignore_id)
+        ys_in_lens = ys_pad_lens + 1
+
+        # 1. Forward decoder
+        decoder_out, _ = self.decoder(
+            encoder_out, encoder_out_lens, ys_in_pad, ys_in_lens
+        )
+
+        # 2. Compute attention loss
+        loss_att = self.criterion_att(decoder_out, ys_out_pad)
+        acc_att = th_accuracy(
+            decoder_out.view(-1, self.vocab_size),
+            ys_out_pad,
+            ignore_label=self.ignore_id,
+        )
+
+        # Compute cer/wer using attention-decoder
+        if self.training or self.error_calculator is None:
+            cer_att, wer_att = None, None
+        else:
+            ys_hat = decoder_out.argmax(dim=-1)
+            cer_att, wer_att = self.error_calculator(ys_hat.cpu(), ys_pad.cpu())
+
+        return loss_att, acc_att, cer_att, wer_att
+
     def _calc_transducer_loss(
         self,
         encoder_out: torch.Tensor,
@@ -415,7 +476,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
     def _calc_contextualizer_loss(
         self, 
         contexts,
-        enc_attn,
+        context_prob,
         encoder_out,
         encoder_out_lens,
         gate_value=None,
@@ -423,8 +484,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         # use guilded attention ctc loss
         losses_contextualizers = {}
         if 'loss_contextualizer_ga_ctc' in self.contextualizer_losses:
-            enc_ctc_attn  = torch.mean(enc_attn, dim=1)
-            ga_ctc_input  = torch.log(enc_ctc_attn).transpose(0, 1)
+            ga_ctc_input  = torch.log(context_prob).transpose(0, 1)
             ga_ctc_target = contexts['label_ctc']
             ga_ctc_input_lengths  = encoder_out_lens
             ga_ctc_target_lengths = contexts['label_ctc_ilens']
@@ -439,15 +499,14 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         if 'loss_contextualizer_ga_ctc_lp' in self.contextualizer_losses:
             alpha     = 0.3
             lp_warmup = 1
-            enc_ctc_attn  = torch.mean(enc_attn, dim=1)
-            ga_ctc_input  = torch.log(enc_ctc_attn).transpose(0, 1)
+            ga_ctc_input  = torch.log(context_prob).transpose(0, 1)
             ga_ctc_target = contexts['label_ctc']
             ga_ctc_input_lengths  = encoder_out_lens
             ga_ctc_target_lengths = contexts['label_ctc_ilens']
             
             # warm-up (1 epoch)
             if self.epoch > lp_warmup:
-                label_prior     = torch.mean(enc_ctc_attn, dim=1)
+                label_prior     = torch.mean(context_prob, dim=1)
                 label_prior_log = alpha * torch.log(label_prior)
                 ga_ctc_input    = ga_ctc_input - label_prior_log
 

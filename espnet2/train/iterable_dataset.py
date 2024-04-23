@@ -220,6 +220,15 @@ class IterableESPnetDataset(IterableDataset):
             elif 'text' in data and self.preprocess is not None and not isinstance(data['text'], np.ndarray):
                 # this may cause a problem
                 data = self.preprocess._text_process(data)
+            elif 'prompt' in data and self.preprocess is not None and not isinstance(data['prompt'], np.ndarray):
+                # this may cause a problem
+                dummy_text = False
+                if 'text' not in data:
+                    dummy_text   = True
+                    data['text'] = ''
+                data = self.preprocess._text_process(data)
+                if dummy_text:
+                    del data['text']
 
             # 4. Force data-precision
             for name in data:

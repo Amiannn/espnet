@@ -146,6 +146,8 @@ class BeamSearch(torch.nn.Module):
 
         # NOTE (Shih-Lun): added for OpenAI Whisper ASR
         primer = [self.sos] if self.hyp_primer is None else self.hyp_primer
+        logging.info(f'self.hyp_primer: {self.hyp_primer}')
+        logging.info(f'primer: {primer}')
 
         return [
             Hypothesis(
@@ -443,7 +445,6 @@ class BeamSearch(torch.nn.Module):
         ended_hyps = []
         for i in range(maxlen):
             logger.debug("position " + str(i))
-            # logger.info("position " + str(i))
             best = self.search(running_hyps, x, pre_x=pre_x)
             # post process of one iteration
             running_hyps = self.post_process(

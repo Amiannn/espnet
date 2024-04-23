@@ -116,9 +116,9 @@ def forward(
             return_atten=True
         )
         atten       = atten.squeeze(1)
-        label_prior = torch.mean(atten, dim=1)
-        label_prior = torch.exp(0.3 * torch.log(label_prior))
-        atten       = (atten.squeeze(0) / label_prior).unsqueeze(0)
+        # label_prior = torch.mean(atten, dim=1)
+        # label_prior = torch.exp(0.3 * torch.log(label_prior))
+        # atten       = (atten.squeeze(0) / label_prior).unsqueeze(0)
         encoder_out = encoder_out + bias_vec
         
         # contextual ctc decode
@@ -157,19 +157,17 @@ def forward(
     decoder_out = model.decoder.output_layer(decoder_hs)
     return logp, target, atten, encoder_out_original, ctc_pred, gate_prob
 
-prompt_tokens = [50259, 41847, 40925,  2532, 11944,  8232, 38391,     6,    50, 37173, 36880,  6205,  8726,    37, 10253,    45, 12268,    11,  7469, 17188, 25240, 20047,    11,  6999, 12243, 22528,    11, 18050,    38,  4731, 11,  3002, 12224, 11435, 29398,    11,  9872, 24010, 14364, 12268, 13,  2264,  4299,  3578,  2195,   286,     6, 24010, 16596, 13758, 16309,    13, 50363, 15456,   307,   707,   295,   220,  3322,  6258, 563,  9072,   293,   862, 26872,   597,   321,   366, 27524,   220, 1353, 14644,   365,   220,  3322, 45328, 40008,   412,  1151,   220, 3322,  3303,   665,  3687,   307,  1257,  3004,   365, 20100,   420, 575,  3105,   666,   459, 19191,  1287,   293,  3114,   298]
-
 if __name__ == "__main__":
     spm_path   = "whisper_multilingual"
-    token_path = "./data/en_token_list/whisper_multilingual/tokens.txt"
-    model_conf = "./conf/contextual_adapter/whisper/tune_medium__enc_conv2_xphone__ga_warmup__mediumbatch.yaml"
-    model_path = "./exp/asr_whisper/tune_medium__enc_conv2_xphone__ga_warmup__mediumbatch/7epoch.pth"
+    token_path = "/share/nas165/amian/experiments/speech/espnet/egs2/librispeech_100/asr1_contextual/data/en_token_list/whisper_multilingual/tokens.txt"
+    model_conf = "/share/nas165/amian/experiments/speech/espnet/egs2/librispeech_100/asr1_contextual/conf/contextual_adapter/whisper/tune_medium__enc_conv2_xphone__ga_warmup__mediumbatch.yaml"
+    model_path = "/share/nas165/amian/experiments/speech/espnet/egs2/librispeech_100/asr1_contextual/exp/asr_whisper/tune_medium__enc_conv2_xphone__ga_warmup__mediumbatch/7epoch.pth"
     stats_path = None
 
-    rare_path  = "./local/contextual/rarewords/all_rare_words.txt"
-    scp_path   = "./dump/raw/test_clean/wav.scp"
-    blist_path = "./dump/raw/test_clean/uttblist_idx"
-    ref_path   = "./data/test_clean/text"
+    rare_path  = "/share/nas165/litingpai/datasets/ami/new_sorted_name.txt"
+    scp_path   = "./dump/raw/ihm_eval/wav.scp"
+    blist_path = "./dump/raw/ihm_eval/uttblist_idx"
+    ref_path   = "./dump/raw/ihm_eval/text"
 
     folder_name = model_path.split('/')[-1].split('.')[0]
     debug_path = os.path.join("/".join(model_path.split('/')[:-1]), 'debug', folder_name)
@@ -179,14 +177,14 @@ if __name__ == "__main__":
     texts  = {d[0]: " ".join(d[1:]) for d in read_file(ref_path, sp=' ')}
 
     data_path_and_name_and_type = [
-        (scp_path, 'speech', 'kaldi_ark'), 
+        (scp_path, 'speech', 'sound'), 
         (blist_path, 'uttblist_idx', 'multi_columns_text')
     ]
 
     contextual_conf = {
         'contextual_type': 'rareword',
         'blist_path': rare_path,
-        'blist_xphone_path': './local/contextual/ssl_features/all_rare_words.xphone.seq.pt',
+        'blist_xphone_path': '/share/nas165/litingpai/espnet_20240304/espnet/egs2/ami/asr1/contextual/ssl_features/new_sorted_name.xphone.seq.pt',
         'blist_max': 20,
         'blist_drop_out': 0.0,
         'warmup_epoch': 0,
@@ -212,20 +210,19 @@ if __name__ == "__main__":
     token_id_converter = preprocessor.token_id_converter
     token_list         = get_token_list(token_id_converter) + ['<oov>']
 
-    prompt = [token_list[idx] for idx in prompt_tokens]
-    print(f'prompt: {prompt}')
-
-    # model.contextualizer.adapter.temperature = 1
+    model.contextualizer.adapter.temperature = 1
 
     # print(token_list)
     model.eval()
     count = 0
     for data in loader:
-        if count >= 1:
-            break
+        # if count >= 1:
+        #     break
         count += 1
-
         uid  = data[0][0]
+        if uid != "AMI_ES2004a_H01_FEE013_0091737_0092964":
+            continue        
+        
         data = data[1]
         contexts       = data['contexts']
         speech         = data['speech']
@@ -236,7 +233,6 @@ if __name__ == "__main__":
         ilens          = contexts['ilens']
         label_ctc      = contexts['label_ctc']
         blist_idxs     = contexts['blist_idxs']
-        prompt         = data['prompt']
 
         print(f'texts: {text}')
         # print(f'uid: {uid}')
@@ -247,7 +243,6 @@ if __name__ == "__main__":
         # print(f'speech_lengths: {speech_lengths}')
         print(f'label_ctc:\n{label_ctc}')
         # print(f'blist_idx:\n{blist_idxs}')
-        print(f'prompt: {prompt}')
 
         _blist = []
         for rareword in blist:
