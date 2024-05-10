@@ -53,15 +53,6 @@ def visualize(
     debug_path,
     uttid,
 ):
-    # alignments = force_alignment(
-    #     logp, 
-    #     target[0], 
-    #     blank_id, 
-    #     token_list,
-    #     speech,
-    #     debug_path
-    # )
-    # frame2align = {start: token for token, start, end in alignments}
     frame2align = {}
 
     plot_attention_map(
@@ -112,23 +103,6 @@ def forward(
         encoder_out, enc_olens, ys_in_pad, ys_in_lens, return_hs=True
     )
     decoder_hs = outputs[0][1]
-
-    # c1. Decoder contextualization
-    if model.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_ADAPTER_DECODER:
-        print(f'Decoder contextualize!')
-        bias_vec, atten = forward_contextual_adapter(
-            decoder=model.decoder,
-            contextualizer=model.contextualizer,
-            model_embed=decoder_hs,
-            context_idxs=contexts['blist'],
-            context_xphone_idxs=contexts['blist_xphone_mean'],
-            ilens=contexts['ilens'],
-            return_atten=True,
-        )
-        atten = atten.squeeze(1)
-        print(f'atten: {atten.shape}')
-        decoder_hs = decoder_hs + bias_vec
-
     decoder_out = model.decoder.output_layer(decoder_hs)
     logp        = None
     target      = None
@@ -138,11 +112,11 @@ def forward(
 if __name__ == "__main__":
     spm_path   = "./data/en_token_list/bpe_unigram600/bpe.model"
     token_path = "./data/en_token_list/bpe_unigram600/tokens.txt"
-    model_conf = "./conf/exp/contextual_adapter/train_conformer_contextual_xphone_adapter_encoder_with_gactc_tem.yaml"
-    model_path = "./exp/asr_finetune_freeze_con_enc_cb_xphone_gactc_tem_suffix/valid.acc.ave_10best.pth"
+    model_conf = "./conf/contextual_adapter/conformer/tune_xphone_adapter.yaml"
+    model_path = "./exp/asr_conformer/finetune_freeze_con_enc_cb_xphone_gactc_tem_suffix/2epoch.pth"
     stats_path = "./exp/asr_stats_raw_en_bpe600_sp_suffix/train/feats_lengths_stats.npz"
 
-    rare_path  = "./local/contextual/rarewords/rareword_f15.txt"
+    rare_path  = "./local/contextual/rarewords/all_rare_words.txt"
     scp_path   = "./dump/raw/test_clean/wav.scp"
     blist_path = "./dump/raw/test_clean/uttblist_idx"
     ref_path   = "./data/test_clean/text"
@@ -161,7 +135,7 @@ if __name__ == "__main__":
 
     contextual_conf = {
         'contextual_type': 'rareword',
-        'blist_path': './local/contextual/rarewords/all_rare_words.txt',
+        'blist_path': rare_path,
         'blist_xphone_path': './local/contextual/ssl_features/all_rare_words.xphone.seq.pt',
         'blist_max': 20,
         'blist_drop_out': 0.0,
@@ -180,21 +154,19 @@ if __name__ == "__main__":
         stats_path, 
         spm_path, 
         model_path,
-        data_path_and_name_and_type
+        data_path_and_name_and_type,
+        token_type='char'
     )
-    print(model)
     preprocessor       = loader.dataset.preprocess
     token_id_converter = preprocessor.token_id_converter
     token_list         = get_token_list(token_id_converter) + ['<oov>']
     
-    model.contextualizer.adapter.temperature = 1.0
-
-    # print(token_list)
+    model.contextualizer.adapter.temperature = 100.0
 
     model.eval()
     count = 0
     for data in loader:
-        if count > 4:
+        if count > 5:
             break
         count += 1
 
@@ -206,6 +178,7 @@ if __name__ == "__main__":
         text           = texts[uid]
         blist          = contexts['blist']
         ilens          = contexts['ilens']
+        label_ctc      = contexts['label_ctc']
 
         print(f'texts: {text}')
         print(f'uid: {uid}')
@@ -213,6 +186,7 @@ if __name__ == "__main__":
         print(f'ilens:\n{ilens}')
         print(f'speech: {speech}')
         print(f'speech_lengths: {speech_lengths}')
+        print(f'label_ctc: {label_ctc}')
 
         _blist = []
         for rareword in blist:

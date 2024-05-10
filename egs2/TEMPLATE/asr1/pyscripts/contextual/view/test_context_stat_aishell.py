@@ -53,8 +53,8 @@ def plot_entity_word_count(output_path, data, tag=''):
 if __name__ == '__main__':
     datasets       = ['zh_train_sp', 'zh_dev', 'zh_test']
     rareword_paths = [
-        "./local/contextual/rarewords/rareword.train.sep.txt",
-        "./local/contextual/rarewords/rareword.all.sep.txt"
+        "./local/contextual/rarewords/rareword_f50_train.txt",
+        "./local/contextual/rarewords/rareword_f10_test.txt"
     ]
     spm_path    = './data/zh_token_list/bpe_unigram4500suffix/bpe.model'
     sp          = spm.SentencePieceProcessor(model_file=spm_path)
@@ -76,7 +76,7 @@ if __name__ == '__main__':
             word_length     = len(texts[uid])
             rareword_length = len([len(w) for w in uttblist_idx[uid] if "".join(w) != ''])
             word_count[rareword_length] = word_count[rareword_length] + 1 if rareword_length in word_count else 1
-        plot_utterance_entity_count(output_path, word_count, tag=f'libri_{dataset}')
+        plot_utterance_entity_count(output_path, word_count, tag=f'aishell_{dataset}')
 
         count_char_table    = {}
         count_subword_table = {}
@@ -94,7 +94,6 @@ if __name__ == '__main__':
                 count_char_table[char_length] = count_char_table[char_length] + 1 if char_length in count_char_table else 1
                 # subword-level counts
                 subword = sp.encode(word)
-                print(subword)
                 subword_length = len(subword)
                 count_subword_table[subword_length] = count_subword_table[subword_length] + 1 if subword_length in count_subword_table else 1
                 # word-level counts

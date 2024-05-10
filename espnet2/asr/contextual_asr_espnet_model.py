@@ -488,6 +488,10 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             ga_ctc_target = contexts['label_ctc']
             ga_ctc_input_lengths  = encoder_out_lens
             ga_ctc_target_lengths = contexts['label_ctc_ilens']
+            logging.info(f'ga_ctc_target:\n{ga_ctc_target}')
+            logging.info(f'ga_ctc_target shape:\n{ga_ctc_target.shape}')
+            logging.info(f'ga_ctc_target_lengths:\n{ga_ctc_target_lengths}')
+            logging.info(f'ga_ctc_target_lengths shape:\n{ga_ctc_target_lengths.shape}')
             loss_ga_ctc = self.contextualizer_ctc_ga_loss(
                 ga_ctc_input, 
                 ga_ctc_target, 

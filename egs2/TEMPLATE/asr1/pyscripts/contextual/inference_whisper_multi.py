@@ -26,8 +26,9 @@ from espnet2.asr_transducer.utils import get_transducer_task_io
 from espnet2.asr.contextualizer.func.contextual_adapter_func   import forward_contextual_adapter
 from espnet.nets.pytorch_backend.transformer.add_sos_eos       import add_sos_eos
 from espnet2.asr.contextualizer import (
+    CONTEXTUAL_RETRIEVER,
     CONTEXTUAL_ADAPTER_ENCODER,
-    CONTEXTUAL_ADAPTER_DECODER
+    CONTEXTUAL_ADAPTER_DECODER,
 )
 from espnet.nets.pytorch_backend.nets_utils import make_pad_mask
 

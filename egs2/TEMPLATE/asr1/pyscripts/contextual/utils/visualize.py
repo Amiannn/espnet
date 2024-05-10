@@ -5,6 +5,9 @@ import matplotlib.pyplot as plt
 
 from sklearn.manifold import TSNE
 
+plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei']
+plt.rcParams['axes.unicode_minus'] = False
+
 def plot_attention_map(
     frame2align,
     attention,
@@ -20,7 +23,8 @@ def plot_attention_map(
     ]
 
     labels = [f'{labels[len(labels) - i - 1]}' for i in range(len(labels))]
-    plt.rcParams.update({'font.size': 8})
+    # plt.rcParams.update({'font.size': 8})
+    plt.rcParams.update({'font.size': 12})
 
     # draw attention map
     fig, axes = plt.subplots(1, 1, figsize=(45, 10))
@@ -53,7 +57,8 @@ def plot_tsne(
 
     if label is not None:
         texts = []
-        plt.rcParams.update({'font.size': 8})
+        # plt.rcParams.update({'font.size': 8})
+        plt.rcParams.update({'font.size': 12})
         for i in range(X.shape[0]):
             x, y = X[i, 0], X[i, 1]
             texts.append(plt.text(x, y, label[i]))

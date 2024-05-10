@@ -38,10 +38,11 @@ model_conf:
 
 # minibatch related
 batch_type: numel
-batch_bins: 25000000
+# batch_bins: 25000000
+batch_bins: 10000000
 
 # optimization related
-accum_grad: 1
+accum_grad: 2
 grad_clip: 5
 max_epoch: 60
 val_scheduler_criterion:

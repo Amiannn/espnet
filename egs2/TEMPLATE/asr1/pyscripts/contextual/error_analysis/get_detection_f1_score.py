@@ -15,8 +15,8 @@ from pyscripts.utils.fileio import write_pickle
 
 from sklearn.metrics import precision_recall_fscore_support
 
-# input_path = './exp/asr_whisper/tune_medium__enc_conv2_xphone__ga_warmup__mediumbatch/debug/7epoch/predicts_ami.json'
-input_path = './exp/asr_whisper/tune_medium__enc_conv2_xphone__ga_warmup__mediumbatch/debug/7epoch/predicts_200.json'
+input_path = './exp/asr_whisper/tune_medium__enc_conv2_xphone__ga_warmup__mediumbatch/debug/7epoch/predicts_ami.json'
+# input_path = './exp/asr_whisper/tune_medium__enc_conv2_xphone__ga_warmup__mediumbatch/debug/7epoch/predicts_200.json'
 result = read_json(input_path)
 
 def precision_recall(y_true, y_pred):
@@ -33,13 +33,15 @@ for uid in result:
     y_true = result[uid]['label']
     y_pred = result[uid]['pred']
     
-    if len(y_true) == 0 and len(y_pred) == 0:
-        continue
+    # if len(y_true) == 0 and len(y_pred) == 0:
+    #     continue
     recall, precision = precision_recall(y_true, y_pred)
     recalls.append(recall)
     precisions.append(precision)
 
 recalls    = np.mean(recalls)
 precisions = np.mean(precisions)
+f1 = 2 * precisions * recalls / (precisions + recalls)
 print(f'recall: {recalls}')
 print(f'precision: {precisions}')
+print(f'f1: {f1}')

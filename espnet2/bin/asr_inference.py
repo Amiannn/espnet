@@ -2,6 +2,8 @@
 import argparse
 import logging
 import sys
+import json
+
 from distutils.version import LooseVersion
 from itertools import groupby
 from pathlib import Path
@@ -1330,6 +1332,7 @@ def main(cmd=None):
     args = parser.parse_args(cmd)
     kwargs = vars(args)
     kwargs.pop("config", None)
+    print(f'kwargs: {json.dumps(kwargs, indent=4)}')
     inference(**kwargs)
 
 

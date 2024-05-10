@@ -21,7 +21,7 @@ def split_list(lst, chunk_size):
     return [lst[i:i + chunk_size] for i in range(0, len(lst), chunk_size)]
 
 model_tag     = "vinai/xphonebert-base"
-rareword_path = "./local/contextual/rarewords/rareword.all.sep.txt"
+rareword_path = "./local/contextual/rarewords/rareword_f1000_train.txt"
 output_path   = "./local/contextual/ssl_features"
 
 filename  = (rareword_path.split('/')[-1]).replace('.txt', '')
@@ -50,7 +50,6 @@ else:
     output_pho_path = os.path.join(output_path, f'{filename}.pho.txt')
     input_phonemes_data = [[pho] for pho in input_phonemes_list]
     write_file(output_pho_path, input_phonemes_data)
-
 print(f"input_phonemes_list: {input_phonemes_list[:10]}")
 
 features_list = []
