@@ -33,11 +33,12 @@ def plot_word_count(output_path, data, tag=''):
     out_path = os.path.join(output_path, f'word_counts_{tag}.png')
     plt.savefig(out_path)
 
-train_text_path = "./dump/raw/zh_train_sp/text"
-dev_text_path   = "./dump/raw/zh_dev/text"
-test_text_path  = "./dump/raw/zh_test/text"
+train_text_path    = "./dump/raw/zh_train_sp/text"
+dev_text_path      = "./dump/raw/zh_dev/text"
+test_text_path     = "./dump/raw/zh_test/text"
 dump_path          = "./exp/test"
 dump_rareword_path = "./local/contextual/rarewords"
+
 train_text_datas = [[d[0], d[1:]] for d in read_file(train_text_path, sp=' ') if not d[0].startswith("sp")]
 dev_text_datas   = [[d[0], d[1:]] for d in read_file(dev_text_path, sp=' ') if not d[0].startswith("sp")]
 test_text_datas  = [[d[0], d[1:]] for d in read_file(test_text_path, sp=' ') if not d[0].startswith("sp")]

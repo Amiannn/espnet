@@ -1,0 +1,15 @@
+beam_size: 1
+penalty: 0.0
+maxlenratio: 0.0
+minlenratio: 0.0
+ctc_weight: 0.0
+
+# contextual information settings
+contextual_conf:
+    contextual_type: rareword
+    blist_path: ./local/contextual/rarewords/rareword_f10_test.txt
+    blist_xphone_path: ./local/contextual/ssl_features/rareword_f10_test.xphone.seq.pt
+    blist_max: 200
+    blist_drop_out: 0.0
+    structure_type: null
+    sampling_method: null

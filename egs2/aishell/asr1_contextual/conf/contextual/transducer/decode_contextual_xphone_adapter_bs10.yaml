@@ -1,0 +1,14 @@
+beam_size: 10
+transducer_conf:
+    search_type: casr
+    score_norm: True
+
+# contextual information settings
+contextual_conf:
+    contextual_type: rareword
+    blist_path: ./local/contextual/rarewords/rareword_f10_test.txt
+    blist_xphone_path: ./local/contextual/ssl_features/rareword_f10_test.xphone.seq.pt
+    blist_max: 200
+    blist_drop_out: 0.0
+    structure_type: null
+    sampling_method: null

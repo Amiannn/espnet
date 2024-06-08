@@ -9,7 +9,7 @@ train_set=train
 valid_set=dev
 test_sets="test"
 
-asr_config=conf/contextual/conformer/xphone_adapter__mediumbatch.yaml
+asr_config=conf/contextual/conformer/xphone_adapter__mediumbatch_warmup200.yaml
 inference_config=conf/decode_asr_conformer_adapter.yaml
 asr_tag=conformer/xphone_adapter__mediumbatch_warmup200
 

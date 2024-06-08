@@ -195,21 +195,18 @@ class ContextualBeamSearchTransducer(BeamSearchTransducer):
         cache_lm = {}
 
         # Encoder contextualization
+        enc_bias_vec = None
         if self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_ADAPTER_ENCODER:
             logging.info(f'Encoder contextualize!')
-            enc_out  = enc_out.unsqueeze(0)
-            bias_vec = forward_contextual_adapter(
-                decoder=self.decoder,
+            enc_bias_vec = forward_contextual_adapter(
                 contextualizer=self.contextualizer,
-                model_embed=enc_out,
+                model_embed=enc_out.unsqueeze(0),
                 context_idxs=contexts['blist'],
-                context_xphone_idxs=contexts['blist_xphone'] if 'blist_xphone' in contexts else None,
+                context_xphone_idxs=contexts['blist_xphone_mean'],
                 ilens=contexts['ilens']
-            )
-            enc_out = enc_out + bias_vec
-            enc_out = enc_out.squeeze(0)
+            ).squeeze(0)
 
-        for enc_out_t in enc_out:
+        for i, enc_out_t in enumerate(enc_out):
             hyps = kept_hyps
             kept_hyps = []
 
@@ -235,22 +232,26 @@ class ContextualBeamSearchTransducer(BeamSearchTransducer):
 
                 dec_out, state, lm_tokens = self.decoder.score(max_hyp, cache)
                 # Decoder contextualization
+                dec_bias_vec = None
                 if self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_ADAPTER_DECODER:
                     logging.info(f'Decoder contextualize!')
-                    dec_out  = dec_out.reshape(1, 1, -1)
-                    bias_vec = forward_contextual_adapter(
-                        decoder=self.decoder,
+                    dec_bias_vec = forward_contextual_adapter(
                         contextualizer=self.contextualizer,
-                        model_embed=dec_out,
+                        model_embed=dec_out.reshape(1, 1, -1),
                         context_idxs=contexts['blist'],
-                        context_xphone_idxs=contexts['blist_xphone'] if 'blist_xphone' in contexts else None,
+                        context_xphone_idxs=contexts['blist_xphone_mean'],
                         ilens=contexts['ilens']
-                    )
-                    dec_out = dec_out + bias_vec
-                    dec_out = dec_out.reshape(-1)
+                    ).squeeze(0)
+                bias_vec = None
+                if enc_bias_vec is not None and dec_bias_vec is not None:
+                    bias_vec = enc_bias_vec[i] + dec_bias_vec
+                elif enc_bias_vec is not None:
+                    bias_vec = enc_bias_vec[i]
+                elif dec_bias_vec is not None:
+                    bias_vec = dec_bias_vec
 
                 logp = torch.log_softmax(
-                    self.joint_network(enc_out_t, dec_out),
+                    self.joint_network(enc_out_t, dec_out, bias_out=bias_vec),
                     dim=-1,
                 )
                 top_k = logp[1:].topk(beam_k, dim=-1)

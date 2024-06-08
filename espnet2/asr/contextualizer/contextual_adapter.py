@@ -255,7 +255,7 @@ class ContextualXPhoneAdapter(ContextualAdapterPrototype):
         self.encoder = ContextEncoderXPhoneBiLSTM(
             vocab_size=vocab_size,
             hidden_size=context_hidden_size,
-            output_size=proj_hidden_size,
+            output_size=attndim,
             drop_out=drop_out,
             num_blocks=num_blocks,
             padding_idx=padding_idx,

@@ -57,6 +57,11 @@ class ContextEncoderBiLSTM(torch.nn.Module):
         context_embed: torch.Tensor,
         ilens: torch.Tensor,
     ):
+        # logging.info(f'context_embed: {context_embed.shape}')
+        # logging.info(f'context_embed:\n{context_embed}')
+        # logging.info(f'ilens: {ilens.shape}')
+        # logging.info(f'ilens:\n{ilens}')
+        
         context_embed           = self.forward_embed(context_embed)
         context_embed, ilens, _ = self.encoder(context_embed, ilens)
         

@@ -1,0 +1,17 @@
+# The conformer transducer decoding configuration from @jeon30c
+beam_size: 1
+ctc_weight: 0.0
+lm_weight: 0.0
+maxlenratio: 0.3
+minlenratio: 0.0
+penalty: 0.0
+
+# contextual information settings
+contextual_conf:
+    contextual_type: rareword
+    blist_path: ./local/contextual/rarewords/all_rare_words.txt
+    blist_max: 10
+    blist_drop_out: 0.0
+    warmup_epoch: 0
+    structure_type: null
+    sampling_method: null

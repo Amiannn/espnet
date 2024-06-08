@@ -1,0 +1,105 @@
+model: contextual_asr_espnet
+
+normalize: null
+
+encoder: whisper
+encoder_conf:
+    whisper_model: medium
+    dropout_rate: 0.0
+    use_specaug: true
+    specaug_conf:
+        apply_time_warp: true
+        time_warp_window: 5
+        time_warp_mode: bicubic
+        apply_freq_mask: true
+        freq_mask_width_range:
+        - 0
+        - 40
+        num_freq_mask: 2
+        apply_time_mask: true
+        time_mask_width_ratio_range:
+        - 0.
+        - 0.12
+        num_time_mask: 5
+
+
+decoder: whisper
+decoder_conf:
+    whisper_model: medium
+    dropout_rate: 0.0
+
+model_conf:
+    ctc_weight: 0.0
+    aux_ctc_ga: true
+    ctc_ga_weight: 0.5
+    lsm_weight: 0.1
+    length_normalized_loss: false
+    sym_sos: "<|startoftranscript|>"
+    sym_eos: "<|endoftext|>"
+
+frontend: null
+input_size: 1                   # to prevent build_model() from complaining
+
+seed: 2022
+log_interval: 100
+num_att_plot: 0
+num_workers: 4
+sort_in_batch: descending       # how to sort data in making batch
+sort_batch: descending          # how to sort created batches
+batch_type: numel
+# batch_bins: 12000000            # good for single GPU w/ 40G mem
+batch_bins: 3000000
+accum_grad: 16
+max_epoch: 150
+patience: none
+init: none
+best_model_criterion:
+-   - valid
+    - loss
+    - min
+keep_nbest_models: 10
+
+use_amp: true
+cudnn_deterministic: false
+cudnn_benchmark: false
+
+optim: adamw
+grad_clip: 1.0
+optim_conf:
+    lr: 1.0e-05
+    weight_decay: 0.01
+    betas:
+    - 0.9
+    - 0.99
+    eps: 1.0e-06
+scheduler: warmuplr
+scheduler_conf:
+    warmup_steps: 1500
+
+# contextual information settings
+contextual: rareword
+contextual_conf:
+    contextual_type: rareword
+    blist_path: ./local/contextual/rarewords/rareword_f15.txt
+    blist_xphone_path: ./local/contextual/ssl_features/rareword_f15.xphone.seq.pt
+    blist_max: 200
+    blist_drop_out: 0.0
+    warmup_epoch: 0
+    structure_type: null
+    # structure_type: trie
+    sampling_method: null
+
+# contextualizer settings
+contextualizer: contextual_conv_xphone_only_adapter_encoder
+contextualizer_conf:
+    contextualizer_type: contextual_conv_xphone_only_adapter_encoder
+    context_embed_size: 1024
+    context_hidden_size: 1024
+    model_hidden_size: 1024
+    attndim: 1024
+    proj_hidden_size: 1024
+    atten_temperature: 0.05
+    drop_out: 0.0
+
+# adapter style training
+freeze_param: ["encoder", "decoder", "contextualizer.encoder.embed", "contextualizer.encoder.pad_embed"]

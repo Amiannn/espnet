@@ -14,9 +14,17 @@ from espnet2.asr.contextualizer.contextual_retriever import (
     ContextualConv2XPhoneDotProductRetriever,
 )
 
+from espnet2.asr.contextualizer.contextual_history_adapter import (
+    ContextualHistoryAdapterPrototype,
+)
+
 CONTEXTUAL_RETRIEVER = {
     "contextual_dotproduct_retriever"             : ContextualDotProductRetrieverPrototype,
     "contextual_conv2_xphone_dotproduct_retriever": ContextualConv2XPhoneDotProductRetriever,
+}
+
+CONTEXTUAL_HISTORY_ADAPTER_ENCODER = {
+    "contextual_history_adapter_encoder": ContextualHistoryAdapterPrototype,
 }
 
 CONTEXTUAL_ADAPTER_ENCODER = {
@@ -41,5 +49,6 @@ CONTEXTUAL_ADAPTER_DECODER = {
 
 CONTEXTUALIZERS = {}
 CONTEXTUALIZERS.update(CONTEXTUAL_RETRIEVER)
+CONTEXTUALIZERS.update(CONTEXTUAL_HISTORY_ADAPTER_ENCODER)
 CONTEXTUALIZERS.update(CONTEXTUAL_ADAPTER_ENCODER)
 CONTEXTUALIZERS.update(CONTEXTUAL_ADAPTER_DECODER)

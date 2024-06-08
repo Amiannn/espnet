@@ -107,7 +107,7 @@ class RarewordProcessor():
             logging.info(f'xphone: {self.blist_xphone.shape}')
             print(f'xphone: {self.blist_xphone.shape}')
 
-        self.drop_out      = drop_out
+        self.drop_out       = drop_out
         self.blist_max      = blist_max
         self.pad_value      = pad_value
         self.for_transducer = for_transducer
@@ -161,10 +161,7 @@ class RarewordProcessor():
 
     def build_auxiliary_loss_label(
         self, 
-        # texts, 
-        # textsegments, 
         uttblist_batch,
-        # elements, 
         element_idxs, 
         pad_value,
         use_oov=True
@@ -190,39 +187,26 @@ class RarewordProcessor():
             label_ctc_tensors != pad_value
         ).sum(dim=-1)
 
-        # build kl label
-        C_batch     = len(element_idxs)
-        C_batch_pad = C_batch + 1
-        C_utt       = label_ctc_tensors.shape[1]
+        context_label_tensors = pad_sequence(
+            [torch.tensor(b) for b in rareword_labels], 
+            batch_first=True, 
+            padding_value=-1
+        ).long()
+        context_label_tensor_ilens = (
+            context_label_tensors != -1
+        ).sum(dim=-1)
 
-        label_kl_tensors = torch.zeros(batch_size).long()
-        # label_kl_tensors = torch.zeros(batch_size * C_batch_pad)
-        # # select index add
-        # source = torch.ones(batch_size * C_utt)
-        # steps  = (torch.arange(batch_size) * C_batch_pad).view(batch_size, 1)
-        # index  = torch.clone(label_ctc_tensors)
-        # # resolve padding
-        # index[(index == pad_value)] = C_batch
-        # index = (index + steps).view(-1)
-        # label_kl_tensors.index_add_(0, index, source)
-        # label_kl_tensors = label_kl_tensors.view(batch_size, C_batch_pad)[:, :-1]
-        # set oov to 1 (TODO: may need to consider balance settings)
-        # label_kl_tensors[:, 0] = 1
-        # turn labels into a distribution
-        label_kl_dist_tensors       = label_kl_tensors
-        # label_kl_dist_tensors       = torch.softmax(label_kl_tensors, dim=1)
-        label_kl_dist_tensors_ilens = torch.zeros(batch_size) + C_batch
         return (
             label_ctc_tensors, 
-            label_ctc_tensor_ilens, 
-            label_kl_dist_tensors,
-            label_kl_dist_tensors_ilens,
+            label_ctc_tensor_ilens,
+            context_label_tensors,
+            context_label_tensor_ilens
         )
 
     def sample(self, batch_data, pad_value=-1):
-        uttblists         = [data['uttblist_idx'] for data in batch_data]
-        batch_size        = len(uttblists)
-        output            = {}
+        uttblists  = [data['uttblist_idx'] for data in batch_data]
+        batch_size = len(uttblists)
+        output     = {}
         
         uttblists_resolve       = []
         uttblists_batch_resolve = []
@@ -267,21 +251,18 @@ class RarewordProcessor():
         (
             label_ctc_tensors, 
             label_ctc_tensor_ilens, 
-            label_kl_dist_tensors,
-            label_kl_dist_tensors_ilens,
+            context_label_tensors,
+            context_label_tensors_ilens,
         ) = self.build_auxiliary_loss_label(
-            # texts, 
-            # textsegments,
             uttblists_batch_resolve,
-            # elements, 
             element_idxs,
             pad_value,
             use_oov=self.use_oov,
         )
-        output['label_ctc']       = label_ctc_tensors
-        output['label_ctc_ilens'] = label_ctc_tensor_ilens
-        output['label_kl']        = label_kl_dist_tensors
-        output['label_kl_ilens']  = label_kl_dist_tensors_ilens
+        output['label_ctc']           = label_ctc_tensors
+        output['label_ctc_ilens']     = label_ctc_tensor_ilens
+        output['context_label']       = context_label_tensors
+        output['context_label_ilens'] = context_label_tensors_ilens
         return output
 
 if __name__ == '__main__':

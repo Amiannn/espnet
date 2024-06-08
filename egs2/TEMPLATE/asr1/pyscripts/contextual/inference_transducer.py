@@ -20,7 +20,7 @@ from pyscripts.contextual.utils.visualize      import plot_attention_map
 
 from espnet2.asr_transducer.utils import get_transducer_task_io
 
-from espnet2.asr.contextualizer.func.contextual_adapter_func   import forward_contextual_adapter
+from espnet2.asr.contextualizer.func.contextual_adapter_func import forward_contextual_adapter
 from espnet2.asr.contextualizer import (
     CONTEXTUAL_ADAPTER_ENCODER,
     CONTEXTUAL_ADAPTER_DECODER
@@ -41,6 +41,7 @@ def visualize(
     blank_id, 
     token_list,
     debug_path,
+    uttid,
 ):
     alignments = force_alignment(
         logp, 
@@ -58,7 +59,7 @@ def visualize(
         text,
         blist,
         debug_path,
-        uttid='test',
+        uttid=uttid,
     )
 
 @torch.no_grad()
@@ -121,9 +122,10 @@ if __name__ == "__main__":
     blist_path = "./dump/raw/test_clean/uttblist_idx"
     ref_path   = "./data/test_clean/text"
 
-    debug_path = os.path.join("/".join(model_path.split('/')[:-1]), 'debug')
+    folder_name = model_path.split('/')[-1].split('.')[0]
+    debug_path = os.path.join("/".join(model_path.split('/')[:-1]), 'debug', folder_name)
     if not os.path.isdir(debug_path):
-        os.mkdir(debug_path)
+        os.makedirs(debug_path)
 
     texts  = {d[0]: " ".join(d[1:]) for d in read_file(ref_path, sp=' ')}
 
@@ -141,6 +143,7 @@ if __name__ == "__main__":
         'warmup_epoch': 0,
         'structure_type': None,
         'sampling_method': None,
+        'use_oov': True,
     }
     
     model, loader = load_espnet_model(
@@ -151,15 +154,19 @@ if __name__ == "__main__":
         stats_path, 
         spm_path, 
         model_path,
-        data_path_and_name_and_type
+        data_path_and_name_and_type,
+        token_type='char'
     )
 
     preprocessor       = loader.dataset.preprocess
     token_id_converter = preprocessor.token_id_converter
     token_list         = token_id_converter.token_list + ['<oov>']
     print(f'token_list: {len(token_list)}')
-    
+
+    model.contextualizer.adapter.temperature = 1
+
     model.eval()
+    count = 0
     for data in loader:
         uid  = data[0][0]
         data = data[1]
@@ -169,6 +176,7 @@ if __name__ == "__main__":
         text           = texts[uid]
         blist          = contexts['blist']
         ilens          = contexts['ilens']
+        label_ctc      = contexts['label_ctc']
 
         print(f'texts: {text}')
         print(f'uid: {uid}')
@@ -176,11 +184,12 @@ if __name__ == "__main__":
         print(f'ilens:\n{ilens}')
         print(f'speech: {speech}')
         print(f'speech_lengths: {speech_lengths}')
-        
+        print(f'label_ctc: {label_ctc}')
+
         _blist = []
         for rareword in blist:
             btokens = "".join([token_list[word] for word in rareword if word != -1])
-            print(f'btokens: {btokens}')
+            print(f'btokens: {btokens}, {rareword}')
             _blist.append(btokens)
         blist = _blist
 
@@ -190,7 +199,7 @@ if __name__ == "__main__":
         )['text']).long()
 
         tokens = tokens.unsqueeze(0)
-        print(f'tokens : {tokens}')
+        # print(f'tokens : {tokens}')
 
         logp, target, atten = forward(
             model, 
@@ -211,5 +220,6 @@ if __name__ == "__main__":
             model.blank_id, 
             token_list,
             debug_path,
+            uid,
         )
         break

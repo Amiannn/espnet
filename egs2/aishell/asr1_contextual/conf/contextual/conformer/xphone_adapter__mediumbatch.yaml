@@ -57,8 +57,8 @@ keep_nbest_models: 10
 
 optim: adam
 optim_conf:
-   lr: 0.001
-   weight_decay: 0.000001
+   lr: 0.0005
+#    weight_decay: 0.000001
 scheduler: warmuplr
 scheduler_conf:
    warmup_steps: 35000
@@ -107,7 +107,7 @@ contextualizer_conf:
     attndim: 256
     temperature: 10
     drop_out: 0.0
-    warmup_epoch: 200
+    warmup_epoch: 0
     contextualizer_weight: 0.5
     contextualizer_losses:
         loss_contextualizer_ga_ctc: 1

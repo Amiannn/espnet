@@ -59,8 +59,12 @@ def visualize(
     uttid,
 ):
     frame2align = {}
-    # atten = atten[:, :, 1:]
-    # blist = blist[1:]
+
+    if pred_ctc is not None:
+        pred_ctc = [token_list[p] if p != 0 else ' ' for p in pred_ctc]
+        frame2align = {i: pred_ctc[i] for i in range(atten.shape[1])}
+        print(f'pred_ctc: {pred_ctc}')
+
     plot_attention_map(
         frame2align,
         atten,
@@ -70,13 +74,12 @@ def visualize(
         uttid=uttid,
     )
 
-    # pred_ctc = [token_list[p] if p != 0 else ' ' for p in pred_ctc]
-    # plot_tsne(
-    #     enc_out.squeeze(0),
-    #     pred_ctc,
-    #     debug_path,
-    #     uttid=uttid,
-    # )
+    plot_tsne(
+        enc_out.squeeze(0),
+        pred_ctc,
+        debug_path,
+        uttid=uttid,
+    )
 
 @torch.no_grad()
 def forward(
@@ -109,12 +112,7 @@ def forward(
         )
         atten = atten.squeeze(1)
         print(f'atten: {atten.shape}')
-        encoder_out = encoder_out + bias_vec
-
-        # encoder_out_original = model.contextualizer.adapter.query_conv(
-        #     encoder_out.transpose(1, 2)
-        # ).transpose(1, 2)
-        # print(f'encoder_out_original query: {encoder_out_original.shape}')
+        # encoder_out = encoder_out + bias_vec
 
     ys_pad_lens = torch.tensor([d.shape[0] for d in tokens]).long()
     print(ys_pad_lens)
@@ -125,49 +123,23 @@ def forward(
 
     logp   = None
     target = None
-    if model.decoder is None:
-        return logp, target, atten, encoder_out_original, ctc_pred
 
-    # 1. Forward decoder
-    outputs = model.decoder(
-        encoder_out, enc_olens, ys_in_pad, ys_in_lens, return_hs=True
-    )
-    decoder_hs = outputs[0][1]
-
-    # c1. Decoder contextualization
-    if model.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_ADAPTER_DECODER:
-        print(f'Decoder contextualize!')
-        bias_vec, atten = forward_contextual_adapter(
-            decoder=model.decoder,
-            contextualizer=model.contextualizer,
-            model_embed=decoder_hs,
-            context_idxs=contexts['blist'],
-            context_xphone_idxs=contexts['blist_xphone_mean'],
-            ilens=contexts['ilens'],
-            return_atten=True,
-        )
-        atten = atten.squeeze(1)
-        print(f'atten: {atten.shape}')
-        decoder_hs = decoder_hs + bias_vec
-
-    decoder_out = model.decoder.output_layer(decoder_hs)
     return logp, target, atten, encoder_out_original, ctc_pred
-
 
 if __name__ == "__main__":
     # spm_path   = "whisper_en"
     # token_path = "./data/en_token_list/whisper_en/tokens.txt"
-    spm_path   = "./data/en_token_list/bpe_unigram600/bpe.model"
-    token_path = "./data/en_token_list/bpe_unigram600/tokens.txt"
-    model_conf = "./conf/exp/contextual_adapter/train_whisper_base_en_contextual_conv_xphone_only_adapter_encoder_gactc_fixtinytem.yaml"
-    model_path = "./exp/asr_finetune_freeze_whisper_base_bpe600_cb_conv_xphone_only_gactc_fixtinytem_debug_suffix/6epoch.pth"
-    stats_path = "./exp/asr_stats_raw_en_bpe600_sp_suffix/train/feats_lengths_stats.npz"
+    spm_path   = "./data/en_token_list/bpe_unigram5000/bpe.model"
+    token_path = "./data/en_token_list/bpe_unigram5000/tokens.txt"
+    model_conf = "./conf/contextual_adapter/whisper/tune_small_adapter.yaml"
+    model_path = "./exp/asr_whisper/tune_small_adapter__bpe5000_suffix/25epoch.pth"
+    stats_path = "./exp/asr_stats_raw_en_bpe5000_sp_suffix/train/feats_stats.npz"
     # stats_path = None
 
-    rare_path  = "./local/contextual/rarewords/all_rare_words.txt"
-    scp_path   = "./dump/raw/test_clean/wav.scp"
-    blist_path = "./dump/raw/test_clean/uttblist_idx"
-    ref_path   = "./data/test_clean/text"
+    rare_path  = "./local/contextual/rarewords/rareword_f10_test.txt"
+    scp_path   = "./dump/raw/test/wav.scp"
+    blist_path = "./dump/raw/test/uttblist_idx"
+    ref_path   = "./data/test/text"
 
     folder_name = model_path.split('/')[-1].split('.')[0]
     debug_path = os.path.join("/".join(model_path.split('/')[:-1]), 'debug', folder_name)
@@ -184,7 +156,7 @@ if __name__ == "__main__":
     contextual_conf = {
         'contextual_type': 'rareword',
         'blist_path': rare_path,
-        'blist_xphone_path': './local/contextual/ssl_features/all_rare_words.xphone.seq.pt',
+        # 'blist_xphone_path': './local/contextual/ssl_features/all_rare_words.xphone.seq.pt',
         'blist_max': 20,
         'blist_drop_out': 0.0,
         'warmup_epoch': 0,

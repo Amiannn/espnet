@@ -625,13 +625,23 @@ class ESPnetASRModel(AbsESPnetModel):
             encoder_out.unsqueeze(2), decoder_out.unsqueeze(1)
         )
 
+        logging.info(f'joint_out: {joint_out.shape}, {joint_out.device}')
+        logging.info(f'target: {target}, {target.device}')
+        logging.info(f'target: {target.shape}, {target.device}')
+        logging.info(f't_len: {t_len}, {t_len.device}')
+        logging.info(f't_len: {t_len.shape}, {t_len.device}')
+        logging.info(f'u_len: {u_len}, {u_len.device}')
+        logging.info(f'u_len: {u_len.shape}, {u_len.device}')
         loss_transducer = self.criterion_transducer(
             joint_out,
             target,
             t_len,
             u_len,
         )
-
+        logging.info(f'loss_transducer: {loss_transducer}')
+        logging.info(f'loss_transducer shape: {loss_transducer.shape}')
+        logging.info(f'_' * 30)
+        
         cer_transducer, wer_transducer = None, None
         if not self.training and self.error_calculator_trans is not None:
             cer_transducer, wer_transducer = self.error_calculator_trans(

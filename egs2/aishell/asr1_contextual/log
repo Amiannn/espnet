@@ -1,2 +1,3 @@
-converting word to phoneme sequence...
-input_phonemes_list: ['x a ɪ ˨˩˦ t j ɛ n ˥˩ ▁ k ʊ ŋ ˥˥ a n ˥˥ f ə n ˥˥ t ɕ y ˧˥ ▁ y ˥˩ ʂ ə n ˨˩˦ ▁ t a ˥˩ t w e ɪ ˥˩ ▁ w e ɪ ˥˩ ʈ ʂʰ ɤ ŋ ˧˥ n j ɛ n ˧˥ ʐ ə n ˧˥ ▁ a n ˥˩ t ɕ j ɛ n ˥˩ ▁ ʂ ə n ˨˩˦ ʈ ʂʰ a ˧˥ ▁ ʈ ʂ ʊ ŋ ˥˥ t w e ɪ ˥˩']
+all_cer     : 0.04144513912088961
+rareword_cer: 0.062004662004662
+common_cer  : 0.03951818559982637

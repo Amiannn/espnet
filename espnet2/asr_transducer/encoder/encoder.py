@@ -3,6 +3,8 @@
 from typing import Any, Dict, List, Tuple
 
 import torch
+import logging
+
 from typeguard import check_argument_types
 
 from espnet2.asr_transducer.encoder.building import (
@@ -47,6 +49,7 @@ class Encoder(torch.nn.Module):
             input_conf, body_conf, input_size
         )
         main_params = build_main_parameters(**main_conf)
+        logging.info(f'main_params:\n{main_params}')
 
         self.embed = build_input_block(input_size, input_conf)
         self.pos_enc = build_positional_encoding(embed_size, main_params)

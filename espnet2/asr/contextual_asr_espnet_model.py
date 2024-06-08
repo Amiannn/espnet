@@ -1,8 +1,13 @@
+import torch
 import logging
+import torchaudio
+import optimized_transducer
+
+from warprnnt_pytorch import RNNTLoss
+
 from contextlib import contextmanager
 from typing import Dict, List, Optional, Tuple, Union
 
-import torch
 from packaging.version import parse as V
 from typeguard import check_argument_types
 
@@ -31,6 +36,7 @@ from espnet2.asr.contextualizer.func.contextual_adapter_func import forward_cont
 from espnet2.asr.contextualizer import (
     CONTEXTUAL_RETRIEVER,
     CONTEXTUAL_ADAPTER_ENCODER,
+    CONTEXTUAL_HISTORY_ADAPTER_ENCODER,
     CONTEXTUAL_ADAPTER_DECODER
 )
 
@@ -128,6 +134,11 @@ class ESPnetContextualASRModel(ESPnetASRModel):
                 reduction="mean", 
                 zero_infinity=True, 
             )
+        if 'loss_contextualizer_ga_rnnt' in self.contextualizer_losses:
+            self.contextualizer_rnnt_ga_loss = RNNTLoss(
+                blank=self.blank_id,
+                fastemit_lambda=0.0,
+            )
         if 'loss_contextualizer_ga_ctc_lp' in self.contextualizer_losses:
             self.contextualizer_ctc_ga_loss = torch.nn.CTCLoss(
                 reduction="mean", 
@@ -156,6 +167,9 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             text_lengths: (Batch,)
             kwargs: "utt_id" is among the input.
         """
+        utt_id = kwargs['utt_id']
+        logging.info(f'utt_id: {utt_id}')
+
         assert text_lengths.dim() == 1, text_lengths.shape
         # Check that batch_size is unified
         assert (
@@ -195,8 +209,10 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             )
 
         # c1.2 Contextual Adapter
-        enc_bias_vec = None
-        gate_prob    = None
+        enc_bias_vec  = None
+        gate_prob     = None
+        context_prob  = None
+        context_logit = None
         if self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_ADAPTER_ENCODER:
             enc_bias_vec, enc_attn = forward_contextual_adapter(
                 contextualizer=self.contextualizer,
@@ -216,7 +232,32 @@ class ESPnetContextualASRModel(ESPnetASRModel):
                     logging.info(f'Warning: the shape of enc_out: {encoder_out.shape} is different from bias_vec: {enc_bias_vec.shape} !')
             stats["contextualizer_warmup"] = (self.epoch >= self.warmup_epoch)
         
-        # c1.3 Contextualizer Loss
+        # c1.3 Contextual History Adapter
+        if self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_HISTORY_ADAPTER_ENCODER:
+            decoder_in, target, t_len, u_len = get_transducer_task_io(
+                labels=contexts['context_label'],
+                encoder_out_lens=encoder_out_lens,
+                ignore_id=self.ignore_id,
+                blank_id=self.blank_id,
+            )
+            
+            enc_bias_vec, context_logit, context_prob = self.contextualizer(
+                model_embed=encoder_out,
+                context_idxs=contexts['blist'],
+                context_ilens=contexts['ilens'],
+                context_xphone_idxs=contexts['blist_xphone_mean'],
+                context_history_idx=decoder_in,
+                context_history_ilens=(u_len + 1),
+            )
+
+            if (self.epoch >= self.warmup_epoch) and (not self.use_transducer_decoder):
+                if encoder_out.shape[1] == enc_bias_vec.shape[1]:
+                    encoder_out = encoder_out + enc_bias_vec
+                else:
+                    logging.info(f'Warning: the shape of enc_out: {encoder_out.shape} is different from bias_vec: {enc_bias_vec.shape} !')
+            stats["contextualizer_warmup"] = (self.epoch >= self.warmup_epoch)
+
+        # c1.4 Contextualizer Loss
         if len(self.contextualizer_losses) > 0:
             (
                 loss_contextualizer, 
@@ -224,6 +265,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             ) = self._calc_contextualizer_loss(
                 contexts,
                 context_prob,
+                context_logit,
                 encoder_out,
                 encoder_out_lens,
                 gate_prob,
@@ -477,6 +519,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         self, 
         contexts,
         context_prob,
+        context_logit,
         encoder_out,
         encoder_out_lens,
         gate_value=None,
@@ -499,6 +542,44 @@ class ESPnetContextualASRModel(ESPnetASRModel):
                 ga_ctc_target_lengths
             )
             losses_contextualizers['loss_contextualizer_ga_ctc'] = loss_ga_ctc
+        # monotonic rnnt loss
+        if 'loss_contextualizer_ga_monornnt' in self.contextualizer_losses:
+            # TODO: fix mono loss problem and format
+            logging.info(f'context_prob: {context_prob.shape}')
+            ga_mrnnt_input  = torch.log(context_prob).transpose(0, 1)
+            ga_mrnnt_target = contexts['label_ctc'].to(torch.long)
+            ga_mrnnt_input_lengths  = encoder_out_lens.to(torch.long)
+            ga_mrnnt_target_lengths = contexts['label_ctc_ilens'].to(torch.long)
+            logging.info(f'ga_mrnnt_target:\n{ga_mrnnt_target}')
+            logging.info(f'ga_mrnnt_target shape:\n{ga_mrnnt_target.shape}')
+            logging.info(f'ga_mrnnt_target_lengths:\n{ga_mrnnt_target_lengths}')
+            logging.info(f'ga_mrnnt_target_lengths shape:\n{ga_mrnnt_target_lengths.shape}')
+            loss_ga_monornnt = optimized_transducer.transducer_loss(
+                logits=ga_mrnnt_input,
+                targets=ga_mrnnt_target,
+                logit_lengths=ga_mrnnt_input_lengths,
+                target_lengths=ga_mrnnt_target_lengths,
+                blank=self.blank_id,
+                reduction="mean",
+            )
+            losses_contextualizers['loss_contextualizer_ga_monornnt'] = loss_ga_monornnt
+        # rnnt loss
+        if 'loss_contextualizer_ga_rnnt' in self.contextualizer_losses:
+            _, target, t_len, u_len = get_transducer_task_io(
+                labels=contexts['context_label'],
+                encoder_out_lens=encoder_out_lens,
+                ignore_id=self.ignore_id,
+                blank_id=self.blank_id,
+            )
+            ga_rnnt_input = context_logit.to(torch.float)
+            loss_ga_rnnt = self.contextualizer_rnnt_ga_loss(
+                ga_rnnt_input,
+                target,
+                t_len,
+                u_len,
+            )
+            logging.info(f'loss_ga_rnnt: {loss_ga_rnnt}')
+            losses_contextualizers['loss_contextualizer_ga_rnnt'] = loss_ga_rnnt
         # ctc with label prior
         if 'loss_contextualizer_ga_ctc_lp' in self.contextualizer_losses:
             alpha     = 0.3

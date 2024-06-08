@@ -10,7 +10,7 @@ valid_set=dev
 test_sets="test"
 
 asr_config=conf/contextual/conformer/xphone_adapter__mediumbatch.yaml
-inference_config=conf/decode_asr_conformer_adapter.yaml
+inference_config=conf/decode_asr_conformer_adapter_bs.yaml
 asr_tag=conformer/xphone_adapter__mediumbatch
 
 lm_config=conf/train_lm_transformer.yaml
@@ -22,9 +22,9 @@ use_wordlm=false
 speed_perturb_factors="0.9 1.0 1.1"
 
 pretrained_model=../asr1/exp/asr_train_asr_conformer_raw_zh_char_sp/valid.acc.ave_10best.pth
-CUDA_VISIBLE_DEVICES=0 ./asr.sh \
+CUDA_VISIBLE_DEVICES=1 ./asr.sh \
     --nj 32 \
-    --inference_nj 5 \
+    --inference_nj 10 \
     --ngpu 1 \
     --lang zh \
     --audio_format "flac.ark" \

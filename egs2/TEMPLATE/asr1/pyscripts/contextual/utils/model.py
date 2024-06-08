@@ -1,4 +1,5 @@
 import os
+import json
 import torch
 import argparse
 import numpy as np
@@ -32,7 +33,7 @@ def load_espnet_model(
     conf['specaug']          = None if 'specaug' not in conf else conf['specaug']
     conf['normalize']        = 'global_mvn' if 'normalize' not in conf else conf['normalize']
     conf['frontend']         = frontend
-    conf['frontend_conf']    = {} if 'frontend_conf' not in conf else conf['frontend_conf']
+    conf['frontend_conf']    = {'fs': '16k'} if 'frontend_conf' not in conf else conf['frontend_conf']
     conf['ctc_conf']         = get_default_kwargs(CTC)
     conf['init']             = None
     conf['normalize_conf']   = {'stats_file': stats_path} if stats_path is not None else {}
@@ -52,6 +53,7 @@ def load_espnet_model(
     conf['contextualizer_conf'].update({'use_local_attn_conv': use_local_attn_conv})
 
     args      = argparse.Namespace(**conf)
+    print(f'conf:\n{json.dumps(conf, indent=4)}')
     # build model
     model = ASRTask.build_model(args)
     model.load_state_dict(

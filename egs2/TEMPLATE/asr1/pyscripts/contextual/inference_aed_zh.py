@@ -44,6 +44,7 @@ def get_token_list(token_id_converter):
 def visualize(
     logp,
     atten,
+    ctc_pred,
     text,
     target,
     blist,
@@ -54,6 +55,11 @@ def visualize(
     uttid,
 ):
     frame2align = {}
+
+    if ctc_pred is not None:
+        pred_ctc = [token_list[p] if p != 0 else ' ' for p in ctc_pred]
+        frame2align = {i: pred_ctc[i] for i in range(atten.shape[1])}
+        print(f'pred_ctc: {pred_ctc}')
 
     plot_attention_map(
         frame2align,
@@ -75,6 +81,12 @@ def forward(
 ):
     encoder_out, enc_olens = model.encode(speech, lengths)
     print(f'encoder_out: {encoder_out.shape}')
+
+    ctc_pred = None
+    if model.ctc is not None:
+        out      = model.ctc.ctc_lo(encoder_out).squeeze(0)
+        ctc_pred = torch.argmax(out, dim=-1)
+        print(f'ctc_pred: {ctc_pred.shape}')
 
     # c1. Encoder contextualization
     atten = None
@@ -106,16 +118,15 @@ def forward(
     decoder_out = model.decoder.output_layer(decoder_hs)
     logp        = None
     target      = None
-    return logp, target, atten
-
+    return logp, target, atten, ctc_pred
 
 if __name__ == "__main__":
     # spm_path   = "./data/en_token_list/bpe_unigram600/bpe.model"
     spm_path   = None
     token_path = "./data/zh_token_list/char/tokens.txt"
     model_conf = "./conf/contextual/conformer/xphone_adapter__mediumbatch.yaml"
-    model_path = "./exp/asr_conformer/xphone_adapter__mediumbatch_warmup200/14epoch.pth"
-    stats_path = "./exp/asr_stats_raw_zh_char_sp/train/feats_lengths_stats.npz"
+    model_path = "./exp/asr_conformer/xphone_adapter__mediumbatch/valid.acc.ave_10best.pth"
+    stats_path = "./exp/asr_stats_raw_zh_char_sp/train/feats_stats.npz"
 
     rare_path  = "./local/contextual/rarewords/rareword_f10_test.txt"
     scp_path   = "./dump/raw/test/wav.scp"
@@ -162,7 +173,7 @@ if __name__ == "__main__":
     token_id_converter = preprocessor.token_id_converter
     token_list         = get_token_list(token_id_converter) + ['<oov>']
     
-    model.contextualizer.adapter.temperature = 100.0
+    model.contextualizer.adapter.temperature = 1
 
     model.eval()
     count = 0
@@ -204,7 +215,7 @@ if __name__ == "__main__":
         tokens = tokens.unsqueeze(0)
         # print(f'tokens : {tokens}')
 
-        logp, target, atten = forward(
+        logp, target, atten, ctc_pred = forward(
             model, 
             speech, 
             speech_lengths,
@@ -216,6 +227,7 @@ if __name__ == "__main__":
         visualize(
             logp,
             atten,
+            ctc_pred,
             text,
             target,
             blist,
