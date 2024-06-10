@@ -122,7 +122,7 @@ if __name__ == "__main__":
     spm_path   = None
     token_path = "./data/zh_token_list/char/tokens.txt"
     model_conf = "./conf/contextual/transducer/contextual_xphone_adapter.yaml"
-    model_path = "./exp/asr_transducer/contextual_xphone_adapter/9epoch.pth"
+    model_path = "./exp/asr_transducer/contextual_xphone_adapter/15epoch.pth"
     stats_path = "./exp/asr_stats_raw_zh_char_sp/train/feats_stats.npz"
 
     rare_path  = "./local/contextual/rarewords/rareword_f10_test.txt"
@@ -150,11 +150,16 @@ if __name__ == "__main__":
         'blist_drop_out': 0.0,
         'warmup_epoch': 0,
         'structure_type': None,
-        'sampling_method': None,
+        'sampling_method': 'qhnw',
+        # 'sampling_method': 'ann_hnw',
+        # 'sampling_method': None,
+        'sampler_drop': 0.0,
+        'hnwr_pre_gold_length': 5,
         'use_oov': True,
+        'use_gpu': False,
     }
     
-    model, loader = load_espnet_model(
+    model, loader, contextual_processor = load_espnet_model(
         model_conf,
         contextual_conf, 
         token_path,
@@ -163,14 +168,17 @@ if __name__ == "__main__":
         spm_path, 
         model_path,
         data_path_and_name_and_type,
-        token_type='char'
+        token_type='char',
+        return_contextual_processor=True
     )
     preprocessor       = loader.dataset.preprocess
     token_id_converter = preprocessor.token_id_converter
     token_list         = get_token_list(token_id_converter) + ['<oov>']
     print(f'token_list: {len(token_list)}')
 
-    model.contextualizer.adapter.temperature = 5
+    # model.contextualizer.adapter.temperature = 5
+    if contextual_processor.sampling_method is not None:
+        contextual_processor.hn_sampler.update_index()
 
     model.eval()
     count = 0

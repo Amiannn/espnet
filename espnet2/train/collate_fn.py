@@ -272,6 +272,32 @@ def common_collate_fn(
     assert check_return_type(output)
     return output
 
+def process_datas(data, int_pad_value, float_pad_value, not_sequence):
+    output = {}
+    for key in data[0]:
+        # NOTE(kamo):
+        # Each models, which accepts these values finally, are responsible
+        # to repaint the pad_value to the desired value for each tasks.
+        if data[0][key].dtype.kind == "i":
+            pad_value = int_pad_value
+        else:
+            pad_value = float_pad_value
+
+        array_list = [d[key] for d in data]
+
+        # Assume the first axis is length:
+        # tensor_list: Batch x (Length, ...)
+        tensor_list = [torch.from_numpy(a) for a in array_list]
+        # tensor: (Batch, Length, ...)
+        tensor = pad_list(tensor_list, pad_value)
+        output[key] = tensor
+
+        # lens: (Batch,)
+        if key not in not_sequence:
+            lens = torch.tensor([d[key].shape[0] for d in data], dtype=torch.long)
+            output[key + "_lengths"] = lens
+    return output
+
 def contextual_collate_fn(
     data: Collection[Tuple[str, Dict[str, np.ndarray]]],
     float_pad_value: Union[float, int] = 0.0,
@@ -306,38 +332,20 @@ def contextual_collate_fn(
         not k.endswith("_lengths") for k in data[0]
     ), f"*_lengths is reserved: {list(data[0])}"
 
-    contexts = contextual_processor.sample(data, pad_value=int_pad_value)
-    output   = {'contexts': contexts}
-
+    uttblists = []
     for d in data:
         if 'uttblist_idx' in d:
+            uttblists.append(d['uttblist_idx'])
             del d['uttblist_idx']
-        if 'textsegment' in d:
-            del d['textsegment']
 
-    for key in data[0]:
-        # NOTE(kamo):
-        # Each models, which accepts these values finally, are responsible
-        # to repaint the pad_value to the desired value for each tasks.
-        if data[0][key].dtype.kind == "i":
-            pad_value = int_pad_value
-        else:
-            pad_value = float_pad_value
-
-        array_list = [d[key] for d in data]
-
-        # Assume the first axis is length:
-        # tensor_list: Batch x (Length, ...)
-        tensor_list = [torch.from_numpy(a) for a in array_list]
-        # tensor: (Batch, Length, ...)
-        tensor = pad_list(tensor_list, pad_value)
-        output[key] = tensor
-
-        # lens: (Batch,)
-        if key not in not_sequence:
-            lens = torch.tensor([d[key].shape[0] for d in data], dtype=torch.long)
-            output[key + "_lengths"] = lens
-
+    output = process_datas(data, int_pad_value, float_pad_value, not_sequence)
+    # context sampling
+    contexts = contextual_processor.sample(
+        batch_data=output, 
+        uttblists=uttblists, 
+        pad_value=int_pad_value
+    )
+    output['contexts'] = contexts
     output = (uttids, output)
     # assert check_return_type(output)
     return output

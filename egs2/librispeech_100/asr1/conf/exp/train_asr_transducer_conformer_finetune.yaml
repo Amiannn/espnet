@@ -8,7 +8,7 @@ encoder_conf:
       dynamic_chunk_training: True
     input_conf:
       block_type: conv2d
-      conv_size: 256
+      conv_size: 512
       subsampling_factor: 4
     body_conf:
     - block_type: conformer
@@ -49,8 +49,9 @@ num_workers: 8
 batch_type: numel
 # batch_bins: 8000000
 # accum_grad: 8
-batch_bins: 2000000
-accum_grad: 32
+# batch_bins: 2000000
+batch_bins: 500000
+accum_grad: 64
 # batch_bins: 1500000
 # accum_grad: 32
 max_epoch: 20

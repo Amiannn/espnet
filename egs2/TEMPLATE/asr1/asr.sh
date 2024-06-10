@@ -399,7 +399,6 @@ else
     bpedir="${token_listdir}/bpe_${bpemode}${nbpe}${suffixbpe}"
 fi
 
-bpedir="${token_listdir}/bpe_${bpemode}${nbpe}"
 bpeprefix="${bpedir}"/bpe
 bpemodel="${bpeprefix}".model
 bpetoken_list="${bpedir}"/tokens.txt

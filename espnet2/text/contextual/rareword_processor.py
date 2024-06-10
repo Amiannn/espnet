@@ -23,7 +23,10 @@ from espnet2.text.whisper_token_id_converter      import OpenAIWhisperTokenIDCon
 from espnet2.text.hugging_face_token_id_converter import HuggingFaceTokenIDConverter
 from espnet2.text.cleaner                         import TextCleaner
 
-from espnet2.text.contextual.structure.trie       import TrieProcessor
+from espnet2.text.contextual.sampler.hard_negative_mining import HardNegativeSampler
+from espnet2.text.contextual.structure.trie               import TrieProcessor
+
+from ordered_set import OrderedSet
 
 random.seed(0)
 
@@ -55,8 +58,12 @@ class RarewordProcessor():
         # contextual asr
         structure_type: str = "none",
         sampling_method: str = "none",
+        hnwr_pre_gold_length: int = 10,
+        hardness_range: int = 20,
+        sampler_drop: int = 0.1,
         asr_model: object = None,
         use_oov: bool = True,
+        use_gpu: bool = False,
         text_cleaner: Collection[str] = None,
     ):
         self.tokenizer = build_tokenizer(
@@ -97,15 +104,15 @@ class RarewordProcessor():
         self.blist, self.blist_words = self.load_blist(blist_path)
         self.blist_idxs              = [i for i in range(len(self.blist))]
         self.blist_xphonebert_path   = blist_xphonebert_path
+        self.blist_xphone            = None
+        self.blist_xphone_indexis    = None
 
         if blist_xphonebert_path is not None:
             logging.info(f'Loading XPhoneBERT features...')
-            print(f'Loading XPhoneBERT features...')
             datas = torch.load(blist_xphonebert_path)
             self.blist_xphone         = datas['features']
             self.blist_xphone_indexis = datas['indexis']
             logging.info(f'xphone: {self.blist_xphone.shape}')
-            print(f'xphone: {self.blist_xphone.shape}')
 
         self.drop_out       = drop_out
         self.blist_max      = blist_max
@@ -113,6 +120,11 @@ class RarewordProcessor():
         self.for_transducer = for_transducer
         self.oov_value      = oov_value
         self.use_oov        = use_oov
+        self.use_gpu        = use_gpu
+
+        # asr model
+        self.asr_model = asr_model
+
         # structure
         self.structure_type = structure_type
         self.trie_processor = TrieProcessor(
@@ -123,9 +135,27 @@ class RarewordProcessor():
             for_transducer=self.for_transducer,
         )
         # sampling
-        self.sampling_method = sampling_method
-        # asr model
-        self.asr_model = asr_model
+        self.sampling_method      = sampling_method
+        self.hnwr_pre_gold_length = hnwr_pre_gold_length
+        self.hardness_range       = hardness_range
+        self.sampler_drop         = sampler_drop
+        if self.sampling_method is not None:
+            self.hn_sampler = HardNegativeSampler(
+                sampling_method=self.sampling_method,
+                hnwr_pre_gold_length=self.hnwr_pre_gold_length,
+                hardness_range=self.hardness_range,
+                blist=self.blist,
+                blist_idxs=self.blist_idxs,
+                blist_words=self.blist_words,
+                blist_xphone=self.blist_xphone,
+                blist_xphone_indexis=self.blist_xphone_indexis,
+                sampler_drop=self.sampler_drop,
+                pad_value=self.pad_value,
+                oov_value=self.oov_value,
+                asr_model=self.asr_model,
+                device=None,
+                use_gpu=self.use_gpu,
+            )
 
     def load_blist(self, blist_path):
         blist, blist_words = [], []
@@ -141,16 +171,27 @@ class RarewordProcessor():
                 blist.append(text_ints)
         return blist, blist_words
 
-    def build_batch_contextual(self, uttblist, sampling_method=None):
-        droped_uttblist = [b for b in uttblist if random.random() > self.drop_out]
-        # droped_uttblist = droped_uttblist[:self.blist_max]
-        globalblist      = []
-        if self.blist_max > len(droped_uttblist):
-            globalblist = random.choices(
-                self.blist_idxs, 
-                k = (self.blist_max - len(droped_uttblist))
+    def build_batch_contextual(self, batch_data, uttblist):
+        droped_uttblist = list(OrderedSet([b for b in uttblist if random.random() > self.drop_out]))
+        hnw_distractors = []
+        # hard negative mining
+        if self.sampling_method is not None:
+            hnw_distractors = self.hn_sampler.sample(
+                gold_idx=droped_uttblist,
+                speech=batch_data['speech'], 
+                speech_lengths=batch_data['speech_lengths'],
             )
-        blist = droped_uttblist + globalblist
+            hnw_distractors = list(OrderedSet(hnw_distractors) - OrderedSet(droped_uttblist))
+        blist = droped_uttblist + hnw_distractors
+        rand_distractors = []
+        # random sampling
+        if self.blist_max > len(blist):
+            rand_distractors = random.choices(
+                self.blist_idxs, 
+                k = (self.blist_max - len(blist))
+            )
+            rand_distractors = list(OrderedSet(rand_distractors) - OrderedSet(blist))
+        blist = blist + rand_distractors
         # remove empty bword
         blist = [b for b in blist if len(self.blist[b]) > 0]
         return blist
@@ -203,8 +244,12 @@ class RarewordProcessor():
             context_label_tensor_ilens
         )
 
-    def sample(self, batch_data, pad_value=-1):
-        uttblists  = [data['uttblist_idx'] for data in batch_data]
+    def sample(
+        self,
+        batch_data,
+        uttblists,
+        pad_value=-1
+    ):
         batch_size = len(uttblists)
         output     = {}
         
@@ -214,7 +259,7 @@ class RarewordProcessor():
             uttblists_resolve.extend(uttblists[i])
             uttblists_batch_resolve.append(uttblists[i])
         
-        element_idxs = self.build_batch_contextual(uttblists_resolve)
+        element_idxs = self.build_batch_contextual(batch_data, uttblists_resolve)
         elements     = [self.blist[idx] for idx in element_idxs]
         # oov
         if self.use_oov:

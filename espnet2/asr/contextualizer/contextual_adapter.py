@@ -40,6 +40,7 @@ class ContextualAdapterPrototype(torch.nn.Module):
         **kwargs
     ):
         super().__init__()
+        self.proj_hidden_size = proj_hidden_size
         self.encoder = ContextEncoderBiLSTM(
             vocab_size=vocab_size,
             hidden_size=context_embed_size,

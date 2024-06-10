@@ -493,7 +493,9 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             bias_vec = enc_bias_vec.unsqueeze(2)
         elif dec_bias_vec is not None:
             bias_vec = dec_bias_vec.unsqueeze(1)
-
+        logging.info(f'encoder_out: {encoder_out.shape}')
+        logging.info(f'decoder_out: {decoder_out.shape}')
+        logging.info(f'bias_vec: {bias_vec.shape}')
         joint_out = self.joint_network(
             encoder_out.unsqueeze(2), 
             decoder_out.unsqueeze(1),

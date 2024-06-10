@@ -1,7 +1,7 @@
 """Transducer joint network implementation."""
 
 import torch
-
+import logging
 from espnet2.asr_transducer.activation import get_activation
 
 
@@ -106,4 +106,5 @@ class JointBiasingNetwork(JointNetwork):
             )
         if return_h_joint:
             return self.lin_out(joint_out), joint_out
+        logging.info(f'joint_out: {joint_out.shape}')
         return self.lin_out(joint_out)

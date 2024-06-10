@@ -528,6 +528,11 @@ class Trainer:
         # processes, send stop-flag to the other processes if iterator is finished
         iterator_stop = torch.tensor(0).to("cuda" if ngpu > 0 else "cpu")
 
+        # Update Hard Negative Index
+        if hasattr(iterator.collate_fn, "contextual_processor"):
+            contextual_processor = iterator.collate_fn.contextual_processor
+            if contextual_processor.sampling_method is not None:
+                contextual_processor.hn_sampler.update_index()
         start_time = time.perf_counter()
         for iiter, (utt_id, batch) in enumerate(
             reporter.measure_iter_time(iterator, "iter_time"), 1

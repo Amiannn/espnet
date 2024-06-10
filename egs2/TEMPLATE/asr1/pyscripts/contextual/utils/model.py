@@ -53,7 +53,7 @@ def load_espnet_model(
     conf['contextualizer_conf'].update({'use_local_attn_conv': use_local_attn_conv})
 
     args      = argparse.Namespace(**conf)
-    print(f'conf:\n{json.dumps(conf, indent=4)}')
+    # print(f'conf:\n{json.dumps(conf, indent=4)}')
     # build model
     model = ASRTask.build_model(args)
     model.load_state_dict(

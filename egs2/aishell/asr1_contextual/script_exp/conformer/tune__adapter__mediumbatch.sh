@@ -10,7 +10,7 @@ valid_set=dev
 test_sets="test"
 
 asr_config=conf/contextual/conformer/adapter__mediumbatch.yaml
-inference_config=conf/decode_asr_conformer_adapter_greedy.yaml
+inference_config=conf/contextual/conformer/decode_asr_conformer_adapter_bs10.yaml
 asr_tag=conformer/adapter__mediumbatch
 
 lm_config=conf/train_lm_transformer.yaml

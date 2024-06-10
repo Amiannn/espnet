@@ -571,8 +571,12 @@ class ASRTask(AbsTask):
                 non_linguistic_symbols=args.non_linguistic_symbols,
                 structure_type=args.contextual_conf.get("structure_type", "none"),
                 sampling_method=args.contextual_conf.get("sampling_method", "none"),
+                hnwr_pre_gold_length=args.contextual_conf.get("hnwr_pre_gold_length", 5),
+                hardness_range=args.contextual_conf.get("hardness_range", 20),
+                sampler_drop=args.contextual_conf.get("sampler_drop", 0.5),
                 asr_model=model,
                 use_oov=args.contextual_conf.get("use_oov", True),
+                use_gpu=args.contextual_conf.get("use_gpu", True),
                 text_cleaner=args.cleaner,
                 **args.preprocessor_conf,
             )

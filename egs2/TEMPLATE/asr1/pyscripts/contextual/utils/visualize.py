@@ -27,7 +27,8 @@ def plot_attention_map(
     plt.rcParams.update({'font.size': 12})
 
     # draw attention map
-    fig, axes = plt.subplots(1, 1, figsize=(45, 10))
+    # fig, axes = plt.subplots(1, 1, figsize=(45, 10))
+    fig, axes = plt.subplots(1, 1, figsize=(45, 30))
     axes.xaxis.set_ticks(np.arange(0, attention.shape[1], 1))
     axes.yaxis.set_ticks(np.arange(0, attention.shape[0], 1))
     axes.set_xticks(np.arange(-.5, attention.shape[1], 10), minor=True)
