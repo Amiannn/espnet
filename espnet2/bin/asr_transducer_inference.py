@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import json
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
@@ -194,6 +195,7 @@ class Speech2Text:
             )
 
             self.reset_streaming_cache()
+        logging.info(f'model:\n{self.asr_model}')
 
     def reset_streaming_cache(self) -> None:
         """Reset Speech2Text parameters."""
@@ -268,11 +270,12 @@ class Speech2Text:
         lengths = speech.new_full(
             [1], dtype=torch.long, fill_value=speech.size(1), device=self.device
         )
-
+        logging.info(f'speech2text speech: {speech.shape}')
         feats, feats_length = self.asr_model._extract_feats(speech, lengths)
 
         if self.asr_model.normalize is not None:
             feats, feats_length = self.asr_model.normalize(feats, feats_length)
+        logging.info(f'feats speech: {feats.shape}')
 
         enc_out, _ = self.asr_model.encoder(feats, feats_length)
 
@@ -445,6 +448,11 @@ def inference(
     speech2text = Speech2Text.from_pretrained(
         model_tag=model_tag,
         **speech2text_kwargs,
+    )
+
+    log_str = {key: str(speech2text.__dict__[key]) for key in speech2text.__dict__}
+    logging.info(
+        f'speech2text kwargs: {json.dumps(log_str, indent=4)}'
     )
 
     if speech2text.streaming:
@@ -702,6 +710,8 @@ def main(cmd=None):
     parser = get_parser()
     args = parser.parse_args(cmd)
     kwargs = vars(args)
+
+    print(f'kwargs: {json.dumps(kwargs, indent=4)}')
 
     kwargs.pop("config", None)
     inference(**kwargs)

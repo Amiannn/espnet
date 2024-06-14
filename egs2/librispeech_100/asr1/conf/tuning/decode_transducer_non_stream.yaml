@@ -4,12 +4,11 @@
 #     score_norm: true
 
 # decoding parameters
-beam_size: 1
+beam_size: 5
 beam_search_config:
     search_type: default
     score_norm: true
 
-streaming: true 
-decoding_window: 640
-left_context: 32
+streaming: false 
 display_hypotheses: true
+left_context: 0

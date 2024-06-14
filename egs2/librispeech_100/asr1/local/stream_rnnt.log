@@ -1,0 +1,89 @@
+ESPnetASRTransducerModel(
+  (frontend): DefaultFrontend(
+    (stft): Stft(n_fft=512, win_length=400, hop_length=160, center=True, normalized=False, onesided=True)
+    (frontend): Frontend()
+    (logmel): LogMel(sr=16000, n_fft=512, n_mels=80, fmin=0, fmax=8000.0, htk=False)
+  )
+  (specaug): SpecAug(
+    (time_warp): TimeWarp(window=5, mode=bicubic)
+    (freq_mask): MaskAlongAxis(mask_width_range=[0, 27], num_mask=2, axis=freq)
+    (time_mask): MaskAlongAxisVariableMaxWidth(mask_width_ratio_range=[0.0, 0.05], num_mask=5, axis=time)
+  )
+  (normalize): GlobalMVN(stats_file=exp/asr_stats_raw_en_bpe5000_sp/train/feats_stats.npz, norm_means=True, norm_vars=True)
+  (encoder): Encoder(
+    (embed): ConvInput(
+      (conv): Sequential(
+        (0): Conv2d(1, 512, kernel_size=(3, 3), stride=(2, 2))
+        (1): ReLU()
+        (2): Conv2d(512, 512, kernel_size=(3, 3), stride=(2, 2))
+        (3): ReLU()
+      )
+      (output): Linear(in_features=9728, out_features=512, bias=True)
+    )
+    (pos_enc): RelPositionalEncoding(
+      (dropout): Dropout(p=0.1, inplace=False)
+    )
+    (encoders): MultiBlocks(
+      (blocks): ModuleList(
+        (0-11): 12 x Conformer(
+          (self_att): RelPositionMultiHeadedAttention(
+            (linear_q): Linear(in_features=512, out_features=512, bias=True)
+            (linear_k): Linear(in_features=512, out_features=512, bias=True)
+            (linear_v): Linear(in_features=512, out_features=512, bias=True)
+            (linear_out): Linear(in_features=512, out_features=512, bias=True)
+            (linear_pos): Linear(in_features=512, out_features=512, bias=False)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+          (feed_forward): PositionwiseFeedForward(
+            (w_1): Linear(in_features=512, out_features=2048, bias=True)
+            (w_2): Linear(in_features=2048, out_features=512, bias=True)
+            (dropout): Dropout(p=0.1, inplace=False)
+            (activation): Swish(
+              (swish): SiLU()
+            )
+          )
+          (feed_forward_macaron): PositionwiseFeedForward(
+            (w_1): Linear(in_features=512, out_features=2048, bias=True)
+            (w_2): Linear(in_features=2048, out_features=512, bias=True)
+            (dropout): Dropout(p=0.1, inplace=False)
+            (activation): Swish(
+              (swish): SiLU()
+            )
+          )
+          (conv_mod): ConformerConvolution(
+            (pointwise_conv1): Conv1d(512, 1024, kernel_size=(1,), stride=(1,))
+            (depthwise_conv): Conv1d(512, 512, kernel_size=(31,), stride=(1,), groups=512)
+            (norm): BatchNorm1d(512, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+            (pointwise_conv2): Conv1d(512, 512, kernel_size=(1,), stride=(1,))
+            (activation): Swish(
+              (swish): SiLU()
+            )
+          )
+          (norm_feed_forward): LayerNorm((512,), eps=1e-12, elementwise_affine=True)
+          (norm_self_att): LayerNorm((512,), eps=1e-12, elementwise_affine=True)
+          (norm_macaron): LayerNorm((512,), eps=1e-12, elementwise_affine=True)
+          (norm_conv): LayerNorm((512,), eps=1e-12, elementwise_affine=True)
+          (norm_final): LayerNorm((512,), eps=1e-12, elementwise_affine=True)
+          (dropout): Dropout(p=0.1, inplace=False)
+        )
+      )
+      (norm_blocks): LayerNorm((512,), eps=1e-12, elementwise_affine=True)
+    )
+  )
+  (decoder): RNNDecoder(
+    (embed): Embedding(5000, 512, padding_idx=0)
+    (dropout_embed): Dropout(p=0.2, inplace=False)
+    (rnn): ModuleList(
+      (0): LSTM(512, 512, batch_first=True)
+    )
+    (dropout_rnn): ModuleList(
+      (0): Dropout(p=0.1, inplace=False)
+    )
+  )
+  (joint_network): JointNetwork(
+    (lin_enc): Linear(in_features=512, out_features=640, bias=True)
+    (lin_dec): Linear(in_features=512, out_features=640, bias=True)
+    (lin_out): Linear(in_features=640, out_features=5000, bias=True)
+    (joint_activation): Tanh()
+  )
+)

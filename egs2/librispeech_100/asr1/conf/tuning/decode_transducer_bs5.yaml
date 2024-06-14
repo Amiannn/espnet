@@ -4,7 +4,7 @@
 #     score_norm: true
 
 # decoding parameters
-beam_size: 1
+beam_size: 5
 beam_search_config:
     search_type: default
     score_norm: true

@@ -106,5 +106,4 @@ class JointBiasingNetwork(JointNetwork):
             )
         if return_h_joint:
             return self.lin_out(joint_out), joint_out
-        logging.info(f'joint_out: {joint_out.shape}')
         return self.lin_out(joint_out)

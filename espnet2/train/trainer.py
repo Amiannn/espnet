@@ -233,6 +233,9 @@ class Trainer:
                 f"The training has already reached at max_epoch: {start_epoch}"
             )
 
+        # # TODO: This may cause some problem (experimenting)
+        # model = torch.compile(model)
+
         if distributed_option.distributed:
             if trainer_options.sharded_ddp:
                 dp_model = fairscale.nn.data_parallel.ShardedDataParallel(

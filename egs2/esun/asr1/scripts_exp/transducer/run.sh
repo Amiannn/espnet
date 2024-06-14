@@ -12,13 +12,14 @@ train_set="train"
 valid_set="dev"
 test_sets="test"
 
-asr_config=conf/contextual/transducer/contextual_adapter.yaml
-inference_config=conf/contextual/transducer/decode_contextual_adapter_bs10.yaml
-asr_tag=transducer/contextual_adapter
+asr_config=conf/exp/train_asr_transducer_conformer.yaml
+inference_config=conf/exp/decode_asr_rnnt_transducer_bs10.yaml
 
 lm_config=conf/exp/train_lm_transformer.yaml
 use_lm=false
 use_wordlm=false
+
+pretrained_model="/share/nas165/amian/experiments/speech/tcpgen/espnet/egs2/institutional_investors/asr1/exp/asr_train_asr_transducer_conformer_raw_bpe5000_use_wandbtrue_sp_suffix/valid.loss.best.pth"
 
 if [ ! -f "data/train/token.man.2" ]; then
     # must preprocess data first to get Mandarin character tokens
@@ -39,14 +40,9 @@ source data/train/token.man.2  # for bpe_nlsyms & man_chars
 nbpe=5000
 # English BPE: 3000 / Mandarin: 2622 / other symbols: 4
 
-# speed perturbation related
-# (train_set will be "${train_set}_sp" if speed_perturb_factors is specified)
-speed_perturb_factors="0.9 1.0 1.1"
-
-pretrained_model=../asr1/exp/asr_train_asr_transducer_conformer_raw_bpe5000_use_wandbtrue_sp_suffix/valid.loss.ave_10best.pth
-CUDA_LAUNCH_BLOCKING=1 CUDA_VISIBLE_DEVICES=0 ./asr.sh \
+CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --ngpu 1 \
-    --nj  32 \
+    --nj 5 \
     --gpu_inference false \
     --inference_nj 15 \
     --stage ${stage} \
@@ -68,8 +64,8 @@ CUDA_LAUNCH_BLOCKING=1 CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --lm_train_text "data/${train_set}/text" \
     --bpe_train_text "data/${train_set}/text.eng.bpe" \
     --score_opts "-e utf-8 -c NOASCII" \
+    --asr_args "--use_wandb true" \
     --inference_asr_model valid.loss.ave_10best.pth \
-    --contextualization true \
-    --pretrained_model "${pretrained_model},${pretrained_model}:decoder.embed:contextualizer.encoder.embed" \
-    --asr_tag "${asr_tag}" \
+    --pretrained_model $pretrained_model \
+    --ignore_init_mismatch true \
     "$@"

@@ -30,6 +30,7 @@ test_spm.model
 *.vim
 *.swp
 *.nfs*
+*.zip
 
 # recipe related
 egs*/*/*/data*

@@ -1,7 +1,7 @@
 """Convolution modules for X-former blocks."""
 
 from typing import Dict, Optional, Tuple
-
+import logging
 import torch
 
 
@@ -39,7 +39,8 @@ class ConformerConvolution(torch.nn.Module):
             stride=1,
             padding=0,
         )
-
+        logging.info(f'changing causal to false!')
+        causal = False
         if causal:
             self.lorder = kernel_size - 1
             padding = 0

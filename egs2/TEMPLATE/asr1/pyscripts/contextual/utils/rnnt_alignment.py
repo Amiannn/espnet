@@ -91,7 +91,9 @@ def forward_backward(logp, target, blank_id, token_list, waveform, debug_path):
     plt.clf()
 
     ab_log_prob = (alpha + beta)
-    ab_prob     = torch.exp(ab_log_prob)
+    ab_prob = torch.exp(ab_log_prob)
+    # TODO: check this! this may cause some problem
+    # ab_prob = torch.softmax(ab_log_prob, dim=-1)
 
     plt.imshow(ab_log_prob, origin="lower")
     output_path = os.path.join(debug_path, 'ab_log_prob.pdf')
@@ -139,6 +141,7 @@ def forward_backward(logp, target, blank_id, token_list, waveform, debug_path):
     alignments = []
     tg = textgrid.TextGrid(minTime=0, maxTime=maxTime)
     tier_word = textgrid.IntervalTier(name="subword", minTime=0., maxTime=maxTime)
+    print(f'align_paths: {align_paths}')
     for i, align_path in enumerate(align_paths):
         token = tokens[i]
         if len(align_path) == 0:

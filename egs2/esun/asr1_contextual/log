@@ -1,0 +1,5 @@
+all_mer         : 12.29%
+rareword_mer    : 17.16%
+common_mer      : 12.07%
+rareword_eng_wer: 68.48%
+rareword_zh_cer : 15.42%

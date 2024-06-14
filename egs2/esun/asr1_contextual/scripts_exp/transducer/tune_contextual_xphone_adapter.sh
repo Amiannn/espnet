@@ -12,9 +12,9 @@ train_set="train"
 valid_set="dev"
 test_sets="test"
 
-asr_config=conf/contextual/transducer/contextual_adapter.yaml
-inference_config=conf/contextual/transducer/decode_contextual_adapter_bs10.yaml
-asr_tag=transducer/contextual_adapter
+asr_config=conf/contextual/transducer/contextual_xphone_adapter.yaml
+inference_config=conf/contextual/transducer/decode_contextual_xphone_adapter_bs10.yaml
+asr_tag=transducer/contextual_xphone_adapter
 
 lm_config=conf/exp/train_lm_transformer.yaml
 use_lm=false

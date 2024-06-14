@@ -1,0 +1,3622 @@
+[
+    {
+        "entity_group": "PER",
+        "word": " RUFUS DAWES"
+    },
+    {
+        "entity_group": "PER",
+        "word": " DAW"
+    },
+    {
+        "entity_group": "PER",
+        "word": " NORTH"
+    },
+    {
+        "entity_group": "PER",
+        "word": " NORTH"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " KIRKLAND"
+    },
+    {
+        "entity_group": "PER",
+        "word": " BURGESS"
+    },
+    {
+        "entity_group": "PER",
+        "word": " KIRKLAND"
+    },
+    {
+        "entity_group": "PER",
+        "word": " NANCY"
+    },
+    {
+        "entity_group": "PER",
+        "word": "ISTER NORTH"
+    },
+    {
+        "entity_group": "PER",
+        "word": " FRERE"
+    },
+    {
+        "entity_group": "LOC",
+        "word": "LEY OF THE SHADOW OF DEATH"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MEEKIN"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MEEKIN GRAVELY"
+    },
+    {
+        "entity_group": "PER",
+        "word": " BURGESS"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " SARAH ISLAND"
+    },
+    {
+        "entity_group": "PER",
+        "word": " JOHN REX"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MEEKIN"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " VERANDAH"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MACKLEWAIN"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " NORFOLK BAY"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MACKLEWAIN"
+    },
+    {
+        "entity_group": "ORG",
+        "word": ""
+    },
+    {
+        "entity_group": "PER",
+        "word": "ACK"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MORROW"
+    },
+    {
+        "entity_group": "PER",
+        "word": " TROKE"
+    },
+    {
+        "entity_group": "PER",
+        "word": " GOD"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " VAIN"
+    },
+    {
+        "entity_group": "PER",
+        "word": " CAT"
+    },
+    {
+        "entity_group": "PER",
+        "word": " KATE"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " ENGLISH"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " FRENCH"
+    },
+    {
+        "entity_group": "PER",
+        "word": " HUH"
+    },
+    {
+        "entity_group": "PER",
+        "word": "IDES"
+    },
+    {
+        "entity_group": "PER",
+        "word": " POP"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MOM"
+    },
+    {
+        "entity_group": "PER",
+        "word": " HILDA"
+    },
+    {
+        "entity_group": "PER",
+        "word": " TOM"
+    },
+    {
+        "entity_group": "PER",
+        "word": " HILDA"
+    },
+    {
+        "entity_group": "PER",
+        "word": " TOM"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " ARISTOCRATIC"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " DEMOCRAC"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " AMERICAN"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " EUROPE"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " AMERICANS"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " PL"
+    },
+    {
+        "entity_group": "PER",
+        "word": "AT"
+    },
+    {
+        "entity_group": "MISC",
+        "word": "O"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " DEM"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " ARIST"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " DEMOCRATIC"
+    },
+    {
+        "entity_group": "PER",
+        "word": " OTTO"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MISSUS SHIMERDA"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " BOHEMIAN"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " AM"
+    },
+    {
+        "entity_group": "LOC",
+        "word": "BROSCH"
+    },
+    {
+        "entity_group": "PER",
+        "word": " AMBROSCH"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " VIRGINIA"
+    },
+    {
+        "entity_group": "PER",
+        "word": " ANTONIA"
+    },
+    {
+        "entity_group": "PER",
+        "word": " BARTLEY"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " EUSTON"
+    },
+    {
+        "entity_group": "PER",
+        "word": " ALEXANDER"
+    },
+    {
+        "entity_group": "LOC",
+        "word": "ORD"
+    },
+    {
+        "entity_group": "PER",
+        "word": " BARTLEY"
+    },
+    {
+        "entity_group": "PER",
+        "word": " BART"
+    },
+    {
+        "entity_group": "ORG",
+        "word": "LEY"
+    },
+    {
+        "entity_group": "PER",
+        "word": " OH"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " NEW YORK TIMES"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " NEW JERSEY"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " WEST TENTH ST"
+    },
+    {
+        "entity_group": "LOC",
+        "word": "ET"
+    },
+    {
+        "entity_group": "PER",
+        "word": " OH BARTLEY"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " CANADA"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " NEW YORK"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " LONDON"
+    },
+    {
+        "entity_group": "PER",
+        "word": " SHAKESPEARE"
+    },
+    {
+        "entity_group": "PER",
+        "word": " ERNEST DOWSON"
+    },
+    {
+        "entity_group": "PER",
+        "word": " HUGH"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MAC CONNELL"
+    },
+    {
+        "entity_group": "PER",
+        "word": " ALEXANDER MAINHALL"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " IRELAND"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " IRISH"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " BURGOYNES"
+    },
+    {
+        "entity_group": "PER",
+        "word": " PHILLY"
+    },
+    {
+        "entity_group": "PER",
+        "word": " BARTLEY ALEXANDER"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MAINHALL"
+    },
+    {
+        "entity_group": "PER",
+        "word": " HARRY TOWNE"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " TOKYO"
+    },
+    {
+        "entity_group": "PER",
+        "word": " HARRY"
+    },
+    {
+        "entity_group": "PER",
+        "word": " LORD WESTMERE"
+    },
+    {
+        "entity_group": "PER",
+        "word": " DOWLE"
+    },
+    {
+        "entity_group": "PER",
+        "word": " PEGGY"
+    },
+    {
+        "entity_group": "PER",
+        "word": " JOSEPH"
+    },
+    {
+        "entity_group": "PER",
+        "word": "ARY"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " HEAVEN"
+    },
+    {
+        "entity_group": "PER",
+        "word": " JOSEPH"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " MARY"
+    },
+    {
+        "entity_group": "PER",
+        "word": "TY"
+    },
+    {
+        "entity_group": "PER",
+        "word": " SOLITUDE"
+    },
+    {
+        "entity_group": "PER",
+        "word": " VIOLIN"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " HUMAN"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " THE"
+    },
+    {
+        "entity_group": "MISC",
+        "word": "ING"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " COLONEL LEONIDAS"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " GREAT STATE OF VIRGINIA"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " UNION"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " NORTH CAROLINA TENNESSEE"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " ARKANSAS"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " MARYLAND KENTUCKY"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " MISSOURI"
+    },
+    {
+        "entity_group": "PER",
+        "word": " LINCOLN"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " CHARLESTON"
+    },
+    {
+        "entity_group": "PER",
+        "word": " DAVIS"
+    },
+    {
+        "entity_group": "PER",
+        "word": " BEAUREGARD"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " KENTON"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " K"
+    },
+    {
+        "entity_group": "LOC",
+        "word": "ENT"
+    },
+    {
+        "entity_group": "MISC",
+        "word": "UCK"
+    },
+    {
+        "entity_group": "ORG",
+        "word": "Y"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MADAME DELAUNAY"
+    },
+    {
+        "entity_group": "LOC",
+        "word": "TH CAROLINA"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " WINTON"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " KENTUCKY"
+    },
+    {
+        "entity_group": "PER",
+        "word": "ILL SKELLY"
+    },
+    {
+        "entity_group": "PER",
+        "word": " COLLINS"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MICHAELIS"
+    },
+    {
+        "entity_group": "PER",
+        "word": " OSSIPON"
+    },
+    {
+        "entity_group": "PER",
+        "word": " ALEXANDER OSSIPON"
+    },
+    {
+        "entity_group": "PER",
+        "word": " STEVIE"
+    },
+    {
+        "entity_group": "PER",
+        "word": " VERLOC"
+    },
+    {
+        "entity_group": "PER",
+        "word": " KARL YUNDT"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " LOMBROSO"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " RUBBISH"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " CANNIBALISTIC"
+    },
+    {
+        "entity_group": "PER",
+        "word": " VLADIMIR"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " VERLOC"
+    },
+    {
+        "entity_group": "PER",
+        "word": " STEVIE"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " CALICO"
+    },
+    {
+        "entity_group": "PER",
+        "word": " STEPHEN"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " MISSUS"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " GERMAN"
+    },
+    {
+        "entity_group": "PER",
+        "word": " THOMAS L HAMER"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " WEST POINT"
+    },
+    {
+        "entity_group": "PER",
+        "word": " GRANT"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " ILLINOIS"
+    },
+    {
+        "entity_group": "PER",
+        "word": " HALLECK"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " MISSISSIPPI"
+    },
+    {
+        "entity_group": "PER",
+        "word": " LEE"
+    },
+    {
+        "entity_group": "PER",
+        "word": " JESSE"
+    },
+    {
+        "entity_group": "ORG",
+        "word": "IRDIKINS"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MOTHER MAGPIE"
+    },
+    {
+        "entity_group": "PER",
+        "word": "P"
+    },
+    {
+        "entity_group": "PER",
+        "word": " FERDINAND"
+    },
+    {
+        "entity_group": "PER",
+        "word": " FERDINAND ARMINE"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MIRABEL"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " CHARLES ST"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " PARK"
+    },
+    {
+        "entity_group": "PER",
+        "word": " HENRIETTA"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " SYLVAN"
+    },
+    {
+        "entity_group": "ORG",
+        "word": "ED"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " LEBANON"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " ANATOLIA"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " NYMPH"
+    },
+    {
+        "entity_group": "PER",
+        "word": " DAH"
+    },
+    {
+        "entity_group": "PER",
+        "word": " SIMPLETON"
+    },
+    {
+        "entity_group": "PER",
+        "word": " HANSEL"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " HEW"
+    },
+    {
+        "entity_group": "LOC",
+        "word": "OOD"
+    },
+    {
+        "entity_group": "PER",
+        "word": " GRETHEL"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " CIVIL WAR"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " HAM"
+    },
+    {
+        "entity_group": "ORG",
+        "word": "IL"
+    },
+    {
+        "entity_group": "LOC",
+        "word": "TON"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " BALAKLAVA"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " ALMA"
+    },
+    {
+        "entity_group": "PER",
+        "word": " JIMMY KING"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " US"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " HAMILTON"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " TISHIMINGO"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " VAIN"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " HATCHIE"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " SAN FRANCISCO"
+    },
+    {
+        "entity_group": "PER",
+        "word": " THOMPSON"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " FILLMORE"
+    },
+    {
+        "entity_group": "PER",
+        "word": " PHIL TYSON"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " THE DEL MONTE"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " POWELL"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " SATURNALIA"
+    },
+    {
+        "entity_group": "PER",
+        "word": " JOHN TAIT"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " CLIFF HOUSE"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " POODLE DOG"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " POODLE DOG"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " SACRAMENTO"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " MONTGOMERY"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " KEARNY FELIX"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " CLAY"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " WASHINGTON"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " BERGEZ FRANKS"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " BUSH"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " KEARNY"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " GRANT AV"
+    },
+    {
+        "entity_group": "MISC",
+        "word": "UE"
+    },
+    {
+        "entity_group": "LOC",
+        "word": "ETS"
+    },
+    {
+        "entity_group": "PER",
+        "word": " CHARLIE"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " S"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " SPANISH"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " MARKET"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " EDDY"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " ODEON"
+    },
+    {
+        "entity_group": "LOC",
+        "word": "LD HEIDELBERG"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " HEIDELBERG INN"
+    },
+    {
+        "entity_group": "PER",
+        "word": " SCHEILER"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " HOF BRAU"
+    },
+    {
+        "entity_group": "PER",
+        "word": " ABAL"
+    },
+    {
+        "entity_group": "ORG",
+        "word": "ONE"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " ABALONE DISHES"
+    },
+    {
+        "entity_group": "PER",
+        "word": " HERBERT"
+    },
+    {
+        "entity_group": "PER",
+        "word": " AB"
+    },
+    {
+        "entity_group": "ORG",
+        "word": "ALONE"
+    },
+    {
+        "entity_group": "PER",
+        "word": " ABALONE"
+    },
+    {
+        "entity_group": "PER",
+        "word": " CHOWDER"
+    },
+    {
+        "entity_group": "PER",
+        "word": " LA"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " NEWBERG"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " OREGON"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " ASPARAGUS"
+    },
+    {
+        "entity_group": "PER",
+        "word": " SAL"
+    },
+    {
+        "entity_group": "MISC",
+        "word": "UP OF VINEGAR"
+    },
+    {
+        "entity_group": "MISC",
+        "word": "UL"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " RHEIN WINE SAUTERNE"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " WHITE BURGUNDY"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " SWISS BORDEAUX HUNGARIAN"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " ITALIAN"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " AUSTRIAN"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " CHABLIS"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " HOCHHEIMER"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " LACRIMA CHRISTI"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " SAUTERNE"
+    },
+    {
+        "entity_group": "LOC",
+        "word": "DE"
+    },
+    {
+        "entity_group": "LOC",
+        "word": "X"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " RHEIN AND MOSELLE"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " MAN"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " GREECE"
+    },
+    {
+        "entity_group": "LOC",
+        "word": "ES"
+    },
+    {
+        "entity_group": "MISC",
+        "word": "ACE"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " PLEBEIAN"
+    },
+    {
+        "entity_group": "MISC",
+        "word": "LEBEIAN"
+    },
+    {
+        "entity_group": "PER",
+        "word": " SELDOM"
+    },
+    {
+        "entity_group": "PER",
+        "word": " LETTY"
+    },
+    {
+        "entity_group": "PER",
+        "word": " CHRISTIE"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " QUAKERISH"
+    },
+    {
+        "entity_group": "PER",
+        "word": " DAVID"
+    },
+    {
+        "entity_group": "PER",
+        "word": " BENNET"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MISSUS STERLING"
+    },
+    {
+        "entity_group": "PER",
+        "word": " LISHA"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MISSUS WILKINS"
+    },
+    {
+        "entity_group": "PER",
+        "word": " HEPSEY"
+    },
+    {
+        "entity_group": "PER",
+        "word": " ANN LIZY"
+    },
+    {
+        "entity_group": "PER",
+        "word": " DAVY"
+    },
+    {
+        "entity_group": "PER",
+        "word": " CHRISTIE"
+    },
+    {
+        "entity_group": "PER",
+        "word": " HELEN"
+    },
+    {
+        "entity_group": "PER",
+        "word": "ISTER POWER"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " GREEN HOUSE"
+    },
+    {
+        "entity_group": "PER",
+        "word": " JOAN"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " QUINCI"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " IL POPOLO E UNA BESTIA"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MAGDALEN"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " RUT"
+    },
+    {
+        "entity_group": "LOC",
+        "word": "EN"
+    },
+    {
+        "entity_group": "PER",
+        "word": " ARCTURUS"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " ITALIANS"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " DANTE"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " VITA NUOVA"
+    },
+    {
+        "entity_group": "PER",
+        "word": " ROSSETTI"
+    },
+    {
+        "entity_group": "PER",
+        "word": " V"
+    },
+    {
+        "entity_group": "ORG",
+        "word": "ITA"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " N"
+    },
+    {
+        "entity_group": "ORG",
+        "word": "UOVA"
+    },
+    {
+        "entity_group": "PER",
+        "word": " DARWIN"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " RANGITATA"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " CANTERBURY"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " NEW ZEALAND"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " PRESS"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " MUSICAL"
+    },
+    {
+        "entity_group": "MISC",
+        "word": "ANK"
+    },
+    {
+        "entity_group": "PER",
+        "word": " CHAPMAN"
+    },
+    {
+        "entity_group": "PER",
+        "word": " HALL"
+    },
+    {
+        "entity_group": "PER",
+        "word": " TRUBNER"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " PALL"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " MALL"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " SPECTATOR"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " EREWHON"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " EGYPTIAN GREEK"
+    },
+    {
+        "entity_group": "LOC",
+        "word": "ATTLE"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " CATTLE"
+    },
+    {
+        "entity_group": "PER",
+        "word": " LUCY"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MADGE"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " CHRISTIAN"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MISSUS WILSON"
+    },
+    {
+        "entity_group": "LOC",
+        "word": "ED CROFTON"
+    },
+    {
+        "entity_group": "PER",
+        "word": " BETTER RING"
+    },
+    {
+        "entity_group": "PER",
+        "word": " CHRISTOPHER"
+    },
+    {
+        "entity_group": "PER",
+        "word": " SNELLINGS"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MARY ANN"
+    },
+    {
+        "entity_group": "PER",
+        "word": " PAPA"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MAMMA"
+    },
+    {
+        "entity_group": "PER",
+        "word": "ISTER WHITING"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MISSUS MACPHERSON"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MACPHERSON"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " ITALY"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " FRANCE"
+    },
+    {
+        "entity_group": "PER",
+        "word": " COOK"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " WAHITI"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " GLENARVAN"
+    },
+    {
+        "entity_group": "PER",
+        "word": " JOHN"
+    },
+    {
+        "entity_group": "PER",
+        "word": " HELENA"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MARY GRANT"
+    },
+    {
+        "entity_group": "PER",
+        "word": " WILSON"
+    },
+    {
+        "entity_group": "PER",
+        "word": " OLBINETT"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MULRADY"
+    },
+    {
+        "entity_group": "PER",
+        "word": " JOHN MANGLES"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MARY GRANT"
+    },
+    {
+        "entity_group": "PER",
+        "word": " ROBERT"
+    },
+    {
+        "entity_group": "PER",
+        "word": " WILL HALLEY"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " PAMPAS"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " AUSTRALIA"
+    },
+    {
+        "entity_group": "PER",
+        "word": " JOHN"
+    },
+    {
+        "entity_group": "PER",
+        "word": "ADY GLENARVAN"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " DUNCAN"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " KIRKLEATHAM YEAST"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " BRE"
+    },
+    {
+        "entity_group": "ORG",
+        "word": "WER"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " MIL"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " GREAT INDIAN"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " EGYPT"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " NUBIA"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " RED"
+    },
+    {
+        "entity_group": "ORG",
+        "word": "ATS"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " TARTARIC"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " ROLLS"
+    },
+    {
+        "entity_group": "PER",
+        "word": " SOYER"
+    },
+    {
+        "entity_group": "ORG",
+        "word": "UNS"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " VICTORIA"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " RUSKS"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " ENGLAND"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " EAST"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " ARABIANS"
+    },
+    {
+        "entity_group": "MISC",
+        "word": "US"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MORTON"
+    },
+    {
+        "entity_group": "PER",
+        "word": "ISTER MORTON"
+    },
+    {
+        "entity_group": "PER",
+        "word": " WAVERLEY"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " DONALD BEAN"
+    },
+    {
+        "entity_group": "PER",
+        "word": " DONALD BEAN LEAN"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " SCOTTISH"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " PALACE OF TOURMALINE"
+    },
+    {
+        "entity_group": "PER",
+        "word": " TROT"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " CORALIE"
+    },
+    {
+        "entity_group": "PER",
+        "word": " BUTTON BRIGHT"
+    },
+    {
+        "entity_group": "PER",
+        "word": " BILL"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " AMERICA"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " BLUESKINS"
+    },
+    {
+        "entity_group": "PER",
+        "word": " TOURMALINE"
+    },
+    {
+        "entity_group": "PER",
+        "word": "VEL"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " GRAND COURT"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " PINKIES"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " TULLY VEOLAN"
+    },
+    {
+        "entity_group": "PER",
+        "word": " DENT"
+    },
+    {
+        "entity_group": "PER",
+        "word": " FANCY OF WAVERLEY"
+    },
+    {
+        "entity_group": "MISC",
+        "word": "GAN"
+    },
+    {
+        "entity_group": "LOC",
+        "word": "UREL"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " PARIS"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " HILL VIEW"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " STANDARD POETS"
+    },
+    {
+        "entity_group": "PER",
+        "word": " DARLING"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " SOUTH AFRICA"
+    },
+    {
+        "entity_group": "PER",
+        "word": " BEENIE"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " SPICE ISLANDS"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " MOLUCCAS"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " INDIAN OCEAN"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " THE CUCUMBER"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " CHESTER"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " BRINE"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " THE LEMON"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " ASIA"
+    },
+    {
+        "entity_group": "PER",
+        "word": " VIRGIL"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " GINGER"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " Z"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " EAST"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " WEST INDIES"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " JAMAICA"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " MARJORAM"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " PORTUGAL"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " PAN"
+    },
+    {
+        "entity_group": "LOC",
+        "word": "ADA"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " PANADA"
+    },
+    {
+        "entity_group": "PER",
+        "word": " QUITE CRISP"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " SAGE"
+    },
+    {
+        "entity_group": "PER",
+        "word": "RIL"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " NOVATIANS"
+    },
+    {
+        "entity_group": "ORG",
+        "word": "NAGOGUES"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " ALEXANDRIA"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " ZEAL"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " CYRIL"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " JULIAN LAW"
+    },
+    {
+        "entity_group": "PER",
+        "word": " THEODOSIUS"
+    },
+    {
+        "entity_group": "PER",
+        "word": " PARDON"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " CHRISTIANS"
+    },
+    {
+        "entity_group": "PER",
+        "word": " THEON"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " METROPOLITANS"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " ANTIOCH"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " VATICAN"
+    },
+    {
+        "entity_group": "PER",
+        "word": " CELESTINE"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " GREEKS"
+    },
+    {
+        "entity_group": "PER",
+        "word": " NESTORIUS"
+    },
+    {
+        "entity_group": "ORG",
+        "word": "AS"
+    },
+    {
+        "entity_group": "PER",
+        "word": " CHRYSOSTOM"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " METROPOLITAN"
+    },
+    {
+        "entity_group": "PER",
+        "word": "NON"
+    },
+    {
+        "entity_group": "PER",
+        "word": " ARCADIUS"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " BLEMMYES"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " NUBIANS"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " NILE"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " ROMAN"
+    },
+    {
+        "entity_group": "MISC",
+        "word": "THOD"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " EBIONITES"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " NAZARENES"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " MOSAIC"
+    },
+    {
+        "entity_group": "PER",
+        "word": " CHRIST"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MANKIND"
+    },
+    {
+        "entity_group": "PER",
+        "word": " SOCRATES"
+    },
+    {
+        "entity_group": "PER",
+        "word": " JESUS"
+    },
+    {
+        "entity_group": "PER",
+        "word": " ADAM"
+    },
+    {
+        "entity_group": "PER",
+        "word": " CHRIST"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " JORDAN"
+    },
+    {
+        "entity_group": "PER",
+        "word": " JESUS OF"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " NAZARETH"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " MESSIAH"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " JEWS"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " PLEROMA"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " WORLD OF SPIRITS"
+    },
+    {
+        "entity_group": "PER",
+        "word": " ATHANASIUS"
+    },
+    {
+        "entity_group": "PER",
+        "word": " JULIAN"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " ARIANS"
+    },
+    {
+        "entity_group": "PER",
+        "word": " APOLLINARIS"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " GREEK"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " CATHOLIC EP"
+    },
+    {
+        "entity_group": "MISC",
+        "word": "LE TO THE ROMANS"
+    },
+    {
+        "entity_group": "LOC",
+        "word": "UCKINGHAMSHIRE"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MARGARET"
+    },
+    {
+        "entity_group": "PER",
+        "word": " JEM WILSON"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " W"
+    },
+    {
+        "entity_group": "ORG",
+        "word": "ILSONS"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MISSUS WILSON"
+    },
+    {
+        "entity_group": "PER",
+        "word": " ALICE"
+    },
+    {
+        "entity_group": "PER",
+        "word": " JEM"
+    },
+    {
+        "entity_group": "PER",
+        "word": " GEORGE"
+    },
+    {
+        "entity_group": "PER",
+        "word": " JANE WILSON"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " UNWORLDLY"
+    },
+    {
+        "entity_group": "PER",
+        "word": " ESTHER"
+    },
+    {
+        "entity_group": "PER",
+        "word": " SIMMONDS"
+    },
+    {
+        "entity_group": "PER",
+        "word": " SHIMERDA"
+    },
+    {
+        "entity_group": "PER",
+        "word": " YULKA"
+    },
+    {
+        "entity_group": "PER",
+        "word": " JAKE"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " NEW YEAR"
+    },
+    {
+        "entity_group": "MISC",
+        "word": "S DAY"
+    },
+    {
+        "entity_group": "LOC",
+        "word": "BR"
+    },
+    {
+        "entity_group": "MISC",
+        "word": "OS"
+    },
+    {
+        "entity_group": "LOC",
+        "word": "CH"
+    },
+    {
+        "entity_group": "PER",
+        "word": " JIM"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MORREL"
+    },
+    {
+        "entity_group": "PER",
+        "word": " NOIRTIER"
+    },
+    {
+        "entity_group": "PER",
+        "word": " VALENTINE"
+    },
+    {
+        "entity_group": "PER",
+        "word": "BE"
+    },
+    {
+        "entity_group": "LOC",
+        "word": "ILLEFORT"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " PROSERPINA"
+    },
+    {
+        "entity_group": "PER",
+        "word": " WHOLLY"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " URANIA"
+    },
+    {
+        "entity_group": "PER",
+        "word": " DELIA"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " ROME"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " AFRICANUS"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " AUGUSTUS"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " SPONSA DE LIBANO"
+    },
+    {
+        "entity_group": "PER",
+        "word": " VIRGILIUS"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MILBOROUGH"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " NAPLES"
+    },
+    {
+        "entity_group": "PER",
+        "word": " SAMUEL BOZZLE"
+    },
+    {
+        "entity_group": "PER",
+        "word": " BOZZLE"
+    },
+    {
+        "entity_group": "PER",
+        "word": "AME T"
+    },
+    {
+        "entity_group": "PER",
+        "word": " TREVELYAN"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MISSUS BOZZLE"
+    },
+    {
+        "entity_group": "PER",
+        "word": " TREVELYAN"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MISTER BOZZLE"
+    },
+    {
+        "entity_group": "PER",
+        "word": " SKINT"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " STONY WALK"
+    },
+    {
+        "entity_group": "PER",
+        "word": " EDWARD"
+    },
+    {
+        "entity_group": "PER",
+        "word": " DORRIFORTH"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " HOUSE OF MISSUS HORTON"
+    },
+    {
+        "entity_group": "PER",
+        "word": " FREDERICK"
+    },
+    {
+        "entity_group": "PER",
+        "word": " WOODLEY"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MILNER"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MISSUS HORTON"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " VALKYRIE"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " DENMARK"
+    },
+    {
+        "entity_group": "PER",
+        "word": " HARDWIGG"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " CAPE PORTLAND"
+    },
+    {
+        "entity_group": "LOC",
+        "word": "OUNT MYRDALS YOKUL"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " ICELANDIC"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " LATIN"
+    },
+    {
+        "entity_group": "PER",
+        "word": " SAKNUSSEMM"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " GERMANS"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " ESKIMOS"
+    },
+    {
+        "entity_group": "PER",
+        "word": " WABIGOON"
+    },
+    {
+        "entity_group": "PER",
+        "word": " WOONGA"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MINNETAKI"
+    },
+    {
+        "entity_group": "PER",
+        "word": " NEWSOME"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " HUDSON BAY POST"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " INDIAN"
+    },
+    {
+        "entity_group": "PER",
+        "word": " WABI"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " WOODLAND"
+    },
+    {
+        "entity_group": "PER",
+        "word": " P"
+    },
+    {
+        "entity_group": "PER",
+        "word": " WOONG"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " DETROIT"
+    },
+    {
+        "entity_group": "PER",
+        "word": " ROD"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " SPRUCEWOOD"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " BLACK STURGEON"
+    },
+    {
+        "entity_group": "LOC",
+        "word": "IVER"
+    },
+    {
+        "entity_group": "PER",
+        "word": " HANS"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " SUDVESTR FJORDUNGR"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " LAVA"
+    },
+    {
+        "entity_group": "LOC",
+        "word": "ELS"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " GERMANY"
+    },
+    {
+        "entity_group": "PER",
+        "word": " COLOSSUS"
+    },
+    {
+        "entity_group": "PER",
+        "word": " RHODES"
+    },
+    {
+        "entity_group": "PER",
+        "word": " TIDE"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " DANISH"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " ELBE"
+    },
+    {
+        "entity_group": "PER",
+        "word": " PETER"
+    },
+    {
+        "entity_group": "PER",
+        "word": "ISTER SHIMERDA"
+    },
+    {
+        "entity_group": "PER",
+        "word": " PAVEL"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " CHICAGO DES MOINES"
+    },
+    {
+        "entity_group": "LOC",
+        "word": "T WAYNE"
+    },
+    {
+        "entity_group": "PER",
+        "word": " SHIMERDA"
+    },
+    {
+        "entity_group": "PER",
+        "word": " CONGAL"
+    },
+    {
+        "entity_group": "PER",
+        "word": " SQUINT EYED"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " TARA"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " CHRISTIANITY"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " MOIRA"
+    },
+    {
+        "entity_group": "LOC",
+        "word": "AR"
+    },
+    {
+        "entity_group": "PER",
+        "word": " BEL"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " ANGLO"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " MOIRA"
+    },
+    {
+        "entity_group": "PER",
+        "word": "N"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " KENT"
+    },
+    {
+        "entity_group": "LOC",
+        "word": "THER"
+    },
+    {
+        "entity_group": "LOC",
+        "word": "DOMS"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " NORTHUMBRIA"
+    },
+    {
+        "entity_group": "PER",
+        "word": " AIDAN"
+    },
+    {
+        "entity_group": "PER",
+        "word": " CUTHBERT"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " IONA"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " HUMBER"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " PICTISH"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " MEATH"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " ABBOT OF IONA"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " RATH OF TARA"
+    },
+    {
+        "entity_group": "PER",
+        "word": " PATRICK"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " HEAD OF CATTLE"
+    },
+    {
+        "entity_group": "PER",
+        "word": "INT MOLING"
+    },
+    {
+        "entity_group": "PER",
+        "word": "INT ADAMNAN"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " SHIMERDAS"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " RUSSIAN"
+    },
+    {
+        "entity_group": "PER",
+        "word": " TONY"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " BUFFALO"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " INDIAN TIMES"
+    },
+    {
+        "entity_group": "PER",
+        "word": " DUDE"
+    },
+    {
+        "entity_group": "PER",
+        "word": " OTTO FUCHS"
+    },
+    {
+        "entity_group": "PER",
+        "word": " RUGGEDO"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " KALIKO"
+    },
+    {
+        "entity_group": "PER",
+        "word": " KALIK"
+    },
+    {
+        "entity_group": "MISC",
+        "word": "O"
+    },
+    {
+        "entity_group": "PER",
+        "word": " KALIKO"
+    },
+    {
+        "entity_group": "PER",
+        "word": " BETSY"
+    },
+    {
+        "entity_group": "PER",
+        "word": " ANN"
+    },
+    {
+        "entity_group": "PER",
+        "word": " QUILTER"
+    },
+    {
+        "entity_group": "PER",
+        "word": " FREDERICK LEIGHTON"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " ITHACA"
+    },
+    {
+        "entity_group": "PER",
+        "word": " LINNELL"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MASON"
+    },
+    {
+        "entity_group": "MISC",
+        "word": "INGO"
+    },
+    {
+        "entity_group": "PER",
+        "word": " BIRKET FOSTER"
+    },
+    {
+        "entity_group": "PER",
+        "word": " CARKER"
+    },
+    {
+        "entity_group": "PER",
+        "word": " JOHN COLLIER"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " TURKISH"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " BRITISH"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " FOREIGN"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MICHAEL ANGELO"
+    },
+    {
+        "entity_group": "PER",
+        "word": " FRED"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " INDIA"
+    },
+    {
+        "entity_group": "PER",
+        "word": " RUSKIN"
+    },
+    {
+        "entity_group": "PER",
+        "word": " HARRY QUILTER"
+    },
+    {
+        "entity_group": "PER",
+        "word": " BRION"
+    },
+    {
+        "entity_group": "PER",
+        "word": " BRANDD"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " IROLG"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " MODOC"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " ARCTIC"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " STRAWBERRY VALLEY"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " MORAINE"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " GLACIER"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " G"
+    },
+    {
+        "entity_group": "ORG",
+        "word": "ORGE G"
+    },
+    {
+        "entity_group": "MISC",
+        "word": "ULL"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " CANY"
+    },
+    {
+        "entity_group": "MISC",
+        "word": "ON"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " MOUNT SHASTA"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " CED"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " SHASTA PASS"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " MOUNT BREMER"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " SHASTA"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " DUCKS"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " ALASKA"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " SHASTA R"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " SHASTA VALLEY"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " CL"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " PITT R"
+    },
+    {
+        "entity_group": "ORG",
+        "word": "ZEL"
+    },
+    {
+        "entity_group": "PER",
+        "word": " DOGWOOD"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " ALDER"
+    },
+    {
+        "entity_group": "PER",
+        "word": " DOUGLAS"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " SIERRA"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " MC CLOUD"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " FALL RIVER"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " FORT CROOK"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " PITT"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " LASSEN"
+    },
+    {
+        "entity_group": "LOC",
+        "word": "S BUTTE"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " FEATHER RIVER"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " CHICO"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " BIG MEADOWS"
+    },
+    {
+        "entity_group": "LOC",
+        "word": "S BUT"
+    },
+    {
+        "entity_group": "MISC",
+        "word": "AHOE"
+    },
+    {
+        "entity_group": "PER",
+        "word": " PHOEBE"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " HENS"
+    },
+    {
+        "entity_group": "PER",
+        "word": " HEPZIBAH"
+    },
+    {
+        "entity_group": "LOC",
+        "word": "OP"
+    },
+    {
+        "entity_group": "PER",
+        "word": " CHANTICLEER"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " HOUSE OF THE SEVEN GABLES"
+    },
+    {
+        "entity_group": "PER",
+        "word": " PHOEBE PYNCHEON"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " MORO"
+    },
+    {
+        "entity_group": "LOC",
+        "word": "CC"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " PAGAN"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " MENS SANA"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " ALPS"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " SONS"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " WESTERN"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " NORTHERN"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " SPAIN"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " GIBRALTAR"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " AFRICA"
+    },
+    {
+        "entity_group": "PER",
+        "word": " SALVIAN"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " NORTH AFRICA"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " SEMI GOTHIC AR"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " BELISARIUS"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " GOTHIC"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " EASTERN"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " WESTERN H"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " HOMOOUSIOS"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " HOMOIOUSIOS"
+    },
+    {
+        "entity_group": "PER",
+        "word": " SYNESIUS"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " ISIDORE"
+    },
+    {
+        "entity_group": "LOC",
+        "word": "ELUSIUM"
+    },
+    {
+        "entity_group": "PER",
+        "word": " PTOLEMY PHILADELPHUS"
+    },
+    {
+        "entity_group": "PER",
+        "word": " EUCLID"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " THEOCRITUS CALLIMACHUS"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " LYCOPHRON"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " MEDITERRANE"
+    },
+    {
+        "entity_group": "LOC",
+        "word": "AN"
+    },
+    {
+        "entity_group": "MISC",
+        "word": "REEK"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " HYPATIA"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " PELAGIA"
+    },
+    {
+        "entity_group": "PER",
+        "word": " HURSTWOOD"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MISSUS HURSTWOOD"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " CARE OF THE WEST SIDE POST"
+    },
+    {
+        "entity_group": "PER",
+        "word": " BROODED"
+    },
+    {
+        "entity_group": "PER",
+        "word": " CARRIE"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " OGDEN"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MC GREGOR JAMES"
+    },
+    {
+        "entity_group": "PER",
+        "word": " JULIA HURSTWOOD"
+    },
+    {
+        "entity_group": "PER",
+        "word": " DROUET"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " MADISON"
+    },
+    {
+        "entity_group": "PER",
+        "word": " CARRIE"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " R"
+    },
+    {
+        "entity_group": "ORG",
+        "word": "ECTOR"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " MIN"
+    },
+    {
+        "entity_group": "ORG",
+        "word": "S"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " VAN BUREN"
+    },
+    {
+        "entity_group": "PER",
+        "word": " HANSON"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " SWEDISH"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MINNIE"
+    },
+    {
+        "entity_group": "MISC",
+        "word": "RAIR"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " OGRE"
+    },
+    {
+        "entity_group": "PER",
+        "word": " THITHER"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " VIOLINS"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " HAUT BOYS"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " GRAND"
+    },
+    {
+        "entity_group": "PER",
+        "word": " ALMONER"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " CHAPEL OF THE CASTLE"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " DEUCALION"
+    },
+    {
+        "entity_group": "PER",
+        "word": " PROMETHEUS"
+    },
+    {
+        "entity_group": "PER",
+        "word": " JUP"
+    },
+    {
+        "entity_group": "MISC",
+        "word": "ER"
+    },
+    {
+        "entity_group": "MISC",
+        "word": "OM"
+    },
+    {
+        "entity_group": "LOC",
+        "word": "OUNT CAUCASUS"
+    },
+    {
+        "entity_group": "PER",
+        "word": " JUPITER"
+    },
+    {
+        "entity_group": "PER",
+        "word": " PYRRHA"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MERCURY"
+    },
+    {
+        "entity_group": "PER",
+        "word": " PYRRHA"
+    },
+    {
+        "entity_group": "PER",
+        "word": "AM"
+    },
+    {
+        "entity_group": "PER",
+        "word": " GEORGE NODDED"
+    },
+    {
+        "entity_group": "PER",
+        "word": " CHALLONER"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " GE"
+    },
+    {
+        "entity_group": "ORG",
+        "word": "ORGE"
+    },
+    {
+        "entity_group": "PER",
+        "word": " GRYCE"
+    },
+    {
+        "entity_group": "PER",
+        "word": " GEORGE"
+    },
+    {
+        "entity_group": "PER",
+        "word": " GRYCE"
+    },
+    {
+        "entity_group": "PER",
+        "word": " SWEETWATER"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MARK SOWERBY"
+    },
+    {
+        "entity_group": "PER",
+        "word": " CLAUS HENNERBERG"
+    },
+    {
+        "entity_group": "PER",
+        "word": " CLARKE"
+    },
+    {
+        "entity_group": "PER",
+        "word": " SLATER"
+    },
+    {
+        "entity_group": "LOC",
+        "word": "WEETWATER"
+    },
+    {
+        "entity_group": "PER",
+        "word": "OUR"
+    },
+    {
+        "entity_group": "PER",
+        "word": " BUSHES"
+    },
+    {
+        "entity_group": "PER",
+        "word": " WALT"
+    },
+    {
+        "entity_group": "PER",
+        "word": " THOMAS"
+    },
+    {
+        "entity_group": "PER",
+        "word": " TAD IS RIGHT"
+    },
+    {
+        "entity_group": "PER",
+        "word": " TAD"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " CANYOU"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MEBBY"
+    },
+    {
+        "entity_group": "PER",
+        "word": "URE"
+    },
+    {
+        "entity_group": "PER",
+        "word": "ING"
+    },
+    {
+        "entity_group": "PER",
+        "word": " CHUNKY"
+    },
+    {
+        "entity_group": "PER",
+        "word": " WALTER"
+    },
+    {
+        "entity_group": "PER",
+        "word": " STACY BROWN"
+    },
+    {
+        "entity_group": "PER",
+        "word": " ZEPPLIN"
+    },
+    {
+        "entity_group": "PER",
+        "word": " STACY"
+    },
+    {
+        "entity_group": "PER",
+        "word": " LUMPY BATES"
+    },
+    {
+        "entity_group": "PER",
+        "word": " CH"
+    },
+    {
+        "entity_group": "PER",
+        "word": " WAG"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " LE"
+    },
+    {
+        "entity_group": "PER",
+        "word": " TAD"
+    },
+    {
+        "entity_group": "PER",
+        "word": " JAM"
+    },
+    {
+        "entity_group": "PER",
+        "word": " BROWN"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " NED"
+    },
+    {
+        "entity_group": "PER",
+        "word": " JIMMIE"
+    },
+    {
+        "entity_group": "PER",
+        "word": "LER"
+    },
+    {
+        "entity_group": "PER",
+        "word": " STACY BROWN"
+    },
+    {
+        "entity_group": "PER",
+        "word": " TAD BUTLER"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " MARTIAN"
+    },
+    {
+        "entity_group": "PER",
+        "word": " DOMA"
+    },
+    {
+        "entity_group": "PER",
+        "word": " BILL CHANDLER"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " SYRTIS"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " SYRTIS"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " DARFHULVA"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " TERRA"
+    },
+    {
+        "entity_group": "PER",
+        "word": " T"
+    },
+    {
+        "entity_group": "ORG",
+        "word": "ONY"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " MARTIANS"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " GLORIA"
+    },
+    {
+        "entity_group": "PER",
+        "word": " STANDISH"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MARTHA"
+    },
+    {
+        "entity_group": "PER",
+        "word": " LATTIMER"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " SPACE"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " CHARCOAL"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " TERRAN"
+    },
+    {
+        "entity_group": "PER",
+        "word": " TONY LATTIMER"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " SID"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " SOCIETY OF MARTIAN ARCHAEOLOGY"
+    },
+    {
+        "entity_group": "PER",
+        "word": " ANTHONY LATTIMER"
+    },
+    {
+        "entity_group": "PER",
+        "word": " FABER"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " HARKNESS"
+    },
+    {
+        "entity_group": "PER",
+        "word": "ISTER SWIFT"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MISSUS SWIFT"
+    },
+    {
+        "entity_group": "PER",
+        "word": " SANDY"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " ANIMAL"
+    },
+    {
+        "entity_group": "PER",
+        "word": " SWIFT"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " ARABESQUE"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " VENDHYA"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " KHOSALA"
+    },
+    {
+        "entity_group": "PER",
+        "word": " BHUNDA CHAND"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " DAIS"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " GOLDEN DOME"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " ASURA"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " SOUTHWARK"
+    },
+    {
+        "entity_group": "PER",
+        "word": " PAUL"
+    },
+    {
+        "entity_group": "PER",
+        "word": " GWYNPLAINE"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " GREEN BOX"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " SIGN OF THE INN"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " FIBI"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " VINOS"
+    },
+    {
+        "entity_group": "PER",
+        "word": " URSUS"
+    },
+    {
+        "entity_group": "ORG",
+        "word": "OUNTEB"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " SOUTHWARK"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " MERRY ANDREWS"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " MOUNTEB"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " TARRINZEAU"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " SHAKESPE"
+    },
+    {
+        "entity_group": "ORG",
+        "word": "ARE"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " GL"
+    },
+    {
+        "entity_group": "ORG",
+        "word": "ORY OF GWYNPLAINE"
+    },
+    {
+        "entity_group": "PER",
+        "word": " CICERO"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " URSUS"
+    },
+    {
+        "entity_group": "PER",
+        "word": " GWYN"
+    },
+    {
+        "entity_group": "PER",
+        "word": " NICLESS"
+    },
+    {
+        "entity_group": "PER",
+        "word": " GWYNPLA"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " MANICHAEANS"
+    },
+    {
+        "entity_group": "PER",
+        "word": "OE"
+    },
+    {
+        "entity_group": "PER",
+        "word": " HOMO"
+    },
+    {
+        "entity_group": "PER",
+        "word": " GW"
+    },
+    {
+        "entity_group": "ORG",
+        "word": "YNPLAINE"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " TENNESSEE"
+    },
+    {
+        "entity_group": "PER",
+        "word": " YANK"
+    },
+    {
+        "entity_group": "PER",
+        "word": " JOHNNY"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " ATLANTA"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " CHATTAHOOCHEE"
+    },
+    {
+        "entity_group": "PER",
+        "word": " JOE JOHNSTON"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " UNITED STATES"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " YANKEE"
+    },
+    {
+        "entity_group": "PER",
+        "word": " NAGER"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " TENNESSEE RIVER"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " YANKEES"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " MURF"
+    },
+    {
+        "entity_group": "LOC",
+        "word": "ES"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " SHILOH"
+    },
+    {
+        "entity_group": "PER",
+        "word": " GLADD"
+    },
+    {
+        "entity_group": "PER",
+        "word": " GLADDEN"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " ALABAMA"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " COLUMBIA"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " GLORIOUS WAR"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " NASHVILLE"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " MURFREESBORO"
+    },
+    {
+        "entity_group": "PER",
+        "word": " FRIERSON"
+    },
+    {
+        "entity_group": "PER",
+        "word": " WILKERSON"
+    },
+    {
+        "entity_group": "PER",
+        "word": " OAK"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " TENNESSEE REG"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " CHEATHAM"
+    },
+    {
+        "entity_group": "PER",
+        "word": " JUSTIN"
+    },
+    {
+        "entity_group": "PER",
+        "word": " GILLIAN THE"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " THE WANDERING SING"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " THE LADIES"
+    },
+    {
+        "entity_group": "PER",
+        "word": " JEAN VALJEAN"
+    },
+    {
+        "entity_group": "PER",
+        "word": " HOVEL"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " LUMINOUS"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " TRIUMPHANT"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " VENICE"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " MAGAZZINO"
+    },
+    {
+        "entity_group": "MISC",
+        "word": "AZ"
+    },
+    {
+        "entity_group": "LOC",
+        "word": "ONDOL"
+    },
+    {
+        "entity_group": "PER",
+        "word": " RAZETTA"
+    },
+    {
+        "entity_group": "PER",
+        "word": " TERRO"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " UNIVERSAL"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " EUCHARIST"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " AMERICAN INDIAN"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " THE WHITE RACE"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " CONVERSE OF SPIRITS"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " RUM RIVER"
+    },
+    {
+        "entity_group": "LOC",
+        "word": "T ELLIS"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " ASSINIBOINE"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " INDIANS"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " SIOU"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " WIGWAM"
+    },
+    {
+        "entity_group": "PER",
+        "word": " QUIXOTE"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " MONTESINOS"
+    },
+    {
+        "entity_group": "PER",
+        "word": " DULCINEA"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MERLIN"
+    },
+    {
+        "entity_group": "PER",
+        "word": " DON QUIXOTE"
+    },
+    {
+        "entity_group": "PER",
+        "word": " DON QUIXOTE"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " SANCHO"
+    },
+    {
+        "entity_group": "PER",
+        "word": "OSE"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " SANCHO PANZA"
+    },
+    {
+        "entity_group": "PER",
+        "word": "Q"
+    },
+    {
+        "entity_group": "PER",
+        "word": " CLAUDIA"
+    },
+    {
+        "entity_group": "PER",
+        "word": " LEONORA"
+    },
+    {
+        "entity_group": "PER",
+        "word": " BALV"
+    },
+    {
+        "entity_group": "PER",
+        "word": "TRO"
+    },
+    {
+        "entity_group": "PER",
+        "word": " WERT"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " BARCELONA"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " GASCON"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " CATALAN"
+    },
+    {
+        "entity_group": "PER",
+        "word": " CATHERINE"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " GREEDY"
+    },
+    {
+        "entity_group": "PER",
+        "word": " CATHERINE"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " SYDNEY"
+    },
+    {
+        "entity_group": "PER",
+        "word": " BENNYDECK"
+    },
+    {
+        "entity_group": "PER",
+        "word": " RANDAL"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " SYDENHAM"
+    },
+    {
+        "entity_group": "PER",
+        "word": " SY"
+    },
+    {
+        "entity_group": "LOC",
+        "word": "D"
+    },
+    {
+        "entity_group": "PER",
+        "word": "NEY"
+    },
+    {
+        "entity_group": "ORG",
+        "word": " RANDAL"
+    },
+    {
+        "entity_group": "PER",
+        "word": " HERBERT"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " MOUNT MORVEN"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MISSUS NORMAN"
+    },
+    {
+        "entity_group": "PER",
+        "word": " MISSUS PRESTY"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " SANDYSEAL"
+    },
+    {
+        "entity_group": "MISC",
+        "word": " NOR"
+    },
+    {
+        "entity_group": "LOC",
+        "word": "MAN"
+    },
+    {
+        "entity_group": "LOC",
+        "word": " NORMAN"
+    },
+    {
+        "entity_group": "PER",
+        "word": " KITTY"
+    }
+]

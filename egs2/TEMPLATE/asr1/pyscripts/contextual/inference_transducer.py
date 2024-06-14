@@ -155,7 +155,7 @@ if __name__ == "__main__":
         spm_path, 
         model_path,
         data_path_and_name_and_type,
-        token_type='char'
+        # token_type='char'
     )
 
     preprocessor       = loader.dataset.preprocess

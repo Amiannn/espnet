@@ -20,7 +20,6 @@ from pyscripts.contextual.utils.visualize      import plot_attention_map
 
 from espnet2.asr_transducer.utils import get_transducer_task_io
 
-from espnet.nets.pytorch_backend.transformer.add_sos_eos     import add_sos_eos
 from espnet2.asr.contextualizer.func.contextual_adapter_func import forward_contextual_adapter
 from espnet2.asr.contextualizer import (
     CONTEXTUAL_ADAPTER_ENCODER,
@@ -31,15 +30,6 @@ seed = 12
 random.seed(seed)
 torch.manual_seed(seed)
 np.random.seed(seed)
-
-def get_token_list(token_id_converter):
-    vocab_size = token_id_converter.get_num_vocabulary_size()
-    vocab      = [
-        token_id_converter.ids2tokens(
-            [i]
-        )[0] for i in range(vocab_size)
-    ]
-    return vocab
 
 def visualize(
     logp,
@@ -53,8 +43,15 @@ def visualize(
     debug_path,
     uttid,
 ):
-    frame2align = {}
-
+    alignments = force_alignment(
+        logp, 
+        target[0], 
+        blank_id, 
+        token_list,
+        speech,
+        debug_path
+    )
+    frame2align = {start: token for token, start, end in alignments}
     plot_attention_map(
         frame2align,
         atten,
@@ -77,7 +74,8 @@ def forward(
     print(f'encoder_out: {encoder_out.shape}')
 
     # c1. Encoder contextualization
-    atten = None
+    atten    = None
+    bias_vec = None
     if model.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_ADAPTER_ENCODER:
         bias_vec, atten = forward_contextual_adapter(
             contextualizer=model.contextualizer,
@@ -89,37 +87,38 @@ def forward(
         )
         atten = atten.squeeze(1)
         print(f'atten: {atten.shape}')
-        encoder_out = encoder_out + bias_vec
-    
-    ys_pad_lens = torch.tensor([d.shape[0] for d in tokens]).long()
-    print(ys_pad_lens)
-    ys_in_pad, ys_out_pad = add_sos_eos(
-        tokens, model.sos, model.eos, model.ignore_id
-    )
-    ys_in_lens = ys_pad_lens + 1
 
-    # 1. Forward decoder
-    outputs = model.decoder(
-        encoder_out, enc_olens, ys_in_pad, ys_in_lens, return_hs=True
+    decoder_in, target, t_len, u_len = get_transducer_task_io(
+        tokens,
+        enc_olens,
+        ignore_id=-1,
+        blank_id=model.blank_id,
     )
-    decoder_hs = outputs[0][1]
-    decoder_out = model.decoder.output_layer(decoder_hs)
-    logp        = None
-    target      = None
+    decoder_out = model.decoder(decoder_in)
+    print(f'decoder_out: {decoder_out.shape}')
+
+    joint_out = model.joint_network(
+        encoder_out.unsqueeze(2), 
+        decoder_out.unsqueeze(1),
+        # bias_out=bias_vec.unsqueeze(2),
+    )
+    print(f'joint_out: {joint_out.shape}')
+    logp = torch.log_softmax(joint_out, dim=-1)[0].transpose(1, 0)
+    print(f'logp: {logp.shape}')
+
     return logp, target, atten
 
-
 if __name__ == "__main__":
-    spm_path   = "./data/en_token_list/bpe_unigram600/bpe.model"
-    token_path = "./data/en_token_list/bpe_unigram600/tokens.txt"
-    model_conf = "./conf/contextual_adapter/conformer/tune_xphone_adapter.yaml"
-    model_path = "./exp/asr_conformer/finetune_freeze_con_enc_cb_xphone_gactc_tem_suffix/2epoch.pth"
-    stats_path = "./exp/asr_stats_raw_en_bpe600_sp_suffix/train/feats_lengths_stats.npz"
-
-    rare_path  = "./local/contextual/rarewords/all_rare_words.txt"
-    scp_path   = "./dump/raw/test_clean/wav.scp"
-    blist_path = "./dump/raw/test_clean/uttblist_idx"
-    ref_path   = "./data/test_clean/text"
+    spm_path   = "./data/token_list/bpe_unigram5000suffix/bpe.model"
+    token_path = "./data/token_list/bpe_unigram5000suffix/tokens.txt"
+    model_conf = "./conf/contextual/transducer/contextual_xphone_adapter.yaml"
+    model_path = "./exp/asr_transducer/contextual_xphone_adapter_suffix/valid.loss.ave_10best.pth"
+    stats_path = "./exp/asr_stats_raw_bpe5000_sp_suffix/train/feats_lengths_stats.npz"
+    
+    rare_path  = "./local/contextual/rarewords/rareword_f10_test.txt"
+    scp_path   = "./dump/raw/test/wav.scp"
+    blist_path = "./dump/raw/test/uttblist_idx"
+    ref_path   = "./data/test/text"
 
     folder_name = model_path.split('/')[-1].split('.')[0]
     debug_path = os.path.join("/".join(model_path.split('/')[:-1]), 'debug', folder_name)
@@ -136,42 +135,53 @@ if __name__ == "__main__":
     contextual_conf = {
         'contextual_type': 'rareword',
         'blist_path': rare_path,
-        'blist_xphone_path': './local/contextual/ssl_features/all_rare_words.xphone.seq.pt',
+        'blist_xphone_path': './local/contextual/ssl_features/rareword_f10_test.xphone.seq.pt',
         'blist_max': 20,
         'blist_drop_out': 0.0,
         'warmup_epoch': 0,
         'structure_type': None,
-        'sampling_method': None,
+        'sampling_method': 'ann_hnw',
+        # 'sampling_method': None,
+        'sampler_drop': 0.0,
+        'hnwr_pre_gold_length': 5,
+        'use_oov': True,
+        'use_gpu': False,
         'use_oov': True,
     }
     
-    model, loader = load_espnet_model(
+    model, loader, contextual_processor = load_espnet_model(
         model_conf,
         contextual_conf, 
         token_path,
-        # None, 
         'default',
         stats_path, 
         spm_path, 
         model_path,
         data_path_and_name_and_type,
         # token_type='char'
+        return_contextual_processor=True
     )
+
     preprocessor       = loader.dataset.preprocess
     token_id_converter = preprocessor.token_id_converter
-    token_list         = get_token_list(token_id_converter) + ['<oov>']
-    
-    model.contextualizer.adapter.temperature = 100.0
+    token_list         = token_id_converter.token_list + ['<oov>']
+    print(f'token_list: {len(token_list)}')
+
+    model.contextualizer.adapter.temperature = 1
+    if contextual_processor.sampling_method is not None:
+        contextual_processor.hn_sampler.update_index()
 
     model.eval()
     count = 0
     for data in loader:
-        if count > 5:
-            break
+        if count >=5: break
         count += 1
-
         uid  = data[0][0]
         data = data[1]
+
+        # if uid != "esun2021Q3_158":
+        #     continue
+        print(f'data keys: {data.keys()}')
         contexts       = data['contexts']
         speech         = data['speech']
         speech_lengths = data['speech_lengths']
@@ -201,7 +211,7 @@ if __name__ == "__main__":
         )['text']).long()
 
         tokens = tokens.unsqueeze(0)
-        # print(f'tokens : {tokens}')
+        print(f'tokens lengths: {len(tokens)}')
 
         logp, target, atten = forward(
             model, 
@@ -211,7 +221,9 @@ if __name__ == "__main__":
             tokens,
             text
         )
-
+        debug_out_path = os.path.join(debug_path, uid)
+        if not os.path.isdir(debug_out_path):
+            os.makedirs(debug_out_path)
         visualize(
             logp,
             atten,
@@ -221,7 +233,6 @@ if __name__ == "__main__":
             speech,
             model.blank_id, 
             token_list,
-            debug_path,
+            debug_out_path,
             uid,
         )
-        # break

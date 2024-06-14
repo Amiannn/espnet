@@ -92,7 +92,7 @@ class Encoder(torch.nn.Module):
         short_status, limit_size = check_short_utt(
             self.embed.subsampling_factor, x.size(1)
         )
-
+        logging.info(f'encoder x: {x.shape}')
         if short_status:
             raise TooShortUttError(
                 f"has {x.size(1)} frames and is too short for subsampling "

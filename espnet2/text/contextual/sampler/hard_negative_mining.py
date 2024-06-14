@@ -87,8 +87,8 @@ class HardNegativeSampler():
         if self.use_gpu:
             self.faiss_gpu_id = torch.cuda.current_device()
             self.faiss_res    = faiss.StandardGpuResources()
-            self.index                = None
-            self.blist_context_embeds = None
+        self.index                = None
+        self.blist_context_embeds = None
 
     def update_index(self):
         if self.sampling_method == "ann_hnw":
@@ -106,7 +106,9 @@ class HardNegativeSampler():
             'ilens'     : self.blist_tensor_ilens,
         }
         if self.blist_xphone_mean_tensors is not None:
-            kwargs['xphone_embed'] = self.blist_xphone_mean_tensors
+            kwargs['xphone_embed'] = self.blist_xphone_mean_tensors.to(
+                self.blist_tensors.device
+            )
         blist_context_embeds, _, _ = self.asr_model.contextualizer.forward_context_encoder(
             **kwargs
         )

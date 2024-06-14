@@ -12,9 +12,9 @@ train_set="train"
 valid_set="dev"
 test_sets="test"
 
-asr_config=conf/contextual/transducer/contextual_adapter.yaml
-inference_config=conf/contextual/transducer/decode_contextual_adapter_bs10.yaml
-asr_tag=transducer/contextual_adapter
+asr_config=conf/contextual/transducer/contextual_xphone_adapter_annhnw.yaml
+inference_config=conf/contextual/transducer/decode_contextual_xphone_adapter_greedy.yaml
+asr_tag=transducer/contextual_xphone_adapter_annhnw
 
 lm_config=conf/exp/train_lm_transformer.yaml
 use_lm=false
@@ -43,7 +43,7 @@ nbpe=5000
 # (train_set will be "${train_set}_sp" if speed_perturb_factors is specified)
 speed_perturb_factors="0.9 1.0 1.1"
 
-pretrained_model=../asr1/exp/asr_train_asr_transducer_conformer_raw_bpe5000_use_wandbtrue_sp_suffix/valid.loss.ave_10best.pth
+pretrained_model=./exp/asr_transducer/contextual_xphone_adapter_suffix/valid.loss.ave_10best.pth
 CUDA_LAUNCH_BLOCKING=1 CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --ngpu 1 \
     --nj  32 \
