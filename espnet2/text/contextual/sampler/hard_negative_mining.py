@@ -90,8 +90,6 @@ class HardNegativeSampler():
         self.index                = None
         self.blist_context_embeds = None
 
-        self.device = next(self.asr_model.parameters()).device
-
     def update_index(self):
         if self.sampling_method == "ann_hnw":
             logging.info(f"Updating ANN-HNW's index.")
@@ -108,8 +106,9 @@ class HardNegativeSampler():
             'ilens'     : self.blist_tensor_ilens,
         }
         if self.blist_xphone_mean_tensors is not None:
+            device = next(self.asr_model.parameters()).device
             kwargs['xphone_embed'] = self.blist_xphone_mean_tensors.to(
-                self.device
+                device
             )
         blist_context_embeds, _, _ = self.asr_model.contextualizer.forward_context_encoder(
             **kwargs
