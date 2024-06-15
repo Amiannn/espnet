@@ -4,7 +4,7 @@ from tqdm import tqdm
 from pyscripts.contextual.utils.dataio import read_file
 from pyscripts.contextual.utils.dataio import write_file
 
-TRAIN_DEV_BLIST_PATH = "./local/contextual/rarewords/rareword_f1000_train.txt"
+TRAIN_DEV_BLIST_PATH = f"./local/contextual/rarewords/rareword_f{2**12}_train.txt"
 TEST_BLIST_PATH      = "./local/contextual/rarewords/rareword_f10_test.txt"
 
 def get_uttblist(words, blist):

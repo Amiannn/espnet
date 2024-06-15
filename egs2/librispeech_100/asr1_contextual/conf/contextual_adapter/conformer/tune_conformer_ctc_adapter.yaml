@@ -1,3 +1,5 @@
+model: contextual_asr_espnet
+
 encoder: conformer
 encoder_conf:
     output_size: 512
@@ -74,3 +76,33 @@ specaug_conf:
     - 0.
     - 0.05
     num_time_mask: 5
+
+# contextual information settings
+contextual: rareword
+contextual_conf:
+    contextual_type: rareword
+    blist_path: ./local/contextual/rarewords/rareword_f15.txt
+    blist_max: 200
+    blist_drop_out: 0.0
+    structure_type: null
+    # structure_type: trie
+    sampling_method: null
+
+# contextualizer settings
+contextualizer: contextual_adapter_encoder
+contextualizer_conf:
+    contextualizer_type: contextual_adapter_encoder
+    context_embed_size: 512
+    context_hidden_size: 512
+    model_hidden_size: 512
+    attndim: 512
+    proj_hidden_size: 512
+    atten_temperature: 0.05
+    drop_out: 0.0
+    warmup_epoch: 0
+    contextualizer_weight: 0.5
+    contextualizer_losses:
+        loss_contextualizer_ga_ctc: 1
+
+# adapter style training
+freeze_param: ["encoder", "decoder", "contextualizer.encoder.embed", "contextualizer.encoder.pad_embed"]

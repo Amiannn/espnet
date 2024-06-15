@@ -74,7 +74,7 @@ def count_cover_rate(all_word_counts, word_counts_subset):
     # print(f'total_subset_counts: {total_subset_counts}')
     return (total_subset_counts / total_counts), total_counts, total_subset_counts
 
-train_text_path    = "./data/train_clean_100/text"
+train_text_path    = "./data/train/text"
 dev_text_path      = "./data/dev_clean/text"
 test_text_path     = "./data/test_clean/text"
 dump_path          = "./exp/test/freq_exp"

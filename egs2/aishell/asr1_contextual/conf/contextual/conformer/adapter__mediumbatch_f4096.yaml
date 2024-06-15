@@ -1,4 +1,4 @@
-model: contextual_asr_espnet_rerank
+model: contextual_asr_espnet
 
 # network architecture
 # encoder related
@@ -87,7 +87,7 @@ specaug_conf:
 contextual: rareword
 contextual_conf:
     contextual_type: rareword
-    blist_path: ./local/contextual/rarewords/rareword_f1000_train.txt
+    blist_path: ./local/contextual/rarewords/rareword_f4096_train.txt
     # blist_xphone_path: ./local/contextual/ssl_features/rareword_f1000_train.xphone.seq.pt
     blist_max: 200
     blist_drop_out: 0.0

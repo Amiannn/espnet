@@ -1,4 +1,3 @@
-model: contextual_asr_espnet
 
 encoder: conformer
 encoder_conf:

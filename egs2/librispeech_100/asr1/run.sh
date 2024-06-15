@@ -10,7 +10,7 @@ valid_set="dev"
 test_sets="test_clean test_other dev_clean dev_other"
 
 asr_config=conf/exp/train_asr_transducer_conformer_e15_linear1024_mini.yaml
-inference_config=conf/decode_asr.yaml
+inference_config=conf/tuning/decode_ctc_bs1.yaml
 
 CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --lang en \
