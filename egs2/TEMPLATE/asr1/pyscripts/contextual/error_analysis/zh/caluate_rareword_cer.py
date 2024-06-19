@@ -18,7 +18,7 @@ from pyscripts.utils.text_aligner import align_to_index
 rareword_list  = './local/contextual/rarewords/rareword_f10_test.txt'
 utt_blist_path = './dump/raw/test/uttblist_idx'
 ref_path       = './dump/raw/test/text'
-hyp_path       = '/share/nas165/amian/experiments/speech/espnet/egs2/esun/asr1_contextual/exp/asr_transducer/contextual_adapter_annhnw_suffix/decode_contextual_adapter_greedy_asr_model_valid.loss.ave_10best/test/text'
+hyp_path       = '/share/nas165/amian/experiments/speech/espnet/egs2/aishell/asr1_contextual/exp/asr_conformer/adapter__mediumbatch_f4096_reweight/decode_asr_conformer_adapter_bs5_asr_model_valid.acc.ave_10best/test/text'
 
 def check_passed(indexis, memory):
     for index in indexis:
@@ -42,6 +42,7 @@ if __name__ == '__main__':
     hyp_common_sents   = []
     ref_sents          = []
     hyp_sents          = []
+    rareword_predict   = {}
 
     count = 0
     for ref in refs:
@@ -72,6 +73,11 @@ if __name__ == '__main__':
             wref = wref.replace('-', '')
             whyps = ''.join(whyps).replace('-', '')
             if wref in blist:
+                if wref not in rareword_predict:
+                    rareword_predict[wref] = [whyps]
+                else:
+                    rareword_predict[wref].append(whyps)
+
                 ref_rareword_sent.append(wref)
                 hyp_rareword_sent.append(whyps)
             elif not check_passed(hindexis, passed_index):
@@ -98,3 +104,5 @@ if __name__ == '__main__':
     # output_path = './hyp_common_sents'
     # write_file(output_path, [[d] for d in hyp_common_sents], sp='')
 
+    output_path = './rareword_predict.json'
+    write_json(output_path, rareword_predict)

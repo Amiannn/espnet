@@ -9,9 +9,9 @@ train_set=train
 valid_set=dev
 test_sets="test"
 
-asr_config=conf/contextual/conformer/adapter__mediumbatch_f4096.yaml
+asr_config=conf/contextual/conformer/adapter__mediumbatch_f256.yaml
 inference_config=conf/contextual/conformer/decode_asr_conformer_adapter_bs5.yaml
-asr_tag=conformer/adapter__mediumbatch_f4096
+asr_tag=conformer/adapter__mediumbatch_f256
 
 lm_config=conf/train_lm_transformer.yaml
 use_lm=false

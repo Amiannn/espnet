@@ -13,7 +13,7 @@ valid_set="dev"
 test_sets="test"
 
 asr_config=conf/contextual/transducer/contextual_xphone_adapter_annhnw.yaml
-inference_config=conf/contextual/transducer/decode_contextual_xphone_adapter_bs5.yaml
+inference_config=conf/contextual/transducer/decode_contextual_xphone_adapter_bs10.yaml
 asr_tag=transducer/contextual_xphone_adapter_annhnw
 
 lm_config=conf/exp/train_lm_transformer.yaml

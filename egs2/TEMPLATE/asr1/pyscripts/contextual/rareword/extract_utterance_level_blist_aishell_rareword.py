@@ -14,6 +14,8 @@ if __name__ == '__main__':
     datas_path = './dump/raw'
     for folder in os.listdir(datas_path):
         path = os.path.join(datas_path, folder)
+        if 'zh' not in path:
+            continue
         if not os.path.isfile(os.path.join(path, 'wav.scp')):
             continue
         if 'test' not in path:

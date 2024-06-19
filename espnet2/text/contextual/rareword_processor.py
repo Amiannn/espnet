@@ -34,6 +34,7 @@ class RarewordProcessor():
     def __init__(
         self, 
         blist_path, 
+        blist_occurrence_path=None, 
         blist_xphonebert_path=None, 
         drop_out=0.1,
         blist_max=500,
@@ -103,9 +104,16 @@ class RarewordProcessor():
         # load rareword datas
         self.blist, self.blist_words = self.load_blist(blist_path)
         self.blist_idxs              = [i for i in range(len(self.blist))]
+        self.blist_occurrence_path   = blist_occurrence_path
         self.blist_xphonebert_path   = blist_xphonebert_path
         self.blist_xphone            = None
         self.blist_xphone_indexis    = None
+
+        if blist_occurrence_path is not None:
+            logging.info(f'Loading blist occurrence datas...')
+            self.blist_occurrence = None
+            with open(blist_occurrence_path, 'r', encoding='utf-8') as fr:
+                self.blist_occurrence = list(map(int, fr.read().split('\n')[:-1]))
 
         if blist_xphonebert_path is not None:
             logging.info(f'Loading XPhoneBERT features...')
@@ -237,11 +245,35 @@ class RarewordProcessor():
             context_label_tensors != -1
         ).sum(dim=-1)
 
+        # label occurrence
+        label_occurrences = []
+        for i in range(batch_size):
+            label_occurrence = [
+                (
+                    self.blist_occurrence[b_idx]
+                ) for b_idx in uttblist_batch[i]
+            ]
+            if use_oov:
+                label_occurrence = [self.blist_occurrence[-1]] + label_occurrence
+            label_occurrences.append(label_occurrence)
+
+        # to tensor
+        label_occurrence_tensors = pad_sequence(
+            [torch.tensor(b) for b in label_occurrences], 
+            batch_first=True, 
+            padding_value=pad_value
+        ).long()
+        label_occurrence_tensor_ilens = (
+            label_occurrence_tensors != pad_value
+        ).sum(dim=-1)
+
         return (
             label_ctc_tensors, 
             label_ctc_tensor_ilens,
             context_label_tensors,
-            context_label_tensor_ilens
+            context_label_tensor_ilens,
+            label_occurrence_tensors,
+            label_occurrence_tensor_ilens,
         )
 
     def sample(
@@ -298,16 +330,20 @@ class RarewordProcessor():
             label_ctc_tensor_ilens, 
             context_label_tensors,
             context_label_tensors_ilens,
+            label_occurrence_tensors,
+            label_occurrence_tensor_ilens,
         ) = self.build_auxiliary_loss_label(
             uttblists_batch_resolve,
             element_idxs,
             pad_value,
             use_oov=self.use_oov,
         )
-        output['label_ctc']           = label_ctc_tensors
-        output['label_ctc_ilens']     = label_ctc_tensor_ilens
-        output['context_label']       = context_label_tensors
-        output['context_label_ilens'] = context_label_tensors_ilens
+        output['label_ctc']              = label_ctc_tensors
+        output['label_ctc_ilens']        = label_ctc_tensor_ilens
+        output['context_label']          = context_label_tensors
+        output['context_label_ilens']    = context_label_tensors_ilens
+        output['label_occurrence']       = label_occurrence_tensors
+        output['label_occurrence_ilens'] = label_occurrence_tensor_ilens
         return output
 
 if __name__ == '__main__':

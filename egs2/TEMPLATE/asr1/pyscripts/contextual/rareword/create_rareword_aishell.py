@@ -48,7 +48,7 @@ counts = get_word_count(text_datas)
 
 # plot_word_count(dump_path, counts, 'aishell')
 
-word_occurance = 2 ** 12
+word_occurance = 2 ** 1
 
 rarewords = []
 for word in counts:

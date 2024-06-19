@@ -144,10 +144,10 @@ class ESPnetContextualASRModel(ESPnetASRModel):
                 reduction="mean", 
                 zero_infinity=True, 
             )
-        if 'loss_contextualizer_gate_bce' in self.contextualizer_losses:
-            self.contextualizer_gate_bce_loss = torch.nn.L1Loss(
-                reduction="none",
-            )
+        # class balance cross-entropy
+        if 'loss_contextualizer_ga_reweight_lp' in self.contextualizer_losses:
+            self.gamma    = 0.99
+            self.loss_amp = 10
 
     def forward(
         self,
@@ -168,7 +168,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             kwargs: "utt_id" is among the input.
         """
         utt_id = kwargs['utt_id']
-        logging.info(f'utt_id: {utt_id}')
+        # logging.info(f'utt_id: {utt_id}')
 
         assert text_lengths.dim() == 1, text_lengths.shape
         # Check that batch_size is unified
@@ -493,9 +493,9 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             bias_vec = enc_bias_vec.unsqueeze(2)
         elif dec_bias_vec is not None:
             bias_vec = dec_bias_vec.unsqueeze(1)
-        logging.info(f'encoder_out: {encoder_out.shape}')
-        logging.info(f'decoder_out: {decoder_out.shape}')
-        logging.info(f'bias_vec: {bias_vec.shape}')
+        # logging.info(f'encoder_out: {encoder_out.shape}')
+        # logging.info(f'decoder_out: {decoder_out.shape}')
+        # logging.info(f'bias_vec: {bias_vec.shape}')
         joint_out = self.joint_network(
             encoder_out.unsqueeze(2), 
             decoder_out.unsqueeze(1),
@@ -533,10 +533,10 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             ga_ctc_target = contexts['label_ctc']
             ga_ctc_input_lengths  = encoder_out_lens
             ga_ctc_target_lengths = contexts['label_ctc_ilens']
-            logging.info(f'ga_ctc_target:\n{ga_ctc_target}')
-            logging.info(f'ga_ctc_target shape:\n{ga_ctc_target.shape}')
-            logging.info(f'ga_ctc_target_lengths:\n{ga_ctc_target_lengths}')
-            logging.info(f'ga_ctc_target_lengths shape:\n{ga_ctc_target_lengths.shape}')
+            # logging.info(f'ga_ctc_target:\n{ga_ctc_target}')
+            # logging.info(f'ga_ctc_target shape:\n{ga_ctc_target.shape}')
+            # logging.info(f'ga_ctc_target_lengths:\n{ga_ctc_target_lengths}')
+            # logging.info(f'ga_ctc_target_lengths shape:\n{ga_ctc_target_lengths.shape}')
             loss_ga_ctc = self.contextualizer_ctc_ga_loss(
                 ga_ctc_input, 
                 ga_ctc_target, 
@@ -604,18 +604,26 @@ class ESPnetContextualASRModel(ESPnetASRModel):
                 ga_ctc_target_lengths
             )
             losses_contextualizers['loss_contextualizer_ga_ctc_lp'] = loss_ga_ctc
-        if 'loss_contextualizer_gate_bce' in self.contextualizer_losses:
-            B, T, _     = gate_value.shape
-            gate_value  = gate_value.view(B, T)
-            gate_target = torch.zeros(B, T).float().to(gate_value.device)
-            loss_gate_bce = self.contextualizer_gate_bce_loss(gate_value, gate_target)
-            # mask out pad
-            loss_gate_bce.masked_fill_(
-                make_pad_mask(encoder_out_lens, loss_gate_bce, 1), 
-                0.0
-            )
-            loss_gate_bce = (loss_gate_bce / encoder_out_lens.unsqueeze(-1)).sum() / B
-            losses_contextualizers['loss_contextualizer_gate_bce'] = loss_gate_bce
+        # ctc with label prior
+        if 'loss_contextualizer_ga_reweight_lp' in self.contextualizer_losses:
+            label_prior     = torch.mean(context_prob, dim=1)
+            label_prior_log = torch.log(label_prior)
+
+            label                  = contexts['label_ctc']
+            label_occurrence       = contexts['label_occurrence']
+            label_occurrence_ilens = contexts['label_occurrence_ilens']
+
+            # add oov
+            B, U     = label.shape
+            idx      = (torch.arange(B).repeat(U + 1, 1).T).reshape(-1).to(label.device)
+            label    = torch.cat([torch.zeros(B, 1).to(label.device), label], dim=-1).long()
+            pred_log = label_prior_log[idx, label.reshape(-1)].reshape(B, U + 1)
+            
+            label_mask     = (label_occurrence == -1)
+            weighted_label = (1 - self.gamma) / (1 - torch.pow(self.gamma, label_occurrence))
+            weighted_label[label_mask] = 0.0
+            loss_ga_rewieght = -1 * self.loss_amp * ((weighted_label * pred_log).sum(dim=-1)).mean()
+            losses_contextualizers['loss_contextualizer_ga_reweight_lp'] = loss_ga_rewieght
         # combine the adapter aux loss
         loss_contextualizer = 0.0
         assert sum(list(self.contextualizer_losses.values())) == 1.0

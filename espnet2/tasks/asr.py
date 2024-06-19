@@ -559,6 +559,7 @@ class ASRTask(AbsTask):
         if contextual_type == "rareword":
             contextual_processor = contextual_class(
                 blist_path=args.contextual_conf.get("blist_path", None), 
+                blist_occurrence_path=args.contextual_conf.get("blist_occurrence_path", None), 
                 blist_xphonebert_path=args.contextual_conf.get("blist_xphone_path", None),
                 drop_out=args.contextual_conf.get("blist_drop_out", 0),
                 blist_max=args.contextual_conf.get("blist_max", 500),

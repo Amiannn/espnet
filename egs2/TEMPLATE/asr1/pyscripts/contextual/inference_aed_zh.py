@@ -124,8 +124,8 @@ if __name__ == "__main__":
     # spm_path   = "./data/en_token_list/bpe_unigram600/bpe.model"
     spm_path   = None
     token_path = "./data/zh_token_list/char/tokens.txt"
-    model_conf = "./conf/contextual/conformer/xphone_adapter__mediumbatch.yaml"
-    model_path = "./exp/asr_conformer/xphone_adapter__mediumbatch/valid.acc.ave_10best.pth"
+    model_conf = "./conf/contextual/conformer/adapter__mediumbatch_f4096.yaml"
+    model_path = "./exp/asr_conformer/adapter__mediumbatch_f4096/valid.acc.ave_10best.pth"
     stats_path = "./exp/asr_stats_raw_zh_char_sp/train/feats_stats.npz"
 
     rare_path  = "./local/contextual/rarewords/rareword_f10_test.txt"
@@ -148,7 +148,7 @@ if __name__ == "__main__":
     contextual_conf = {
         'contextual_type': 'rareword',
         'blist_path': rare_path,
-        'blist_xphone_path': './local/contextual/ssl_features/rareword_f10_test.xphone.seq.pt',
+        # 'blist_xphone_path': './local/contextual/ssl_features/rareword_f10_test.xphone.seq.pt',
         'blist_max': 20,
         'blist_drop_out': 0.0,
         'warmup_epoch': 0,
