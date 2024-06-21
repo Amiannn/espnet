@@ -1,7 +1,6 @@
 import torch
 import logging
 import torchaudio
-import optimized_transducer
 
 from warprnnt_pytorch import RNNTLoss
 
@@ -48,6 +47,10 @@ else:
     def autocast(enabled=True):
         yield
 
+try:
+    import optimized_transducer
+except:
+    logging.info(f'Warning: Cannot import optimized_transducer!')
 
 class ESPnetContextualASRModel(ESPnetASRModel):
     def __init__(

@@ -3,13 +3,17 @@ import math
 import json
 import time as time_
 
-import faiss
 import torch
 import random
 
 import logging
 
 from torch.nn.utils.rnn import pad_sequence
+
+try:
+    import faiss
+except:
+    logging.info(f'Warning: Cannot import faiss!')
 
 # seed = 2024
 # random.seed(seed)
