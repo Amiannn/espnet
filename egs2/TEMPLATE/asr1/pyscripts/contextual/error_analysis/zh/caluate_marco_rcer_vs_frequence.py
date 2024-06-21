@@ -23,10 +23,10 @@ utt_blist_path = './dump/raw/test/uttblist_idx'
 # utt_blist_path = f'./dump/raw/zh_test/uttblist_idx_f{exp_test_freq}'
 ref_path       = './dump/raw/test/text'
 
-exp_freq = f"{2 ** 10}"
-hyp_path           = f'/share/nas165/amian/experiments/speech/espnet/egs2/aishell/asr1_contextual/exp/asr_conformer/adapter__mediumbatch_f{exp_freq}_reweight/decode_asr_conformer_adapter_bs5_asr_model_valid.acc.ave_10best/test/text'
-exp_freq = f"{2 ** 4}"
-hyp_casr_path      = f'/share/nas165/amian/experiments/speech/espnet/egs2/aishell/asr1_contextual/exp/asr_conformer/adapter__mediumbatch_f{exp_freq}/decode_asr_conformer_adapter_bs5_asr_model_valid.acc.ave_10best/test/text'
+out_exp_freq = f"{2 ** 1}"
+hyp_path     = f'/share/nas165/amian/experiments/speech/espnet/egs2/aishell/asr1_contextual/exp/asr_conformer/adapter__mediumbatch_f{out_exp_freq}_reweight/decode_asr_conformer_adapter_bs5_asr_model_valid.acc.ave_10best/test/text'
+
+hyp_casr_path      = f'/share/nas165/amian/experiments/speech/espnet/egs2/aishell/asr1_contextual/exp/asr_conformer/adapter__mediumbatch_f1024/decode_asr_conformer_adapter_bs5_asr_model_valid.acc.ave_10best/test/text'
 hyp_baseline_path  = '/share/nas165/amian/experiments/speech/espnet/egs2/aishell/asr1/exp/asr_train_asr_conformer_raw_zh_char_sp/decode_asr_conformer_asr_model_valid.acc.ave_10best/test/text'
 
 train_ref_path = './data/train/text'
@@ -194,7 +194,7 @@ if __name__ == '__main__':
         baseline_error_rate, 
         casr_error_rate,
         our_error_rate, 
-        tag=f'aishell-train-test-error-rate_f{exp_freq}'
+        tag=f'aishell-train-test-error-rate_f{out_exp_freq}'
     )
 
     shots_dict = {
@@ -212,19 +212,22 @@ if __name__ == '__main__':
             if smax >= occurrence and occurrence > smin:
                 shot_bwords[shot].append(bword)
 
-    print(f'exp_freq: {exp_freq}')
+    print(f'exp_freq: {out_exp_freq}')
     for shot in shot_bwords:
         shot_rcer = 0
+        count = 0
         for bword in shot_bwords[shot]:
             error_word = error_dict[bword]
             occurrence = test_freq_dict[bword]
             # print(f'{bword}, {error_word}')
             rcer = [cer(bword, eword) for eword in error_word] if len(error_word) > 0 else [0]
-            mean_rcer = sum(rcer)
-            shot_rcer += mean_rcer / occurrence
+            shot_rcer += sum(rcer) / occurrence
+            # shot_rcer += sum(rcer)
+            # count += occurrence
             # print(occurrence)
             # print(f'{shot}, {occurrence}, {mean_rcer}, {bword}: {error_word}')
         shot_rcer = shot_rcer / len(shot_bwords[shot])
+        # shot_rcer = shot_rcer / count
         print(f'{shot}: {shot_rcer:2f}, {len(shot_bwords[shot])}')
 
     
