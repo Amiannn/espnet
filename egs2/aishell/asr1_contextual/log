@@ -1,0 +1,5 @@
+exp_freq: 16
+many_shot: 0.011483, 475
+medium_shot: 0.017673, 2570
+frew_shot: 0.050296, 4492
+zero_shot: 0.309510, 2095

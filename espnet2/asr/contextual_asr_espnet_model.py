@@ -146,7 +146,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             )
         # class balance cross-entropy
         if 'loss_contextualizer_ga_reweight_lp' in self.contextualizer_losses:
-            self.gamma    = 0.99
+            self.lp_gamma = self.contextualizer_conf['lp_gamma'] if 'lp_gamma' in contextualizer_conf else 0.99
             self.loss_amp = 10
 
     def forward(
@@ -620,7 +620,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             pred_log = label_prior_log[idx, label.reshape(-1)].reshape(B, U + 1)
             
             label_mask     = (label_occurrence == -1)
-            weighted_label = (1 - self.gamma) / (1 - torch.pow(self.gamma, label_occurrence))
+            weighted_label = (1 - self.lp_gamma) / (1 - torch.pow(self.lp_gamma, label_occurrence))
             weighted_label[label_mask] = 0.0
             loss_ga_rewieght = -1 * self.loss_amp * ((weighted_label * pred_log).sum(dim=-1)).mean()
             losses_contextualizers['loss_contextualizer_ga_reweight_lp'] = loss_ga_rewieght

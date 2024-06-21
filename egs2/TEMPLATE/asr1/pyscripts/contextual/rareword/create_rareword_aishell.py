@@ -48,26 +48,28 @@ counts = get_word_count(text_datas)
 
 # plot_word_count(dump_path, counts, 'aishell')
 
-word_occurance = 2 ** 2
+# word_occurance = 2 ** 2
 
-rarewords = []
-for word in counts:
-    count = counts[word]
-    if (count < word_occurance):
-        rarewords.append([word])
-
-print(f'rareword length: {len(rarewords)}')
-output_path = os.path.join(dump_rareword_path, f'rareword_f{word_occurance}_train.txt')
-write_file(output_path, rarewords, sp=' ')
-
-# text_datas = test_text_datas
-# counts = get_word_count(text_datas)
 # rarewords = []
 # for word in counts:
 #     count = counts[word]
-#     if (count < 10):
+#     if (count < word_occurance):
 #         rarewords.append([word])
 
 # print(f'rareword length: {len(rarewords)}')
-# output_path = os.path.join(dump_rareword_path, 'rareword_f10_test.txt')
+# output_path = os.path.join(dump_rareword_path, f'rareword_f{word_occurance}_train.txt')
 # write_file(output_path, rarewords, sp=' ')
+
+test_word_occurance = 2 ** 4
+
+text_datas = test_text_datas
+counts = get_word_count(text_datas)
+rarewords = []
+for word in counts:
+    count = counts[word]
+    if (count < test_word_occurance):
+        rarewords.append([word])
+
+print(f'rareword length: {len(rarewords)}')
+output_path = os.path.join(dump_rareword_path, f'rareword_f{test_word_occurance}_test.txt')
+write_file(output_path, rarewords, sp=' ')

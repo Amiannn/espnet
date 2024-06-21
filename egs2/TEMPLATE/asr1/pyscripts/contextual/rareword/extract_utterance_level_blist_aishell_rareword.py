@@ -4,8 +4,9 @@ from tqdm import tqdm
 from pyscripts.contextual.utils.dataio import read_file
 from pyscripts.contextual.utils.dataio import write_file
 
+occurrence = 2 ** 4
 TRAIN_DEV_BLIST_PATH = f"./local/contextual/rarewords/rareword_f{2**1}_train.txt"
-TEST_BLIST_PATH      = "./local/contextual/rarewords/rareword_f10_test.txt"
+TEST_BLIST_PATH      = f"./local/contextual/rarewords/rareword_f{occurrence}_test.txt"
 
 def get_uttblist(words, blist):
     return [[str(word2idx[word]), word] for word in words if word in blist]
@@ -14,6 +15,8 @@ if __name__ == '__main__':
     datas_path = './dump/raw'
     for folder in os.listdir(datas_path):
         path = os.path.join(datas_path, folder)
+        if 'test' not in path:
+            continue
         if 'zh' not in path:
             continue
         if not os.path.isfile(os.path.join(path, 'wav.scp')):
@@ -43,8 +46,8 @@ if __name__ == '__main__':
                 [uttid] + (uttblist_idx if len(uttblist_idx) > 0 else [''])
             )
 
-        output_path_uttblist = os.path.join(path, f'uttblist')
+        output_path_uttblist = os.path.join(path, f'uttblist_f{occurrence}')
         write_file(output_path_uttblist, rareword_datas)
 
-        output_path_uttblist_idx = os.path.join(path, 'uttblist_idx')
+        output_path_uttblist_idx = os.path.join(path, f'uttblist_idx_f{occurrence}')
         write_file(output_path_uttblist_idx, rareword_idxs)
