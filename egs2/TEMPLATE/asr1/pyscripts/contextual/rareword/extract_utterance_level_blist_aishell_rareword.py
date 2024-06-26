@@ -5,8 +5,9 @@ from pyscripts.contextual.utils.dataio import read_file
 from pyscripts.contextual.utils.dataio import write_file
 
 occurrence = 2 ** 4
-TRAIN_DEV_BLIST_PATH = f"./local/contextual/rarewords/rareword_f{2**1}_train.txt"
-TEST_BLIST_PATH      = f"./local/contextual/rarewords/rareword_f{occurrence}_test.txt"
+TRAIN_DEV_BLIST_PATH = f"./local/contextual/rarewords/rareword_f{occurrence}_train.txt"
+TEST_BLIST_PATH      = f"./local/contextual/rarewords/rareword_f{occurrence}_train.txt"
+# TEST_BLIST_PATH      = f"./local/contextual/rarewords/rareword_f10_test.txt"
 
 def get_uttblist(words, blist):
     return [[str(word2idx[word]), word] for word in words if word in blist]

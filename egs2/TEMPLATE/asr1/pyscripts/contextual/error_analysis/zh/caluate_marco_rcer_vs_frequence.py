@@ -16,14 +16,14 @@ from pyscripts.utils.text_aligner import align_to_index
 
 # exp_freq = "0"
 
-# exp_test_freq =  4096
-rareword_list  = './local/contextual/rarewords/rareword_f10_test.txt'
-# rareword_list  = f'./local/contextual/rarewords/rareword_f{exp_test_freq}_test.txt'
-utt_blist_path = './dump/raw/test/uttblist_idx'
-# utt_blist_path = f'./dump/raw/zh_test/uttblist_idx_f{exp_test_freq}'
+exp_test_freq =  16
+# rareword_list  = './local/contextual/rarewords/rareword_f10_test.txt'
+rareword_list  = f'./local/contextual/rarewords/rareword_f{exp_test_freq}_train.txt'
+# utt_blist_path = './dump/raw/test/uttblist_idx'
+utt_blist_path = f'./dump/raw/zh_test/uttblist_idx_f{exp_test_freq}'
 ref_path       = './dump/raw/test/text'
 
-out_exp_freq = f"{2 ** 1}"
+out_exp_freq = f"{2 ** 4}"
 hyp_path     = f'/share/nas165/amian/experiments/speech/espnet/egs2/aishell/asr1_contextual/exp/asr_conformer/adapter__mediumbatch_f{out_exp_freq}_reweight/decode_asr_conformer_adapter_bs5_asr_model_valid.acc.ave_10best/test/text'
 
 hyp_casr_path      = f'/share/nas165/amian/experiments/speech/espnet/egs2/aishell/asr1_contextual/exp/asr_conformer/adapter__mediumbatch_f1024/decode_asr_conformer_adapter_bs5_asr_model_valid.acc.ave_10best/test/text'
@@ -147,7 +147,10 @@ def get_sorted_error_rate(error_dict, train_freq_dict, test_freq_dict):
         test_occurrence  = test_freq_dict[bword]
         # error_count      = len(error_dict[bword])
         # error_rate = error_count / test_occurrence
-        error_rate = sum([cer(bword, hyp_b) for hyp_b in error_dict[bword]]) / test_occurrence
+        if test_occurrence == 0:
+            error_rate = 0
+        else:
+            error_rate = sum([cer(bword, hyp_b) for hyp_b in error_dict[bword]]) / test_occurrence
         sorted_error_rate.append(error_rate)
     return sorted_error_rate
 
@@ -221,12 +224,14 @@ if __name__ == '__main__':
             occurrence = test_freq_dict[bword]
             # print(f'{bword}, {error_word}')
             rcer = [cer(bword, eword) for eword in error_word] if len(error_word) > 0 else [0]
-            shot_rcer += sum(rcer) / occurrence
+            if occurrence > 0:
+                shot_rcer += sum(rcer) / occurrence
             # shot_rcer += sum(rcer)
             # count += occurrence
             # print(occurrence)
             # print(f'{shot}, {occurrence}, {mean_rcer}, {bword}: {error_word}')
-        shot_rcer = shot_rcer / len(shot_bwords[shot])
+        if len(shot_bwords[shot]) > 0:
+            shot_rcer = shot_rcer / len(shot_bwords[shot])
         # shot_rcer = shot_rcer / count
         print(f'{shot}: {shot_rcer:2f}, {len(shot_bwords[shot])}')
 

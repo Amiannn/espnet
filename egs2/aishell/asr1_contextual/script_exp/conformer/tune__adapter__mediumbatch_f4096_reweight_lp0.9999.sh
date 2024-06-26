@@ -10,7 +10,7 @@ valid_set=dev
 test_sets="test"
 
 asr_config=conf/contextual/conformer/adapter__mediumbatch_f4096_reweight_lp0.9999.yaml
-inference_config=conf/contextual/conformer/decode_asr_conformer_adapter_greedy.yaml
+inference_config=conf/contextual/conformer/decode_asr_conformer_adapter_bs5.yaml
 asr_tag=conformer/adapter__mediumbatch_f4096_reweight_lp0.9999
 
 lm_config=conf/train_lm_transformer.yaml

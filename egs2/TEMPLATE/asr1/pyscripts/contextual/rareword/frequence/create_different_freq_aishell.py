@@ -23,7 +23,7 @@ def get_word_count(datas):
     return counts
 
 def plot_word_count(output_path, data, tag=''):
-    plt.figure(figsize=(20, 5))
+    plt.figure(figsize=(12, 10))
     plt.bar(data.keys(), data.values(), color='skyblue')
     plt.title(f'Word Counts - {tag}')
     plt.xlabel('Word')
@@ -34,7 +34,7 @@ def plot_word_count(output_path, data, tag=''):
     plt.savefig(out_path)
 
 def plot_freq_count(output_path, data, data2, tag=''):
-    fig, ax1 = plt.subplots(figsize=(20, 8))             
+    fig, ax1 = plt.subplots(figsize=(12, 10))             
     x_label = range(0, len(data) + 1, 5000)
 
     index = list(range(len(data)))
@@ -52,13 +52,13 @@ def plot_freq_count(output_path, data, data2, tag=''):
     
     ax2   = ax1.twinx() 
     color = 'tab:orange'
-    line2 = ax2.plot(index, data2, linestyle = '--', color=color, linewidth=5, alpha=0.5, label="Imbalance rate")
-    ax2.set_ylabel('Context imbalance rate ($log_{2}$)', color=color)  # we already handled the x-label with ax1
+    line2 = ax2.plot(index, data2, linestyle = '--', color=color, linewidth=5, alpha=0.5, label="Context imbalance rate")
+    ax2.set_ylabel('Imbalance rate ($log_{2}$)', color=color)  # we already handled the x-label with ax1
     ax2.tick_params(axis='y', labelcolor=color)
     ax2.legend(loc=1)
 
 
-    out_path = os.path.join(output_path, f'word_plot_counts_{tag}.png')
+    out_path = os.path.join(output_path, f'word_plot_counts_{tag}.svg')
     plt.tight_layout()
     plt.savefig(out_path)
 
@@ -76,7 +76,7 @@ if __name__ == '__main__':
     train_text_path    = "./dump/raw/zh_train_sp/text"
     dev_text_path      = "./dump/raw/zh_dev/text"
     test_text_path     = "./dump/raw/zh_test/text"
-    dump_path          = "./exp/test/freq_exp"
+    dump_path          = "./exp/test/freq"
 
     train_text_datas = [[d[0], d[1:]] for d in read_file(train_text_path, sp=' ') if not d[0].startswith("sp")]
     dev_text_datas   = [[d[0], d[1:]] for d in read_file(dev_text_path, sp=' ') if not d[0].startswith("sp")]
@@ -94,14 +94,27 @@ if __name__ == '__main__':
 
     plot_freq_count(dump_path, list(counts_log.values()), cover_rate, f'aishell_word_occurance_train')
 
+
+    gammas = [4096, 1024, 512, 16, 4, 2]
+
+    for gamma in gammas:
+        idx = 0
+        for i in range(len(counts_values)):
+            c = counts_values[i]
+            if c <= gamma:
+                idx = i
+                break
+        context_imbalance_rate = (total_count - sum(counts_values[idx:])) / sum(counts_values[idx:])
+        print(f'{gamma}, {idx}: {context_imbalance_rate}')
+    
     # test
-    text_datas = test_text_datas
-    counts = get_word_count(text_datas)
+    # text_datas = test_text_datas
+    # counts = get_word_count(text_datas)
 
-    counts_log  = {key:np.log2(counts[key]) for key in counts}
-    total_count = sum(list(counts.values()))
+    # counts_log  = {key:np.log2(counts[key]) for key in counts}
+    # total_count = sum(list(counts.values()))
 
-    counts_values = list(counts.values())
-    cover_rate    = [np.log2((total_count - sum(counts_values[i:])) / sum(counts_values[i:]) + 0.0001) for i in range(len(counts_values))]
+    # counts_values = list(counts.values())
+    # cover_rate    = [np.log2((total_count - sum(counts_values[i:])) / sum(counts_values[i:]) + 0.0001) for i in range(len(counts_values))]
 
-    plot_freq_count(dump_path, list(counts_log.values()), cover_rate, f'aishell_word_occurance_test')
+    # plot_freq_count(dump_path, list(counts_log.values()), cover_rate, f'aishell_word_occurance_test')
