@@ -6,7 +6,7 @@ from pyscripts.contextual.utils.dataio import read_file
 from pyscripts.contextual.utils.dataio import read_json
 from pyscripts.contextual.utils.dataio import write_file
 
-TRAIN_DEV_BLIST_PATH = f"./local/contextual/rarewords/rareword_f{2**1}_train.txt"
+TRAIN_DEV_BLIST_PATH = f"./local/contextual/rarewords/rareword_f{2**10}_train.txt"
 TEST_BLIST_PATH      = "./local/contextual/rarewords/rareword_f10_test.txt"
 
 def occurrence(texts, bwords):

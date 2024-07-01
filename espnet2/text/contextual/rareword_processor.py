@@ -247,25 +247,28 @@ class RarewordProcessor():
 
         # label occurrence
         label_occurrences = []
-        for i in range(batch_size):
-            label_occurrence = [
-                (
-                    self.blist_occurrence[b_idx]
-                ) for b_idx in uttblist_batch[i]
-            ]
-            if use_oov:
-                label_occurrence = [self.blist_occurrence[-1]] + label_occurrence
-            label_occurrences.append(label_occurrence)
+        label_occurrence_tensors      = None
+        label_occurrence_tensor_ilens = None
+        if self.blist_occurrence_path is not None:
+            for i in range(batch_size):
+                label_occurrence = [
+                    (
+                        self.blist_occurrence[b_idx]
+                    ) for b_idx in uttblist_batch[i]
+                ]
+                if use_oov:
+                    label_occurrence = [self.blist_occurrence[-1]] + label_occurrence
+                label_occurrences.append(label_occurrence)
 
-        # to tensor
-        label_occurrence_tensors = pad_sequence(
-            [torch.tensor(b) for b in label_occurrences], 
-            batch_first=True, 
-            padding_value=pad_value
-        ).long()
-        label_occurrence_tensor_ilens = (
-            label_occurrence_tensors != pad_value
-        ).sum(dim=-1)
+            # to tensor
+            label_occurrence_tensors = pad_sequence(
+                [torch.tensor(b) for b in label_occurrences], 
+                batch_first=True, 
+                padding_value=pad_value
+            ).long()
+            label_occurrence_tensor_ilens = (
+                label_occurrence_tensors != pad_value
+            ).sum(dim=-1)
 
         return (
             label_ctc_tensors, 

@@ -124,8 +124,8 @@ if __name__ == "__main__":
     # spm_path   = "./data/en_token_list/bpe_unigram600/bpe.model"
     spm_path   = None
     token_path = "./data/zh_token_list/char/tokens.txt"
-    model_conf = "./conf/contextual/conformer/adapter__mediumbatch_f4096.yaml"
-    model_path = "./exp/asr_conformer/adapter__mediumbatch_f4096/valid.acc.ave_10best.pth"
+    model_conf = "./conf/contextual/conformer/adapter__mediumbatch_f4096_reweight_lp0.9.yaml"
+    model_path = "./exp/asr_conformer/adapter__mediumbatch_f4096_reweight_lp0.9/valid.acc.ave_10best.pth"
     stats_path = "./exp/asr_stats_raw_zh_char_sp/train/feats_stats.npz"
 
     rare_path  = "./local/contextual/rarewords/rareword_f10_test.txt"
@@ -149,7 +149,7 @@ if __name__ == "__main__":
         'contextual_type': 'rareword',
         'blist_path': rare_path,
         # 'blist_xphone_path': './local/contextual/ssl_features/rareword_f10_test.xphone.seq.pt',
-        'blist_max': 20,
+        'blist_max': 5,
         'blist_drop_out': 0.0,
         'warmup_epoch': 0,
         'structure_type': None,
@@ -171,7 +171,7 @@ if __name__ == "__main__":
     )
     preprocessor       = loader.dataset.preprocess
     token_id_converter = preprocessor.token_id_converter
-    token_list         = get_token_list(token_id_converter) + ['<oov>']
+    token_list         = get_token_list(token_id_converter) + ['<no-context>']
     
     model.contextualizer.adapter.temperature = 1
 

@@ -18,7 +18,7 @@ from pyscripts.utils.text_aligner import align_to_index
 rareword_list  = './local/contextual/rarewords/rareword_f10_test.txt'
 utt_blist_path = './dump/raw/test/uttblist_idx'
 ref_path       = './dump/raw/test/text'
-hyp_path       = '/share/nas165/amian/experiments/speech/espnet/egs2/aishell/asr1_contextual/exp/asr_conformer/adapter__mediumbatch_f16_reweight/decode_asr_conformer_adapter_bs5_asr_model_valid.acc.ave_10best/test/text'
+hyp_path       = '/share/nas165/amian/experiments/speech/espnet/egs2/aishell/asr1_contextual/exp/asr_conformer/adapter__mediumbatch_f4096_reweight_lp0.8/decode_asr_conformer_adapter_bs5_asr_model_valid.acc.ave_10best/test/text'
 
 def check_passed(indexis, memory):
     for index in indexis:

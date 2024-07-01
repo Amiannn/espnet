@@ -51,15 +51,17 @@ def plot_freq_count(output_path, data, data2, tag=''):
     ax1.set_xlim(xmin=0, xmax=len(data))
     
     ax2   = ax1.twinx() 
-    color = 'tab:orange'
-    line2 = ax2.plot(index, data2, linestyle = '--', color=color, linewidth=5, alpha=0.5, label="Context imbalance rate")
+    color = 'tab:cyan'
+    line2 = ax2.plot(index, data2, linestyle = '--', color=color, linewidth=5, label="Context / no-context\nimbalance rate")
     ax2.set_ylabel('Imbalance rate ($log_{2}$)', color=color)  # we already handled the x-label with ax1
     ax2.tick_params(axis='y', labelcolor=color)
     ax2.legend(loc=1)
 
 
-    out_path = os.path.join(output_path, f'word_plot_counts_{tag}.svg')
     plt.tight_layout()
+    out_path = os.path.join(output_path, f'word_plot_counts_{tag}.svg')
+    plt.savefig(out_path)
+    out_path = os.path.join(output_path, f'word_plot_counts_{tag}.png')
     plt.savefig(out_path)
 
 def freq_thresholding(datas, threshold):
