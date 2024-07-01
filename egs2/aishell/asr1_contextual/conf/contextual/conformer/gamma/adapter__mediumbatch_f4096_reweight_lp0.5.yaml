@@ -113,6 +113,6 @@ contextualizer_conf:
     contextualizer_losses:
         loss_contextualizer_ga_ctc: 0.5
         loss_contextualizer_ga_reweight_lp: 0.5
-    lp_gamma: 0.6
+    lp_gamma: 0.5
 # adapter style training
 freeze_param: ["encoder", "decoder", "contextualizer.encoder.embed", "contextualizer.encoder.pad_embed"]
