@@ -12,7 +12,7 @@ train_set="train"
 valid_set="dev"
 test_sets="test"
 
-asr_config=conf/contextual/transducer/contextual_adapter_lp0.8.yaml
+asr_config=conf/contextual/transducer/gamma/contextual_adapter_lp0.8.yaml
 inference_config=conf/contextual/transducer/decode_contextual_adapter_greedy.yaml
 asr_tag=transducer/contextual_adapter_lp0.8
 
