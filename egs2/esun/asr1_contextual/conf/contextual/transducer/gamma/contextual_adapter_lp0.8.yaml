@@ -86,7 +86,8 @@ specaug_conf:
 contextual: rareword
 contextual_conf:
     contextual_type: rareword
-    blist_path: ./local/contextual/rarewords/rareword_f1000_train.txt
+    blist_path: ./local/contextual/rarewords/rareword_f65536_train.txt
+    blist_occurrence_path: ./local/contextual/rarewords/rareword_f65536_train_occurrence.txt
     blist_max: 200
     blist_drop_out: 0.0
     structure_type: null
