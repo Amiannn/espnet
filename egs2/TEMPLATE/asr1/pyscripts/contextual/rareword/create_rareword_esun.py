@@ -50,14 +50,16 @@ counts = get_word_count(text_datas)
 counts_tmp = {key:counts[key] for key in list(counts.keys())[:100]}
 plot_word_count(dump_path, counts_tmp, 'esun')
 
+gamma = 2 ** 16
+
 rarewords = []
 for word in counts:
     count = counts[word]
-    if (count < 1000):
+    if (count < gamma):
         rarewords.append([word])
 
 print(f'rareword length: {len(rarewords)}')
-output_path = os.path.join(dump_rareword_path, 'rareword_f1000_train.txt')
+output_path = os.path.join(dump_rareword_path, f'rareword_f{gamma}_train.txt')
 write_file(output_path, rarewords, sp=' ')
 
 text_datas = test_text_datas
