@@ -10,11 +10,10 @@ stop_stage=13
 
 train_set="train"
 valid_set="dev"
-test_sets="test"
+test_sets="dev"
 
-asr_config=conf/contextual/transducer/gamma/contextual_adapter_lp0.8.yaml
-inference_config=conf/contextual/transducer/decode_contextual_adapter_bs5.yaml
-asr_tag=transducer/contextual_adapter_lp0.8
+asr_config=conf/exp/train_asr_transducer_conformer.yaml
+inference_config=conf/exp/decode_asr_rnnt_transducer.yaml
 
 lm_config=conf/exp/train_lm_transformer.yaml
 use_lm=false
@@ -39,14 +38,9 @@ source data/train/token.man.2  # for bpe_nlsyms & man_chars
 nbpe=5000
 # English BPE: 3000 / Mandarin: 2622 / other symbols: 4
 
-# speed perturbation related
-# (train_set will be "${train_set}_sp" if speed_perturb_factors is specified)
-speed_perturb_factors="0.9 1.0 1.1"
-
-pretrained_model=../asr1/exp/asr_train_asr_transducer_conformer_raw_bpe5000_use_wandbtrue_sp_suffix/valid.loss.ave_10best.pth
-CUDA_LAUNCH_BLOCKING=1 CUDA_VISIBLE_DEVICES=0 ./asr.sh \
+CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --ngpu 1 \
-    --nj  32 \
+    --nj 1 \
     --gpu_inference false \
     --inference_nj 10 \
     --stage ${stage} \
@@ -68,8 +62,6 @@ CUDA_LAUNCH_BLOCKING=1 CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --lm_train_text "data/${train_set}/text" \
     --bpe_train_text "data/${train_set}/text.eng.bpe" \
     --score_opts "-e utf-8 -c NOASCII" \
-    --inference_asr_model valid.loss.ave_10best.pth \
-    --contextualization true \
-    --pretrained_model "${pretrained_model},${pretrained_model}:decoder.embed:contextualizer.encoder.embed" \
-    --asr_tag "${asr_tag}" \
+    --asr_args "--use_wandb true" \
+    --inference_asr_model valid.loss.best.pth \
     "$@"

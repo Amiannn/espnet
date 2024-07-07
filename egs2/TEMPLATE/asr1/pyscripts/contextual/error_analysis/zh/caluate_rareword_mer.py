@@ -22,7 +22,7 @@ ref_path       = './data/test/text'
 # hyp_path       = "../asr1/exp/asr_train_asr_transducer_conformer_raw_bpe5000_use_wandbtrue_sp_suffix/decode_asr_rnnt_transducer_bs5_asr_model_valid.loss.ave_10best/test/text"
 # hyp_path       = "/share/nas165/amian/experiments/speech/espnet/egs2/esun/asr1/exp/asr_train_asr_transducer_conformer_raw_bpe5000_use_wandbtrue_sp_suffix/decode_asr_rnnt_transducer_greedy_asr_model_valid.loss.ave_10best/test/text"
 # hyp_path       = "./exp/asr_transducer/contextual_xphone_adapter_suffix/decode_contextual_xphone_adapter_greedy_asr_model_valid.loss.ave_10best/test/text"
-hyp_path       = "/share/nas165/amian/experiments/speech/espnet/egs2/esun/asr1_contextual/exp/asr_transducer/contextual_xphone_adapter_annhnw_suffix/decode_contextual_xphone_adapter_bs10_asr_model_valid.loss.ave_10best/test/text"
+hyp_path       = "/share/nas165/amian/experiments/speech/espnet/egs2/esun/asr1_contextual/exp/asr_transducer/contextual_adapter_lp0.8_suffix/decode_contextual_adapter_greedy_asr_model_valid.loss.ave_10best/test/text"
 
 def check_passed(indexis, memory):
     for index in indexis:
