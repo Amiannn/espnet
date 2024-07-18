@@ -7,9 +7,6 @@ inference_config=conf/whisper/decode_asr_whisper_noctc_greedy.yaml
 asr_tag=whisper_medium_finetune_lr1e-5_adamw_wd1e-2_3epochs
 
 CUDA_VISIBLE_DEVICES=0 ./asr.sh \
-    --skip_data_prep true \
-    --skip_train true \
-    --skip_eval false \
     --gpu_inference false \
     --lang en \
     --ngpu 1 \
