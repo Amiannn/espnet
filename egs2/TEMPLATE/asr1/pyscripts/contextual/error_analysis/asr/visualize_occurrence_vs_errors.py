@@ -19,22 +19,16 @@ plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei']
 plt.rcParams['axes.unicode_minus'] = False
 plt.rcParams.update({'font.size': 22})
 
-test_ref_path  = './dump/raw/test/text'
-train_ref_path = './data/train/text'
-dump_path      = "./exp/test/freq"
+test_ref_path  = './dump/raw/test_clean/text'
+train_ref_path = './data/train_clean_100/text'
+dump_path      = "./exp/analysis"
 
-test_gamma          =  10
-test_rareword_list  = f'./local/contextual/rarewords/rareword_f{test_gamma}_test.txt'
-test_utt_blist_path = f'./dump/raw/zh_test/uttblist_idx_f{test_gamma}'
+hyp_baseline_path = './exp/asr_train_rnnt_conformer_ngpu4_raw_en_bpe5000_sp/decode_asr_greedy_asr_model_valid.loss.ave_5best/test_clean/text'
 
-train_gamma_baseline   = f"{2 ** 4}"
-train_gamma_our        = f"{2 ** 12}"
-train_balance_baseline = ""
-train_balance_our      = "_reweight_lp0.8"
-
-hyp_baseline_path    = '/share/nas165/amian/experiments/speech/espnet/egs2/aishell/asr1/exp/asr_train_asr_conformer_raw_zh_char_sp/decode_asr_conformer_asr_model_valid.acc.ave_10best/test/text'
-hyp_casr_path        = f'/share/nas165/amian/experiments/speech/espnet/egs2/aishell/asr1_contextual/exp/asr_conformer/adapter__mediumbatch_f{train_gamma_baseline}{train_balance_baseline}/decode_asr_conformer_adapter_bs5_asr_model_valid.acc.ave_10best/test/text'
-hyp_our_path         = f'/share/nas165/amian/experiments/speech/espnet/egs2/aishell/asr1_contextual/exp/asr_conformer/adapter__mediumbatch_f{train_gamma_our}{train_balance_our}/decode_asr_conformer_adapter_bs5_asr_model_valid.acc.ave_10best/test/text'
+def word_split(text):
+    # words = list(jieba.cut(text))
+    words = text.split(' ')
+    return words
 
 def smoothing(data, kernel_size=20):
     kernel = np.ones(kernel_size) / kernel_size
@@ -42,11 +36,27 @@ def smoothing(data, kernel_size=20):
     data = data + data[::-1]
     return np.convolve(data, kernel, mode='same')[:length]
 
+def get_error(word1, word2):
+    if word1 != word2:
+        return 1
+    return 0
+
+def get_words(datas):
+    word_datas = []
+    for text in datas:
+        words = text[1:]
+        # words = word_split(text)
+        for word in words:
+            if len(word) < 2:
+                continue
+            word_datas.append(word)
+    word_datas = list(set(word_datas))
+    return word_datas
+
 def get_frequence(ref_test_datas, bwords):
     freq_dict = {word: 0 for word in bwords}
     for i in tqdm(range(len(ref_test_datas))):
-        ref_text  = ref_test_datas[i][1]
-        ref_words = list(jieba.cut(ref_text))
+        ref_words  = ref_test_datas[i][1:]
         
         for word in ref_words:
             if word in freq_dict:
@@ -56,22 +66,18 @@ def get_frequence(ref_test_datas, bwords):
     freq_dict = {d[1]: d[0] for d in freq_dict}
     return freq_dict
 
-def get_context_error(ref_test_datas, hyp_datas, bilst_idxs, bwords):
+def get_context_error(ref_test_datas, hyp_datas, bwords):
     error_dict = {word: [] for word in bwords}
     for i in tqdm(range(len(ref_test_datas))):
-        ref_text = ref_test_datas[i][1]
-        hyp_text = hyp_datas[i][1]
-        blist    = [bwords[idx] for idx in bilst_idxs[i][1]]
-
-        ref_words = list(jieba.cut(ref_text))
-        hyp_words = list(jieba.cut(hyp_text))
+        ref_words = ref_test_datas[i][1:]
+        hyp_words = hyp_datas[i][1:]
         chunks    = align_to_index(ref_words, hyp_words)
 
         for chunk in chunks:
             wref, whyps, rindex, hindexis = chunk
             wref  = wref.replace('-', '')
             whyps = ''.join(whyps).replace('-', '')
-            if (wref in blist) and (wref != whyps):
+            if (wref in error_dict) and (wref != whyps):
                 error_dict[wref].append(whyps)
 
     return error_dict
@@ -84,21 +90,21 @@ def get_sorted_error_rate(error_dict, train_freq_dict, test_freq_dict):
         if test_occurrence == 0:
             error_rate = 0
         else:
-            error_rate = sum([wer(bword, hyp_b) for hyp_b in error_dict[bword]]) / test_occurrence
-        sorted_error_rate.append(error_rate)
+            error_rate = sum([get_error(bword, hyp_b) for hyp_b in error_dict[bword]]) / test_occurrence
+        sorted_error_rate.append(error_rate * 100)
     return sorted_error_rate
 
 def get_total_bword(datas):
     total_words = []
     for i in tqdm(range(len(datas))):
         text  = datas[i][1]
-        words = list(jieba.cut(text))
+        words = word_split(text)
         words = [word for word in words if len(word) > 1]
         total_words.extend(words)
     total_words = list(set(total_words))
     return total_words
 
-def plot_error_rate(output_path, data, baseline_data, casr_data, our_data, tag=''):
+def plot_error_rate(output_path, data, baseline_data, tag=''):
     shots_dict = {
         'many_shot'  : [100, 'tab:green'],
         'medium_shot': [20,  'tab:blue'],
@@ -122,12 +128,12 @@ def plot_error_rate(output_path, data, baseline_data, casr_data, our_data, tag='
     index   = list(range(len(baseline_data)))
     
     color = 'tab:blue'
-    ax1.set_ylabel('Error rate')
+    ax1.set_ylabel('Word-level error rate (%)')
     ax1.set_xlabel('Sorted word index')
     ax1.tick_params(axis='y')
     ax1.set_xticks(ticks=x_label, labels=x_label, rotation=45)
     ax1.set_xlim(xmin=0, xmax=len(baseline_data))
-    ax1.set_ylim(ymin=0, ymax=0.8)
+    ax1.set_ylim(ymin=0, ymax=50)
     ax1.grid(axis='y', linestyle='--', alpha=0.5)
 
     smoothing_factor = 2000
@@ -135,20 +141,8 @@ def plot_error_rate(output_path, data, baseline_data, casr_data, our_data, tag='
     baseline_data_smoothed     = smoothing(baseline_data, kernel_size=100)
     baseline_data_smoothed_max = smoothing(baseline_data, kernel_size=smoothing_factor)
     ax1.plot(index, baseline_data_smoothed, color=color, linewidth=3, alpha=0.1)
-    ax1.plot(index, baseline_data_smoothed_max, color=color, alpha=0.9, linewidth=5, label="Baseline")
-
-    color = 'tab:cyan'
-    casr_data_smoothed     = smoothing(casr_data, kernel_size=100)
-    casr_data_smoothed_max = smoothing(casr_data, kernel_size=smoothing_factor)
-    ax1.plot(index, casr_data_smoothed, color=color, linewidth=3, alpha=0.1)
-    ax1.plot(index, casr_data_smoothed_max, color=color, linewidth=5, alpha=0.9, label="+ Contextual adapter")
-
-    color = 'tab:pink'
-    our_data_smoothed     = smoothing(our_data, kernel_size=100)
-    our_data_smoothed_max = smoothing(our_data, kernel_size=smoothing_factor)
-    ax1.plot(index, our_data_smoothed, color=color, linewidth=3, alpha=0.1)
-    ax1.plot(index, our_data_smoothed_max, color=color, linewidth=5, alpha=0.9, label="+ Context-balanced adapter (ours)")
-    # ax1.legend(loc=1)
+    ax1.plot(index, baseline_data_smoothed_max, color=color, alpha=0.9, linewidth=5, label="ASR model")
+    ax1.legend(loc=1)
     
     plt.tight_layout()
     out_path = os.path.join(output_path, f'word_plot_counts_{tag}.svg')
@@ -173,39 +167,27 @@ def display_result(shot_bwords, error_dict, test_freq_dict, tag):
 if __name__ == '__main__':
     ref_test_datas     = read_file(test_ref_path, sp=' ')
     ref_train_datas    = read_file(train_ref_path, sp=' ')
-
-    hyp_datas          = read_file(hyp_our_path, sp=' ')
-    hyp_casr_datas     = read_file(hyp_casr_path, sp=' ')
     hyp_baseline_datas = read_file(hyp_baseline_path, sp=' ')
 
-    test_blist_idxs = [[d[0], [int(x) for x in d[1:] if x != '']] for d in read_file(test_utt_blist_path, sp=' ')]
-    test_bwords     = list(map(lambda x: x[0], read_file(test_rareword_list, sp=',')))
+    test_words      = get_words(ref_test_datas)
+    print(f'test_words: {test_words[:10]}')
 
-    train_freq_dict = get_frequence(ref_train_datas, test_bwords)
-    test_freq_dict  = get_frequence(ref_test_datas, test_bwords)
+    train_freq_dict = get_frequence(ref_train_datas, test_words)
+    test_freq_dict  = get_frequence(ref_test_datas, test_words)
 
     # baseline
-    error_dict_baseline = get_context_error(ref_test_datas, hyp_baseline_datas, test_blist_idxs, test_bwords)
+    error_dict_baseline = get_context_error(ref_test_datas, hyp_baseline_datas, test_words)
     baseline_error_rate = get_sorted_error_rate(error_dict_baseline, train_freq_dict, test_freq_dict)
-    # casr
-    error_dict_casr     = get_context_error(ref_test_datas, hyp_casr_datas, test_blist_idxs, test_bwords)
-    casr_error_rate     = get_sorted_error_rate(error_dict_casr, train_freq_dict, test_freq_dict)
-    # our
-    error_dict_our      = get_context_error(ref_test_datas, hyp_datas, test_blist_idxs, test_bwords)
-    our_error_rate      = get_sorted_error_rate(error_dict_our, train_freq_dict, test_freq_dict)
-    
     occurence = np.array(list(train_freq_dict.values()))
     plot_error_rate(
         dump_path, 
         occurence, 
         baseline_error_rate, 
-        casr_error_rate,
-        our_error_rate, 
-        tag=f'aishell-train-test-error-rate_f{train_gamma_our}_test_f{test_gamma}'
+        tag=f'occurrence_vs_error_rate'
     )
 
     shots_dict = {
-        'many_shot'  : [4096, 100],
+        'many_shot'  : [99999999, 100],
         'medium_shot': [100, 20],
         'frew_shot'  : [20, 1], 
         'zero_shot'  : [0, -1],
@@ -220,7 +202,3 @@ if __name__ == '__main__':
                 shot_bwords[shot].append(bword)
 
     display_result(shot_bwords, error_dict_baseline, test_freq_dict, tag=f'baseline')
-    display_result(shot_bwords, error_dict_casr, test_freq_dict, tag=f'casr_gammma:{train_gamma_baseline}')
-    display_result(shot_bwords, error_dict_our, test_freq_dict, tag=f'our_gammma:{train_gamma_our}')
-
-    
