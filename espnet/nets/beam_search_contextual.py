@@ -145,15 +145,10 @@ class ContextualBeamSearch(BeamSearch):
 
         # NOTE (Shih-Lun): added for OpenAI Whisper ASR
         primer = [self.sos] if self.hyp_primer is None else self.hyp_primer
-        logging.info(f'self.hyp_primer: {self.hyp_primer}')
-        logging.info(f'primer: {primer}')
 
         if isinstance(self.scorers['decoder'], OpenAIWhisperDecoder):
             sot_lang_token     = primer[:2]
             no_timestamp_token = [primer[-1]]
-            logging.info(f'nlp_prompt_context_template   : {contexts["nlp_prompt_context_template"]}')
-            logging.info(f'nlp_prompt_no_context_template: {contexts["nlp_prompt_no_context_template"]}')
-            logging.info(f'pred_contexts: {pred_contexts}')
             primer = sot_lang_token + contexts["nlp_prompt_context_template"].tolist() + pred_contexts + contexts["nlp_prompt_no_context_template"].tolist() + no_timestamp_token
         logging.info(f'primer: {primer}')
 
@@ -225,7 +220,6 @@ class ContextualBeamSearch(BeamSearch):
         logger.info("min output length: " + str(minlen))
 
         # Encoder contextualization
-        logging.info(f'self.contextualizer_conf["contextualizer_type"]: {self.contextualizer_conf["contextualizer_type"]}')
         pred_contexts = None
         if self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_RETRIEVER:
             logging.info(f'Encoder contextualize, use retriever!')
@@ -264,8 +258,6 @@ class ContextualBeamSearch(BeamSearch):
             contexts=contexts,
             pred_contexts=(pred_contexts if pred_contexts is not None else None)
         )
-        logging.info(f'running_hyps: \n{running_hyps}')
-        logging.info(f'-' * 30)
         ended_hyps = []
         for i in range(maxlen):
             logger.debug("position " + str(i))

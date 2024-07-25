@@ -27,7 +27,7 @@ decoder_conf:
     dropout_rate: 0.0
 
 model_conf:
-    ctc_weight: 0.5
+    ctc_weight: 0.0
     lsm_weight: 0.1
     length_normalized_loss: false
     sym_sos: "<|startoftranscript|>"
@@ -40,14 +40,14 @@ input_size: 1                   # to prevent build_model() from complaining
 seed: 2022
 log_interval: 100
 num_att_plot: 0
-num_workers: 4
+num_workers: 8
 sort_in_batch: descending       # how to sort data in making batch
 sort_batch: descending          # how to sort created batches
 batch_type: numel
 # batch_bins: 12000000            # good for single GPU w/ 40G mem
-batch_bins: 96000000            # good for single GPU w/ 40G mem
-accum_grad: 2
-max_epoch: 60
+batch_bins: 12000000            # good for single GPU w/ 40G mem
+accum_grad: 8
+max_epoch: 10
 patience: none
 init: none
 # best_model_criterion:
@@ -86,15 +86,19 @@ scheduler_conf:
 contextual: rareword
 contextual_conf:
     contextual_type: rareword
-    blist_path: ./local/contextual/rarewords/rareword_f65536_train.txt
-    blist_xphone_path: ./local/contextual/ssl_features/rareword_f65536_train.xphone.seq.pt
-    blist_occurrence_path: ./local/contextual/rarewords/rareword_f65536_train_occurrence.txt
-    blist_max: 500
-    blist_drop_out: 0.0
+    blist_path: ./local/contextual/rarewords/rareword_f1000_train.txt
+    blist_xphone_path: ./local/contextual/ssl_features/rareword_f1000_train.xphone.seq.pt
+    blist_occurrence_path: ./local/contextual/rarewords/rareword_f1000_train_occurrence.txt
+    blist_max: 20
+    blist_drop_out: 0.5
     structure_type: null
-    sampling_method: null
+    sampling_method: ann_hnw
+    sampler_drop: 0.3
+    hnwr_pre_gold_length: 1
+    hardness_range: 5
+    use_gpu: False
     prompt_template_context: '今天的主題為:'
-    prompt_template_no_context: '好 我們開始吧.'
+    prompt_template_no_context: '好! 我們開始吧.'
 
 # contextualizer settings
 contextualizer: contextual_conv2_xphone_dotproduct_retriever
@@ -109,11 +113,11 @@ contextualizer_conf:
     temperature: 0.05
     drop_out: 0.0
     warmup_epoch: 0
-    contextualizer_weight: 0.5
-    contextualizer_losses:
-        loss_contextualizer_ga_ctc: 0.5
-        loss_contextualizer_ga_reweight_lp: 0.5
-    lp_gamma: 0.8
+    contextualizer_weight: 0
+    # contextualizer_losses:
+    #     loss_contextualizer_ga_ctc: 0.5
+    #     loss_contextualizer_ga_reweight_lp: 0.5
+    # lp_gamma: 0.8
 
-# adapter style training
-freeze_param: ["encoder", "decoder", "contextualizer.encoder.embed", "contextualizer.encoder.pad_embed"]
+# prompt tuning decoder
+freeze_param: ["encoder", "contextualizer"]

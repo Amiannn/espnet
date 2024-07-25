@@ -138,15 +138,15 @@ def forward(
 if __name__ == "__main__":
     spm_path   = "whisper_multilingual"
     token_path = "./data/zh_token_list/whisper_multilingual/tokens.txt"
-    model_conf = "./conf/contextual/whisper/train_asr_whisper_medium_xphone_retrieval_balanced.yaml"
-    model_path = "./exp/asr_whisper/run_medium_xphone_retrieval_balanced/valid.loss.ave_10best.pth"
+    model_conf = "./conf/contextual/whisper/train_asr_whisper_medium_xphone_retrieval_balanced_prompting.yaml"
+    model_path = "./exp/asr_whisper/run_medium_xphoneRetriever_prompting/2epoch.pth"
     stats_path = None
 
-    # rare_path  = "./local/contextual/rarewords/rareword_f10_test.txt"
-    rare_path  = "./local/contextual/rarewords/esun.entity.txt"
+    rare_path  = "./local/contextual/rarewords/rareword_f10_test.txt"
+    # rare_path  = "./local/contextual/rarewords/esun.entity.txt"
     scp_path   = "./dump/raw/test/wav.scp"
-    # blist_path = "./dump/raw/test/uttblist_idx"
-    blist_path = "./dump/raw/test/uttblist_idx_entity"
+    blist_path = "./dump/raw/test/uttblist_idx"
+    # blist_path = "./dump/raw/test/uttblist_idx_entity"
     ref_path   = "./data/test/text"
 
     folder_name = model_path.split('/')[-1].split('.')[0]
@@ -164,9 +164,9 @@ if __name__ == "__main__":
     contextual_conf = {
         'contextual_type': 'rareword',
         'blist_path': rare_path,
-        # 'blist_xphone_path': './local/contextual/ssl_features/rareword_f10_test.xphone.seq.pt',
-        'blist_xphone_path': './local/contextual/ssl_features/esun.entity.xphone.seq.pt',
-        'blist_max': 1000,
+        'blist_xphone_path': './local/contextual/ssl_features/rareword_f10_test.xphone.seq.pt',
+        # 'blist_xphone_path': './local/contextual/ssl_features/esun.entity.xphone.seq.pt',
+        'blist_max': 20,
         'blist_drop_out': 0.0,
         'warmup_epoch': 0,
         'structure_type': None,
@@ -198,13 +198,13 @@ if __name__ == "__main__":
     model.eval()
     count = 0
     for data in loader:
-        # if count >= 5:
-        #     break
+        if count >= 5:
+            break
         count += 1
 
         uid  = data[0][0]
-        if uid != "esun2022Q2_17":
-            continue
+        # if uid != "esun2022Q2_17":
+        #     continue
         
         data = data[1]
         contexts          = data['contexts']

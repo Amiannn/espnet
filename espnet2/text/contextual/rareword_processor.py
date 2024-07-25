@@ -198,6 +198,9 @@ class RarewordProcessor():
             hnw_distractors = list(OrderedSet(hnw_distractors) - OrderedSet(droped_uttblist))
         blist = droped_uttblist + hnw_distractors
         rand_distractors = []
+        logging.info(f'droped_uttblist: {len(droped_uttblist)}')
+        logging.info(f'hnw_distractors: {len(hnw_distractors)}')
+        logging.info(f'blist: {len(blist)}')
         # random sampling
         if self.blist_max > len(blist):
             rand_distractors = random.choices(
@@ -289,8 +292,10 @@ class RarewordProcessor():
         if len(elements) == 0:
             nlp_prompt = self.prompt_template_no_context
         else:
-            contexts   = ", ".join([self.blist_words[e] for e in elements])
-            nlp_prompt = f'{self.prompt_template_context} {contexts} {self.prompt_template_no_context}'
+            shuffle_elements = elements.copy()
+            random.shuffle(shuffle_elements)
+            contexts   = ", ".join([self.blist_words[e] for e in shuffle_elements])
+            nlp_prompt = f'{self.prompt_template_context} {contexts}. {self.prompt_template_no_context}'
         return self.build_prompt(nlp_prompt, inference_template=False)
 
     def build_inference_prompt(self):
@@ -381,7 +386,7 @@ class RarewordProcessor():
             use_oov=self.use_oov,
         )
         # build text prompt
-        _, nlp_prompt_tensor = self.build_context_prompt(element_idxs)
+        nlp_prompt, nlp_prompt_tensor = self.build_context_prompt(element_idxs)
         prompt_inference_context, prompt_inference_no_context = self.build_inference_prompt()
         output['label_ctc']              = label_ctc_tensors
         output['label_ctc_ilens']        = label_ctc_tensor_ilens
@@ -391,6 +396,7 @@ class RarewordProcessor():
         output['label_occurrence_ilens'] = label_occurrence_tensor_ilens
         output['context_list']           = [self.blist_words[e] for e in element_idxs]
         output['context_list_idxs']      = [self.blist[e] for e in element_idxs]
+        output['nlp_prompt']                     = nlp_prompt
         output['nlp_prompt_tensor']              = nlp_prompt_tensor
         output['nlp_prompt_context_template']    = prompt_inference_context
         output['nlp_prompt_no_context_template'] = prompt_inference_no_context

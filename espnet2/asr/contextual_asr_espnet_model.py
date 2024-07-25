@@ -218,8 +218,6 @@ class ESPnetContextualASRModel(ESPnetASRModel):
 
         # c1.1 Contextual Retriever
         if self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_RETRIEVER:
-            # logging.info(f"contexts['blist']:\n{contexts['blist']}")
-            # logging.info(f"contexts['blist']:\n{contexts['label_ctc']}")
             context_prob = self.contextualizer(
                 model_embed=encoder_out,
                 context_embed=contexts['blist'],
@@ -379,6 +377,16 @@ class ESPnetContextualASRModel(ESPnetASRModel):
 
         else:
             # 2b. Attention decoder branch
+            if self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_RETRIEVER:
+                # TODO: convert retriever's output into prompts 
+                # for now, we use teacher forcing prompting method
+                batch_prompt = (contexts["nlp_prompt_tensor"].unsqueeze(0).repeat(batch_size, 1))
+                # watch out! this is only for prompting whisper decoder 
+                text         = torch.cat([batch_prompt, text[:, 3:]], dim=-1)
+                text_lengths = text_lengths + (batch_prompt.shape[-1] - 3)
+                logging.info(f'prompt text:\n{text}')
+                logging.info(f'prompt text shape:\n{text.shape}')
+
             if self.ctc_weight != 1.0:
                 loss_att, acc_att, cer_att, wer_att = self._calc_att_loss(
                     encoder_out, encoder_out_lens, text, text_lengths

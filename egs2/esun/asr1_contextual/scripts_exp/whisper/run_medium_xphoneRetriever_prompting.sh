@@ -18,7 +18,7 @@ pretrained_retriever_model=exp/asr_whisper/run_medium_xphone_retrieval_balanced/
 CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --nj 10 \
     --gpu_inference true \
-    --inference_nj 8 \
+    --inference_nj 4 \
     --lang zh \
     --ngpu 1 \
     --token_type whisper_multilingual \
@@ -36,7 +36,7 @@ CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --speed_perturb_factors "0.9 1.0 1.1" \
     --asr_speech_fold_length 512 \
     --asr_text_fold_length 150 \
-    --inference_asr_model 0epoch.pth \
+    --inference_asr_model 2epoch.pth \
     --contextualization true \
     --ignore_init_mismatch true \
     --pretrained_model "${pretrained_prompt_model},${pretrained_retriever_model}:contextualizer:contextualizer" \
