@@ -1,10 +1,10 @@
 import os
 import torch
 import random
-import torchaudio
 import numpy as np
 
-from tqdm import tqdm
+from tqdm      import tqdm
+from itertools import groupby
 
 from pyscripts.utils.fileio import read_file
 from pyscripts.utils.fileio import read_json
@@ -23,14 +23,14 @@ from pyscripts.contextual.utils.visualize      import (
 )
 from espnet2.asr_transducer.utils import get_transducer_task_io
 
-from espnet2.asr.contextualizer.func.contextual_adapter_func   import forward_contextual_adapter
-from espnet.nets.pytorch_backend.transformer.add_sos_eos       import add_sos_eos
+from espnet.nets.pytorch_backend.transformer.add_sos_eos     import add_sos_eos
 from espnet2.asr.contextualizer import (
     CONTEXTUAL_RETRIEVER,
     CONTEXTUAL_ADAPTER_ENCODER,
     CONTEXTUAL_ADAPTER_DECODER
 )
-from espnet.nets.pytorch_backend.nets_utils import make_pad_mask
+
+from espnet2.asr.contextualizer.func.contextual_retriever_func import retrieve_greedy_decode
 
 seed = 12
 random.seed(seed)
@@ -46,14 +46,50 @@ def get_token_list(token_id_converter):
         vocab.append(v)
     return vocab
 
+def retriever_decode(ys_hat, char_list, idx_blank=0):
+    for _, y in enumerate(ys_hat):
+        y_hat = [x[0] for x in groupby(y)]
+        seq_hat = []
+        for idx in y_hat:
+            idx = int(idx)
+            if idx != -1 and idx != idx_blank:
+                seq_hat.append(char_list[int(idx)])
+    hyp  = []
+    for h in seq_hat:
+        if h in hyp:
+            continue
+        hyp.append(h)
+    return ", ".join(hyp)
+
 def visualize(
+    logp,
     atten,
+    ctc_pred,
     text,
+    target,
     blist,
+    speech,
+    blank_id, 
+    token_list,
     debug_path,
     uttid,
 ):
     frame2align = {}
+
+    if ctc_pred is not None:
+        pred_ctc = [token_list[p] for p in ctc_pred]
+        # pred_ctc = [p if p != 0 else ' ' for p in ctc_pred]
+        texts  = list(tokenizer.tokens2text(pred_ctc))
+        _texts = ['.' for _ in range(max([len(pred_ctc), len(texts)]))]
+        last   = '!'
+        for i, t in enumerate(texts):
+            if t == last or t == '!':
+                _texts[i] = ' '
+            else:
+                _texts[i] = t
+            last = t
+        frame2align = {i: _texts[i] for i in range(atten.shape[1])}
+        print(f'pred_ctc: {len(pred_ctc)}, texts: {len(texts)}')
 
     plot_attention_map(
         frame2align,
@@ -63,7 +99,7 @@ def visualize(
         debug_path,
         uttid=uttid,
     )
-    
+
 @torch.no_grad()
 def forward(
     model, 
@@ -74,7 +110,6 @@ def forward(
     text
 ):
     encoder_out, enc_olens = model.encode(speech, lengths)
-    encoder_out_original   = encoder_out
     print(f'encoder_out: {encoder_out.shape}')
 
     # c1. Encoder contextualization
@@ -85,19 +120,34 @@ def forward(
             context_xphone_embed=contexts['blist_xphone_mean'],
             ilens=contexts['ilens'],
         )
-    return context_prob
+        print(f'context_prob: {context_prob.shape}')
+        ys_hat = context_prob.argmax(dim=-1)
+        predict = retriever_decode(ys_hat.cpu(), blist)
+        print(f'Retriever predict: {predict}')
+
+    ctc_pred = None
+    if model.ctc is not None:
+        out      = model.ctc.ctc_lo(encoder_out).squeeze(0)
+        ctc_pred = torch.argmax(out, dim=-1)
+        print(f'ctc_pred: {ctc_pred.shape}')
+
+    logp        = None
+    target      = None
+    return logp, target, context_prob, ctc_pred
 
 if __name__ == "__main__":
     spm_path   = "whisper_multilingual"
-    token_path = "./data/en_token_list/whisper_multilingual/tokens.txt"
-    model_conf = "./conf/contextual_adapter/whisper/tune_medium_prompt__conv2_xphone_retrieval__mediumbatch.yaml"
-    model_path = "./exp/asr_whisper/tune_medium_prompt__conv2_xphone_retrieval__mediumbatch/valid.loss.ave_10best.pth"
+    token_path = "./data/zh_token_list/whisper_multilingual/tokens.txt"
+    model_conf = "./conf/contextual/whisper/train_asr_whisper_medium_xphone_retrieval_balanced.yaml"
+    model_path = "./exp/asr_whisper/run_medium_xphone_retrieval_balanced/valid.loss.ave_10best.pth"
     stats_path = None
 
-    rare_path  = "./local/contextual/rarewords/all_rare_words.txt"
-    scp_path   = "./dump/raw/test_clean/wav.scp"
-    blist_path = "./dump/raw/test_clean/uttblist_idx"
-    ref_path   = "./data/test_clean/text"
+    # rare_path  = "./local/contextual/rarewords/rareword_f10_test.txt"
+    rare_path  = "./local/contextual/rarewords/esun.entity.txt"
+    scp_path   = "./dump/raw/test/wav.scp"
+    # blist_path = "./dump/raw/test/uttblist_idx"
+    blist_path = "./dump/raw/test/uttblist_idx_entity"
+    ref_path   = "./data/test/text"
 
     folder_name = model_path.split('/')[-1].split('.')[0]
     debug_path = os.path.join("/".join(model_path.split('/')[:-1]), 'debug', folder_name)
@@ -114,13 +164,16 @@ if __name__ == "__main__":
     contextual_conf = {
         'contextual_type': 'rareword',
         'blist_path': rare_path,
-        'blist_xphone_path': './local/contextual/ssl_features/all_rare_words.xphone.seq.pt',
-        'blist_max': 20,
+        # 'blist_xphone_path': './local/contextual/ssl_features/rareword_f10_test.xphone.seq.pt',
+        'blist_xphone_path': './local/contextual/ssl_features/esun.entity.xphone.seq.pt',
+        'blist_max': 1000,
         'blist_drop_out': 0.0,
         'warmup_epoch': 0,
         'structure_type': None,
         'sampling_method': None,
         'use_oov': True,
+        'prompt_template_context': '今天的主題為',
+        'prompt_template_no_context': '好! 我們開始吧.', 
     }
     
     model, loader = load_espnet_model(
@@ -136,35 +189,50 @@ if __name__ == "__main__":
         token_type='whisper_multilingual'
     )
     preprocessor       = loader.dataset.preprocess
+    tokenizer          = preprocessor.tokenizer
     token_id_converter = preprocessor.token_id_converter
-    token_list         = get_token_list(token_id_converter) + ['<oov>']
+    token_list         = get_token_list(token_id_converter) + ['<no-context>']
 
-    model.contextualizer.retriever.temperature = 1
+    model.contextualizer.retriever.temperature = 0.01
 
     model.eval()
     count = 0
     for data in loader:
-        if count >= 1:
-            break
+        # if count >= 5:
+        #     break
         count += 1
 
         uid  = data[0][0]
+        if uid != "esun2022Q2_17":
+            continue
+        
         data = data[1]
-        contexts       = data['contexts']
-        speech         = data['speech']
-        speech_lengths = data['speech_lengths']
-        text           = texts[uid]
-        blist          = contexts['blist']
-        ilens          = contexts['ilens']
-        label_ctc      = contexts['label_ctc']
-        blist_idxs     = contexts['blist_idxs']
+        contexts          = data['contexts']
+        speech            = data['speech']
+        speech_lengths    = data['speech_lengths']
+        text              = texts[uid]
+        blist             = contexts['blist']
+        ilens             = contexts['ilens']
+        label_ctc         = contexts['label_ctc']
+        nlp_prompt_tensor = contexts['nlp_prompt_tensor']
 
         print(f'texts: {text}')
+        print(f'uid: {uid}')
+        print(f'blist:\n{blist}')
+        print(f'ilens:\n{ilens}')
+        print(f'speech: {speech}')
+        print(f'speech_lengths: {speech_lengths}')
         print(f'label_ctc:\n{label_ctc}')
+        # print(f'nlp_prompt_tensor:\n{nlp_prompt_tensor}')
+
+        nlp_prompt_tokens = [token_list[p] for p in nlp_prompt_tensor]
+        # print(f'nlp_prompt:\n{tokenizer.tokens2text(nlp_prompt_tokens)}')
 
         _blist = []
         for rareword in blist:
-            btokens = "".join([token_list[word] for word in rareword if word != -1])
+            btokens = [token_list[word] for word in rareword if word != -1]
+            btokens = tokenizer.tokens2text(btokens)
+            # print(f'btokens: {btokens}, {rareword}')
             _blist.append(btokens)
         blist = _blist
 
@@ -175,7 +243,7 @@ if __name__ == "__main__":
 
         tokens = tokens.unsqueeze(0)
 
-        atten = forward(
+        logp, target, atten, ctc_pred = forward(
             model, 
             speech, 
             speech_lengths,
@@ -185,9 +253,16 @@ if __name__ == "__main__":
         )
 
         visualize(
+            logp,
             atten,
+            ctc_pred,
             text,
+            target,
             blist,
+            speech,
+            model.blank_id, 
+            token_list,
             debug_path,
             uid,
         )
+        # break

@@ -362,6 +362,7 @@ class Speech2Text:
                     token_list=token_list,
                 )
             else:
+                logging.info(f'len(contextual_conf): {len(contextual_conf)}')
                 if len(contextual_conf) == 0:
                     beam_search = BeamSearch(
                         beam_size=beam_size,
@@ -925,7 +926,6 @@ def inference(
 
     # 1. Set random-seed
     set_all_random_seed(seed)
-
     # 2. Build speech2text
     speech2text_kwargs = dict(
         asr_train_config=asr_train_config,

@@ -1,3 +1,4 @@
+import os
 import argparse
 import logging
 from typing import Callable, Collection, Dict, List, Optional, Tuple
@@ -579,6 +580,8 @@ class ASRTask(AbsTask):
                 use_oov=args.contextual_conf.get("use_oov", True),
                 use_gpu=args.contextual_conf.get("use_gpu", True),
                 text_cleaner=args.cleaner,
+                prompt_template_context=args.contextual_conf.get("prompt_template_context", "THE TOPIC OF TODAY'S"),
+                prompt_template_no_context=args.contextual_conf.get("prompt_template_no_context", "OKAY THEN I'LL CONTINUE."),
                 **args.preprocessor_conf,
             )
         return contextual_processor

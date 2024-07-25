@@ -1,3 +1,4 @@
+import os
 import torch
 import logging
 import torchaudio
@@ -46,6 +47,14 @@ else:
     @contextmanager
     def autocast(enabled=True):
         yield
+
+print(f'Setting logging config!')
+logging.basicConfig(
+    # level=args.log_level,
+    level="INFO",
+    format=f"[{os.uname()[1].split('.')[0]}{''}]"
+    f" %(asctime)s (%(module)s:%(lineno)d) %(levelname)s: %(message)s",
+)
 
 try:
     import optimized_transducer
@@ -202,8 +211,15 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         stats = dict()
 
         # c1. Encoder contextualization
+        enc_bias_vec  = None
+        gate_prob     = None
+        context_prob  = None
+        context_logit = None
+
         # c1.1 Contextual Retriever
         if self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_RETRIEVER:
+            # logging.info(f"contexts['blist']:\n{contexts['blist']}")
+            # logging.info(f"contexts['blist']:\n{contexts['label_ctc']}")
             context_prob = self.contextualizer(
                 model_embed=encoder_out,
                 context_embed=contexts['blist'],
@@ -212,10 +228,6 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             )
 
         # c1.2 Contextual Adapter
-        enc_bias_vec  = None
-        gate_prob     = None
-        context_prob  = None
-        context_logit = None
         if self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_ADAPTER_ENCODER:
             enc_bias_vec, enc_attn = forward_contextual_adapter(
                 contextualizer=self.contextualizer,

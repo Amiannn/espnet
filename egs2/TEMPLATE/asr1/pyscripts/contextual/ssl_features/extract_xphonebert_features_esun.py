@@ -29,13 +29,13 @@ def isEnglish(s):
         return True
 
 model_tag     = "vinai/xphonebert-base"
-rareword_path = "./local/contextual/rarewords/rareword_f1000_train.txt"
+rareword_path = "./local/contextual/rarewords/esun.entity.txt"
 output_path   = "./local/contextual/ssl_features"
 
 filename  = (rareword_path.split('/')[-1]).replace('.txt', '')
 rarewords = [b[0].lower() for b in read_file(rareword_path, sp=',')]
 
-device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # Load XPhoneBERT model and its tokenizer
 xphonebert = AutoModel.from_pretrained(model_tag)

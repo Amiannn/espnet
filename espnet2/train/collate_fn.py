@@ -325,7 +325,7 @@ def contextual_collate_fn(
     # TODO: Make prefix tree search!
     assert check_argument_types()
     uttids = [u for u, _ in data]
-    data = [d for _, d in data]
+    data   = [d for _, d in data]
     
     assert all(set(data[0]) == set(d) for d in data), "dict-keys mismatching"
     assert all(

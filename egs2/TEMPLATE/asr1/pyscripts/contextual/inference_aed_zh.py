@@ -172,7 +172,7 @@ if __name__ == "__main__":
     preprocessor       = loader.dataset.preprocess
     token_id_converter = preprocessor.token_id_converter
     token_list         = get_token_list(token_id_converter) + ['<no-context>']
-    
+
     model.contextualizer.adapter.temperature = 1
 
     model.eval()
@@ -198,7 +198,7 @@ if __name__ == "__main__":
         print(f'ilens:\n{ilens}')
         print(f'speech: {speech}')
         print(f'speech_lengths: {speech_lengths}')
-        print(f'label_ctc: {label_ctc}')
+        print(f'label_ctc:\n{label_ctc}')
 
         _blist = []
         for rareword in blist:

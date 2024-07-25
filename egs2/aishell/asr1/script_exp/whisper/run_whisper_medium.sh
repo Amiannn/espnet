@@ -5,9 +5,9 @@ set -e
 set -u
 set -o pipefail
 
-train_set="train"
-valid_set="dev"
-test_sets="test"
+train_set=train
+valid_set=dev
+test_sets=test
 
 asr_config=conf/whisper/train_asr_whisper_full.yaml
 inference_config=conf/whisper/decode_asr_whisper_noctc_greedy.yaml
@@ -16,7 +16,7 @@ asr_tag=whisper_medium_finetune_lr1e-5_adamw_wd1e-2_3epochs
 CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --nj 10 \
     --gpu_inference true \
-    --inference_nj 5 \
+    --inference_nj 8 \
     --lang zh \
     --ngpu 1 \
     --token_type whisper_multilingual \
@@ -28,7 +28,7 @@ CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --asr_tag "${asr_tag}" \
     --asr_config "${asr_config}" \
     --inference_config "${inference_config}" \
-    --inference_asr_model valid.acc.ave.pth \
+    --inference_asr_model valid.acc.ave_3best.pth \
     --train_set "${train_set}" \
     --valid_set "${valid_set}" \
     --test_sets "${test_sets}" \

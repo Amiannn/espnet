@@ -24,7 +24,7 @@ ref_path       = './data/test/text'
 # hyp_path       = "./exp/asr_transducer/contextual_xphone_adapter_suffix/decode_contextual_xphone_adapter_greedy_asr_model_valid.loss.ave_10best/test/text"
 # hyp_path       = "/share/nas165/amian/experiments/speech/espnet/egs2/esun/asr1_contextual/exp/asr_transducer/contextual_adapter_lp0.8_suffix/decode_contextual_adapter_greedy_asr_model_valid.loss.ave_10best/test/text"
 
-hyp_path = "./exp/asr_transducer/contextual_xphone_adapter_f65536_suffix/decode_contextual_xphone_adapter_bs5_asr_model_valid.loss.ave_10best/test/text"
+hyp_path = "../asr1/exp/asr_whisper_medium_finetune_lr1e-5_adamw_wd1e-2_3epochs/decode_asr_whisper_noctc_greedy_asr_model_valid.acc.ave_3best/test/text"
 
 def check_passed(indexis, memory):
     for index in indexis:

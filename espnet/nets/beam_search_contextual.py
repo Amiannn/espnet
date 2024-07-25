@@ -5,20 +5,23 @@ from itertools import chain
 from typing import Any, Dict, List, NamedTuple, Tuple, Union
 
 import torch
-
+from espnet2.torch_utils.device_funcs import to_device
 from espnet.nets.e2e_asr_common import end_detect
 from espnet.nets.scorer_interface import PartialScorerInterface, ScorerInterface
 
-from espnet.nets.beam_search import Hypothesis
-from espnet.nets.beam_search import BeamSearch
+from espnet.nets.beam_search       import Hypothesis
+from espnet.nets.beam_search       import BeamSearch
 
 from espnet2.asr.decoder.whisper_decoder import OpenAIWhisperDecoder
 
 from espnet2.asr.contextualizer.func.contextual_adapter_func   import forward_contextual_adapter
 from espnet2.asr.contextualizer import (
+    CONTEXTUAL_RETRIEVER,
     CONTEXTUAL_ADAPTER_ENCODER,
     CONTEXTUAL_ADAPTER_DECODER
 )
+
+from espnet2.asr.contextualizer.func.contextual_retriever_func import retrieve_greedy_decode
 
 logger = logging.getLogger(__name__)
 
@@ -119,6 +122,51 @@ class ContextualBeamSearch(BeamSearch):
             return hs, scores, states
         return scores, states
     
+    def init_hyp(
+            self, 
+            x: torch.Tensor, 
+            contexts: object = None, 
+            pred_contexts: object = None
+        ) -> List[Hypothesis]:
+        """Get an initial hypothesis data.
+
+        Args:
+            x (torch.Tensor): The encoder output feature
+
+        Returns:
+            Hypothesis: The initial hypothesis.
+
+        """
+        init_states = dict()
+        init_scores = dict()
+        for k, d in self.scorers.items():
+            init_states[k] = d.init_state(x)
+            init_scores[k] = 0.0
+
+        # NOTE (Shih-Lun): added for OpenAI Whisper ASR
+        primer = [self.sos] if self.hyp_primer is None else self.hyp_primer
+        logging.info(f'self.hyp_primer: {self.hyp_primer}')
+        logging.info(f'primer: {primer}')
+
+        if isinstance(self.scorers['decoder'], OpenAIWhisperDecoder):
+            sot_lang_token     = primer[:2]
+            no_timestamp_token = [primer[-1]]
+            logging.info(f'nlp_prompt_context_template   : {contexts["nlp_prompt_context_template"]}')
+            logging.info(f'nlp_prompt_no_context_template: {contexts["nlp_prompt_no_context_template"]}')
+            logging.info(f'pred_contexts: {pred_contexts}')
+            primer = sot_lang_token + contexts["nlp_prompt_context_template"].tolist() + pred_contexts + contexts["nlp_prompt_no_context_template"].tolist() + no_timestamp_token
+        logging.info(f'primer: {primer}')
+
+        return [
+            Hypothesis(
+                score=0.0,
+                scores=init_scores,
+                states=init_states,
+                hs=[],
+                yseq=torch.tensor(primer, device=x.device),
+            )
+        ]
+
     def forward(
         self,
         x: torch.Tensor,
@@ -177,8 +225,28 @@ class ContextualBeamSearch(BeamSearch):
         logger.info("min output length: " + str(minlen))
 
         # Encoder contextualization
-        if self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_ADAPTER_ENCODER:
+        logging.info(f'self.contextualizer_conf["contextualizer_type"]: {self.contextualizer_conf["contextualizer_type"]}')
+        pred_contexts = None
+        if self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_RETRIEVER:
+            logging.info(f'Encoder contextualize, use retriever!')
+            contexts     = to_device(contexts, device=x.device)
+            context_prob = self.contextualizer(
+                model_embed=x.unsqueeze(0),
+                context_embed=contexts['blist'],
+                context_xphone_embed=contexts['blist_xphone_mean'],
+                ilens=contexts['ilens'],
+            )
+            # only for whisper model
+            sep_toknes = [11, 220]
+            pred_contexts = retrieve_greedy_decode(
+                context_prob, 
+                contexts['context_list_idxs'],
+                sep_toknes
+            )
+        
+        elif self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_ADAPTER_ENCODER:
             logging.info(f'Encoder contextualize!')
+            contexts = to_device(contexts, device=x.device)
             x        = x.unsqueeze(0)
             bias_vec = forward_contextual_adapter(
                 contextualizer=self.contextualizer,
@@ -191,7 +259,13 @@ class ContextualBeamSearch(BeamSearch):
             x = x.squeeze(0)
 
         # main loop of prefix search
-        running_hyps = self.init_hyp(x if pre_x is None else pre_x)
+        running_hyps = self.init_hyp(
+            x if pre_x is None else pre_x,
+            contexts=contexts,
+            pred_contexts=(pred_contexts if pred_contexts is not None else None)
+        )
+        logging.info(f'running_hyps: \n{running_hyps}')
+        logging.info(f'-' * 30)
         ended_hyps = []
         for i in range(maxlen):
             logger.debug("position " + str(i))

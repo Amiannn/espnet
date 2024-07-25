@@ -5,7 +5,7 @@ import logging
 import numpy as np
 
 import math  
-import textgrid
+# import textgrid
 import matplotlib.pyplot as plt
 
 from pyscripts.utils.fileio import read_file
@@ -139,8 +139,8 @@ def forward_backward(logp, target, blank_id, token_list, waveform, debug_path):
     ratio = waveform.size(0) / sample_rate / t_len
     maxTime = math.ceil(waveform.size(0) / sample_rate)
     alignments = []
-    tg = textgrid.TextGrid(minTime=0, maxTime=maxTime)
-    tier_word = textgrid.IntervalTier(name="subword", minTime=0., maxTime=maxTime)
+    # tg = textgrid.TextGrid(minTime=0, maxTime=maxTime)
+    # tier_word = textgrid.IntervalTier(name="subword", minTime=0., maxTime=maxTime)
     print(f'align_paths: {align_paths}')
     for i, align_path in enumerate(align_paths):
         token = tokens[i]
@@ -152,13 +152,13 @@ def forward_backward(logp, target, blank_id, token_list, waveform, debug_path):
         alignments.append([token, start, end])
         start    = ratio * start
         end      = ratio * end
-        interval = textgrid.Interval(minTime=start, maxTime=end, mark=token)
+        # interval = textgrid.Interval(minTime=start, maxTime=end, mark=token)
         tier_word.addInterval(interval)
         start = f'{start:.2f}'
         end   = f'{end:.2f}'
-    tg.tiers.append(tier_word)
-    output_path = os.path.join(debug_path, 'alignment.TextGrid')
-    tg.write(output_path)
+    # tg.tiers.append(tier_word)
+    # output_path = os.path.join(debug_path, 'alignment.TextGrid')
+    # tg.write(output_path)
     # ax2.specgram(waveform, Fs=sample_rate)
     ax2.set_yticks([])
     ax2.set_xlabel("time [second]")

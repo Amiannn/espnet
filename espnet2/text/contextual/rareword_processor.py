@@ -66,6 +66,8 @@ class RarewordProcessor():
         use_oov: bool = True,
         use_gpu: bool = False,
         text_cleaner: Collection[str] = None,
+        prompt_template_context    : str = "THE TOPIC OF TODAY'S",
+        prompt_template_no_context : str = "OKAY THEN I'LL CONTINUE.",
     ):
         self.tokenizer = build_tokenizer(
             token_type=token_type,
@@ -129,6 +131,10 @@ class RarewordProcessor():
         self.oov_value      = oov_value
         self.use_oov        = use_oov
         self.use_gpu        = use_gpu
+
+        # prompt template
+        self.prompt_template_context    = prompt_template_context
+        self.prompt_template_no_context = prompt_template_no_context
 
         # asr model
         self.asr_model = asr_model
@@ -279,6 +285,39 @@ class RarewordProcessor():
             label_occurrence_tensor_ilens,
         )
 
+    def build_context_prompt(self, elements):
+        if len(elements) == 0:
+            nlp_prompt = self.prompt_template_no_context
+        else:
+            contexts   = ", ".join([self.blist_words[e] for e in elements])
+            nlp_prompt = f'{self.prompt_template_context} {contexts} {self.prompt_template_no_context}'
+        return self.build_prompt(nlp_prompt, inference_template=False)
+
+    def build_inference_prompt(self):
+        _, prompt_inference_context    = self.build_prompt(self.prompt_template_context, inference_template=True)
+        _, prompt_inference_no_context = self.build_prompt(self.prompt_template_no_context, inference_template=True)
+        return prompt_inference_context, prompt_inference_no_context
+
+    def build_prompt(self, nlp_prompt, inference_template=False):
+        prompt_tokens     = self.tokenizer.text2tokens(nlp_prompt)
+        prompt_tokens_str = " ".join(prompt_tokens)
+        if len(prompt_tokens_str.split()) > 1:
+            prompt_ids    = self.token_id_converter.tokenizer.tokenizer.convert_tokens_to_ids(prompt_tokens_str.split())
+            prompt_tensor = torch.tensor(prompt_ids).to(torch.int64)
+        else:
+            prompt_ids    = [self.token_id_converter.tokenizer.tokenizer.convert_tokens_to_ids(prompt_tokens_str)]
+            prompt_tensor = torch.tensor(prompt_ids).to(torch.int64)
+        # special tokens
+        if isinstance(self.token_id_converter, OpenAIWhisperTokenIDConverter):
+            lang_token              = self.token_id_converter.tokenizer.sot_sequence_including_notimestamps[1]
+            no_time_stamp_token     = self.token_id_converter.tokenizer.sot_sequence_including_notimestamps[3]
+            if not inference_template:
+                prompt_tokens_special = [lang_token] + prompt_ids + [no_time_stamp_token]
+            else:
+                prompt_tokens_special = prompt_ids
+            prompt_tensor= torch.tensor(prompt_tokens_special).to(torch.int64)
+        return nlp_prompt, prompt_tensor
+        
     def sample(
         self,
         batch_data,
@@ -341,12 +380,23 @@ class RarewordProcessor():
             pad_value,
             use_oov=self.use_oov,
         )
+        # build text prompt
+        _, nlp_prompt_tensor = self.build_context_prompt(element_idxs)
+        prompt_inference_context, prompt_inference_no_context = self.build_inference_prompt()
         output['label_ctc']              = label_ctc_tensors
         output['label_ctc_ilens']        = label_ctc_tensor_ilens
         output['context_label']          = context_label_tensors
         output['context_label_ilens']    = context_label_tensors_ilens
         output['label_occurrence']       = label_occurrence_tensors
         output['label_occurrence_ilens'] = label_occurrence_tensor_ilens
+        output['context_list']           = [self.blist_words[e] for e in element_idxs]
+        output['context_list_idxs']      = [self.blist[e] for e in element_idxs]
+        output['nlp_prompt_tensor']              = nlp_prompt_tensor
+        output['nlp_prompt_context_template']    = prompt_inference_context
+        output['nlp_prompt_no_context_template'] = prompt_inference_no_context
+        if self.use_oov:
+            output['context_list']      = ['<no-context>'] + output['context_list']
+            output['context_list_idxs'] = [self.oov_value] + output['context_list_idxs']
         return output
 
 if __name__ == '__main__':

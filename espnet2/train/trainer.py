@@ -283,6 +283,17 @@ class Trainer:
         else:
             train_summary_writer = None
 
+        # pre-save model
+        logging.info(f'Pre-save model: 0epoch.pth.')
+        if use_lora and save_lora_only:
+            # Only the LoRA realted params are saved, not the whole model
+            model_state_dict = lora.lora_state_dict(model)
+        else:
+            # Save all params of the model
+            model_state_dict = model.state_dict()
+        # Save and log the model and update the link to the best model
+        torch.save(model_state_dict, output_dir / f"0epoch.pth")
+
         start_time = time.perf_counter()
         for iepoch in range(start_epoch, trainer_options.max_epoch + 1):
             if iepoch != start_epoch:

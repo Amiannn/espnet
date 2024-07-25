@@ -16,7 +16,7 @@ asr_tag=whisper_medium_finetune_lr1e-5_adamw_wd1e-2_3epochs
 CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --nj 10 \
     --gpu_inference true \
-    --inference_nj 1 \
+    --inference_nj 8 \
     --lang zh \
     --ngpu 1 \
     --token_type whisper_multilingual \

@@ -9,14 +9,15 @@ train_set="train"
 valid_set="dev"
 test_sets="test"
 
-asr_config=conf/whisper/train_asr_whisper_full.yaml
-inference_config=conf/whisper/decode_asr_whisper_noctc_greedy.yaml
-asr_tag=whisper_medium_finetune_lr1e-5_adamw_wd1e-2_3epochs
+asr_config=conf/contextual/whisper/train_asr_whisper_medium_xphone_retrieval.yaml
+inference_config=conf/contextual/whisper/decode_contextual_whisper_xphone_greedy_ctc.yaml
+asr_tag=whisper/run_medium_xphone_retrieval
 
+pretrained_model=../asr1/exp/asr_whisper_medium_finetune_lr1e-5_adamw_wd1e-2_3epochs/valid.acc.ave_3best.pth
 CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --nj 10 \
     --gpu_inference true \
-    --inference_nj 5 \
+    --inference_nj 1 \
     --lang zh \
     --ngpu 1 \
     --token_type whisper_multilingual \
@@ -28,11 +29,15 @@ CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --asr_tag "${asr_tag}" \
     --asr_config "${asr_config}" \
     --inference_config "${inference_config}" \
-    --inference_asr_model valid.acc.ave.pth \
+    --inference_asr_model valid.acc.ave_3best.pth \
     --train_set "${train_set}" \
     --valid_set "${valid_set}" \
     --test_sets "${test_sets}" \
     --speed_perturb_factors "0.9 1.0 1.1" \
     --asr_speech_fold_length 512 \
     --asr_text_fold_length 150 \
-    --lm_fold_length 150 "$@"
+    --lm_fold_length 150 \
+    --contextualization true \
+    --ignore_init_mismatch true \
+    --pretrained_model "${pretrained_model},${pretrained_model}:decoder.decoders.token_embedding:contextualizer.encoder.embed" \
+    "$@"
