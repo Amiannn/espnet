@@ -29,7 +29,8 @@ def plot_attention_map(
 
     # draw attention map
     # fig, axes = plt.subplots(1, 1, figsize=(20, 5))
-    fig, axes = plt.subplots(1, 1, figsize=(40, 15))
+    # fig, axes = plt.subplots(1, 1, figsize=(40, 15))
+    fig, axes = plt.subplots(1, 1, figsize=(130, 25))
     axes.xaxis.set_ticks(np.arange(0, attention.shape[1], 1))
     axes.yaxis.set_ticks(np.arange(0, attention.shape[0], 1))
     axes.set_xticks(np.arange(-.5, attention.shape[1], 10), minor=True)

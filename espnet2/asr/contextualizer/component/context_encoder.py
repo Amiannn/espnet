@@ -2,6 +2,7 @@ import math
 import torch
 import random
 import logging
+import torch.nn.functional as F
 
 from typing import List, Optional, Tuple
 from espnet2.asr.encoder.rnn_encoder                    import RNNEncoder
@@ -57,11 +58,6 @@ class ContextEncoderBiLSTM(torch.nn.Module):
         context_embed: torch.Tensor,
         ilens: torch.Tensor,
     ):
-        # logging.info(f'context_embed: {context_embed.shape}')
-        # logging.info(f'context_embed:\n{context_embed}')
-        # logging.info(f'ilens: {ilens.shape}')
-        # logging.info(f'ilens:\n{ilens}')
-        
         context_embed           = self.forward_embed(context_embed)
         context_embed, ilens, _ = self.encoder(context_embed, ilens)
         
@@ -185,33 +181,17 @@ class ContextEncoderXPhoneBiLSTM(ContextEncoderBiLSTM):
         merged_context_embed = torch.cat([oov_embed, x_embed], dim=0)
         return merged_context_embed, context_embed_mean, ilens
 
-class ContextEncoderXPhone(ContextEncoderBiLSTM):
+class ContextEncoderXPhone(torch.nn.Module):
     def __init__(
         self,
         vocab_size        : int,
         hidden_size       : int,
-        output_size       : int,
-        drop_out         : float = 0.0,
-        num_blocks        : int = 1,
+        drop_out          : float = 0.0,
         padding_idx       : int = -1,
         xphone_hidden_size: int = 768,
         **kwargs
     ):
-        super().__init__(
-            vocab_size=vocab_size,
-            hidden_size=hidden_size,
-            output_size=output_size,
-            drop_out=drop_out,
-            num_blocks=num_blocks,
-            padding_idx=padding_idx,
-            **kwargs,
-        )
-        self.vocab_size  = vocab_size
-        self.padding_idx = padding_idx
-        self.embed       = torch.nn.Embedding(
-            vocab_size, 
-            hidden_size, 
-        )
+        super().__init__()
         self.oov_embed = torch.nn.Linear(hidden_size, 1, bias=False)
         self.drop_out  = torch.nn.Dropout(p=drop_out)
         self.norm_x2   = LayerNorm(xphone_hidden_size)
@@ -223,21 +203,20 @@ class ContextEncoderXPhone(ContextEncoderBiLSTM):
 
     def forward(
         self,
-        context_embed: torch.Tensor,
-        context_xphone_embed: torch.Tensor,
+        xphone_embeds: torch.Tensor,
         ilens: torch.Tensor,
+        use_oov: bool=True,
     ):
-        context_embed_mean, context_embed, ilens = super().forward(
-            context_embed=context_embed,
-            ilens=ilens,
-        )
-        oov_embed = context_embed_mean[:1, :]
-        x2_embed  = context_xphone_embed
-        # layer normalize and dropout
-        x2_embed = self.norm_x2(self.drop_out(x2_embed))
+        # xphone_embeds: C x S x D
+        x2_embed = self.norm_x2(self.drop_out(xphone_embeds))
+        # x2_embed = xphone_embeds
         x_embed  = self.drop_out(self.proj(x2_embed)).squeeze(0)
-        merged_context_embed = torch.cat([oov_embed, x_embed], dim=0)
-        return merged_context_embed, context_embed_mean, ilens
+        C, S, D  = x_embed.shape
+        if use_oov:
+            oov_embed = (self.oov_embed.weight).unsqueeze(0)
+            oov_embed = F.pad(oov_embed, (0, 0, 0, (S - 1), 0, 0))
+            x_embed   = torch.cat([oov_embed, x_embed], dim=0)
+        return x_embed, ilens
 
 if __name__ == '__main__':
 

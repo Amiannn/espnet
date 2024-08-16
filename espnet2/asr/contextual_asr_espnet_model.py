@@ -211,18 +211,21 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         stats = dict()
 
         # c1. Encoder contextualization
-        enc_bias_vec  = None
-        gate_prob     = None
-        context_prob  = None
-        context_logit = None
+        enc_bias_vec     = None
+        gate_prob        = None
+        context_prob     = None
+        context_logit    = None
+        encoder_out_proj = None
 
         # c1.1 Contextual Retriever
         if self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_RETRIEVER:
-            context_prob = self.contextualizer(
+            context_prob, encoder_out_proj = self.contextualizer(
                 model_embed=encoder_out,
                 context_embed=contexts['blist'],
-                context_xphone_embed=contexts['blist_xphone_mean'],
+                context_xphone_embed=contexts['blist_xphone'],
+                context_xphone_mean_embed=contexts['blist_xphone_mean'],
                 ilens=contexts['ilens'],
+                return_model_proj=True
             )
 
         # c1.2 Contextual Adapter
@@ -293,10 +296,14 @@ class ESPnetContextualASRModel(ESPnetASRModel):
                 
         # 1. CTC branch
         if self.ctc_weight != 0.0:
+            # if encoder_out_proj is None:
             loss_ctc, cer_ctc = self._calc_ctc_loss(
                 encoder_out, encoder_out_lens, text, text_lengths
             )
-
+            # else:
+            #     loss_ctc, cer_ctc = self._calc_ctc_loss(
+            #         encoder_out_proj, encoder_out_lens, text, text_lengths
+            #     )
             # Collect CTC branch stats
             stats["loss_ctc"] = loss_ctc.detach() if loss_ctc is not None else None
             stats["cer_ctc"] = cer_ctc
@@ -384,8 +391,6 @@ class ESPnetContextualASRModel(ESPnetASRModel):
                 # watch out! this is only for prompting whisper decoder 
                 text         = torch.cat([batch_prompt, text[:, 3:]], dim=-1)
                 text_lengths = text_lengths + (batch_prompt.shape[-1] - 3)
-                logging.info(f'prompt text:\n{text}')
-                logging.info(f'prompt text shape:\n{text.shape}')
 
             if self.ctc_weight != 1.0:
                 loss_att, acc_att, cer_att, wer_att = self._calc_att_loss(

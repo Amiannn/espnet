@@ -8,7 +8,6 @@ from typing import Optional, Tuple
 from espnet.nets.pytorch_backend.transformer.layer_norm import LayerNorm
 from espnet.nets.pytorch_backend.transformer.attention  import (
     CustomMultiHeadedAttention,
-    ColbertAttention,
 )
 from espnet.nets.pytorch_backend.transformer.positionwise_feed_forward import (
     PositionwiseFeedForward,
@@ -208,69 +207,6 @@ class Conv2AttentionAdapter(ConvAttentionAdapter):
         x = self.conv_1(x)
         x = self.conv_2(x)
         return query + x.transpose(1, 2)
-
-class ColbertAdapter(AttentionBasedAdapter):
-    def __init__(
-        self,
-        attention_heads: int,
-        attndim: int,
-        proj_hidden_size: int,
-        drop_out: float = 0.1,
-        atten_temperature: float = 1.0,
-        **kwargs
-    ):  
-        super().__init__(
-            attention_heads=attention_heads,
-            attndim=attndim,
-            proj_hidden_size=proj_hidden_size,
-            drop_out=drop_out,
-            use_value_norm=True,
-            atten_temperature=atten_temperature,
-            **kwargs,
-        )
-        self.attention_layer = ColbertAttention(
-            attention_heads, attndim, drop_out
-        )
-
-    def forward(
-        self,
-        model_embed,
-        context_embed_key,
-        context_embed_value,
-        mask=None,
-        return_atten=False,
-    ):  
-        # TODO: Add query mask and key mask
-        # may cause some problems (softmax cross utterance)...
-        B, T, D  = model_embed.shape
-        query    = self.norm_before_x1(model_embed)
-
-        C, U, D = context_embed_key.shape
-        key     = self.norm_before_x2(context_embed_key)
-        
-        # entity-level
-        C, D  = context_embed_value.shape
-        value = self.norm_before_x3(context_embed_value)
-
-        out = self.attention_layer(
-            query=query, 
-            key=key, 
-            value=value,
-            mask=mask,
-        )
-        out = self.norm_after(out)
-        out = self.proj(out)
-        
-        if return_atten:
-            atten = torch.softmax(
-                self.attention_layer.scores / self.temperature, 
-                dim=-1
-            )
-            if mask is not None:
-                mask  = mask.unsqueeze(1).eq(0)
-                atten = atten.masked_fill(mask, 0.0)
-            return out, atten
-        return out
 
 if __name__ == '__main__':
     attention_heads  = 1 

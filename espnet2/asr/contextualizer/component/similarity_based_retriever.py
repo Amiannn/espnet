@@ -38,11 +38,14 @@ class DotProductRetriever(torch.nn.Module):
         self,
         model_embed,
         context_embed,
+        return_model_proj=False,
     ):  
         x1 = self.encode_x1(model_embed)
         x2 = self.encode_x2(context_embed)
         x  = self.similarity(x1, x2)
         x_prob = torch.softmax(x / self.temperature, dim=-1)
+        if return_model_proj:
+            return x_prob, x1
         return x_prob
 
 class Conv2DotProductRetriever(DotProductRetriever):
@@ -92,6 +95,92 @@ class Conv2DotProductRetriever(DotProductRetriever):
         x1 = self.forward_conv(x1)
         x1 = super().encode_x1(x1)
         return x1
+
+class LateInteractiveRetriever(DotProductRetriever):
+    def __init__(
+        self,
+        input_hidden_size: int,
+        proj_hidden_size: int,
+        drop_out: float = 0.1,
+        temperature: float = 1.0,
+        **kwargs
+    ):
+        super().__init__(
+            input_hidden_size=input_hidden_size,
+            proj_hidden_size=proj_hidden_size,
+            drop_out=drop_out,
+            temperature=temperature,
+            **kwargs
+        )
+
+    def similarity(self, x1, x2):
+        # B x T x D, C x J x D -> B x T x C x J
+        x = torch.einsum('btd,cjd->btcj', x1, x2)
+        # B x T x C x J -> B x T x C
+        x = torch.max(x, dim=-1).values
+        return x
+
+class LateMultiInteractiveRetriever(LateInteractiveRetriever):
+    def __init__(
+        self,
+        input_hidden_size: int,
+        proj_hidden_size: int,
+        drop_out: float = 0.1,
+        temperature: float = 1.0,
+        **kwargs
+    ):
+        super().__init__(
+            input_hidden_size=input_hidden_size,
+            proj_hidden_size=proj_hidden_size,
+            drop_out=drop_out,
+            temperature=temperature,
+            **kwargs
+        )
+        self.query   = torch.nn.Linear(input_hidden_size, proj_hidden_size)
+        self.drop    = torch.nn.Dropout(p=drop_out)
+        self.proj3   = torch.nn.Linear(input_hidden_size, proj_hidden_size)
+        self.drop_x3 = torch.nn.Dropout(p=drop_out)
+        self.proj4   = torch.nn.Linear(input_hidden_size, proj_hidden_size)
+        self.drop_x4 = torch.nn.Dropout(p=drop_out)
+        self.gate    = torch.nn.Parameter(torch.ones(1))
+
+    def encode_query(self, x):
+        return self.query(self.drop(x))
+    
+    def encode_x3(self, x):
+        return self.proj3(self.drop_x3(x))
+
+    def encode_x4(self, x):
+        return self.proj4(self.drop_x4(x))
+
+    def forward(
+        self,
+        model_embed,
+        context_embed,
+        xphone_embed,
+        return_model_proj=False,
+    ):
+        logging.info(f'model_embed  : {model_embed.shape}')
+        logging.info(f'context_embed: {context_embed.shape}')
+        logging.info(f'xphone_embed : {xphone_embed.shape}')
+        
+        query     = self.encode_query(model_embed)
+        query_sw  = self.encode_x1(query)
+        query_pho = self.encode_x3(query)
+
+        key_sw  = self.encode_x2(context_embed)
+        key_pho = self.encode_x4(xphone_embed)
+
+        maxsim_sw  = self.similarity(query_sw, key_sw)
+        maxsim_pho = self.similarity(query_pho, key_pho)
+        # combine
+        logging.info(f'maxsim_sw : {maxsim_sw.max()}')
+        logging.info(f'maxsim_pho: {maxsim_pho.max()}')
+        maxsim = maxsim_sw + maxsim_pho
+        prob   = torch.softmax(maxsim, dim=-1)
+        if return_model_proj:
+            return prob, query
+        return prob
 
 if __name__ == '__main__':
     attention_heads  = 1 

@@ -72,6 +72,7 @@ class OpenAIWhisperTokenIDConverter:
             dict(additional_special_tokens=special_tokens)
         )
         self.model_type = model_type
+        print(f' self.tokenizer: {type(self.tokenizer)}')
 
     def get_num_vocabulary_size(self) -> int:
         if self.model_type == "whisper_en":

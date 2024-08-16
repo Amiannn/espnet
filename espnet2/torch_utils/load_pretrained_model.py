@@ -57,6 +57,8 @@ def load_pretrained_model(
         >>> load_pretrained_model("somewhere/decoder.pth::decoder", model)
     """
     sps = init_param.split(":", 4)
+    transpose_src_key = False
+
     if len(sps) == 4:
         path, src_key, dst_key, excludes = sps
     elif len(sps) == 3:
@@ -102,8 +104,12 @@ def load_pretrained_model(
             src_state = {k: v for k, v in src_state.items() if not k.startswith(e)}
 
     if src_key is not None:
+        if '^T' in src_key:
+            transpose_src_key = True
+            src_key = src_key.replace('^T', '')
+            logging.info(f'Transpose the src_key: {src_key}')
         src_state = {
-            k[len(src_key) + 1 :]: v
+            k[len(src_key) + 1 :]: (v if not transpose_src_key else v.T)
             for k, v in src_state.items()
             if k.startswith(src_key)
         }

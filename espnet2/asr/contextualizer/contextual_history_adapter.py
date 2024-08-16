@@ -22,7 +22,6 @@ from espnet2.asr.contextualizer.component.attention_based_adapter import (
     AttentionBasedAdapter,
     ConvAttentionAdapter,
     Conv2AttentionAdapter,
-    ColbertAdapter
 )
 
 class ContextualHistoryAdapterPrototype(torch.nn.Module):

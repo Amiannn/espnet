@@ -30,7 +30,8 @@ from espnet2.asr.contextualizer import (
     CONTEXTUAL_ADAPTER_DECODER
 )
 
-from espnet2.asr.contextualizer.func.contextual_retriever_func import retrieve_greedy_decode
+from espnet2.asr.contextualizer.func.contextual_retriever_func import topk_decode
+from espnet2.asr.contextualizer.func.contextual_retriever_func import retrieve_ctc_decode
 
 seed = 12
 random.seed(seed)
@@ -77,8 +78,10 @@ def visualize(
     frame2align = {}
 
     if ctc_pred is not None:
-        pred_ctc = [token_list[p] for p in ctc_pred]
-        # pred_ctc = [p if p != 0 else ' ' for p in ctc_pred]
+        pred_ctc  = [token_list[p] for p in ctc_pred]
+        _pred_ctc = [token_list[p] for p in ctc_pred if p != 0]
+        _texts  = list(tokenizer.tokens2text(_pred_ctc))
+        print(f'_texts: {_texts}')
         texts  = list(tokenizer.tokens2text(pred_ctc))
         _texts = ['.' for _ in range(max([len(pred_ctc), len(texts)]))]
         last   = '!'
@@ -90,6 +93,7 @@ def visualize(
             last = t
         frame2align = {i: _texts[i] for i in range(atten.shape[1])}
         print(f'pred_ctc: {len(pred_ctc)}, texts: {len(texts)}')
+        # print(f'pred_ctc: {pred_ctc}')
 
     plot_attention_map(
         frame2align,
@@ -113,40 +117,53 @@ def forward(
     print(f'encoder_out: {encoder_out.shape}')
 
     # c1. Encoder contextualization
+    encoder_proj = None
     if model.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_RETRIEVER:
-        context_prob = model.contextualizer(
+        context_prob, encoder_proj = model.contextualizer(
             model_embed=encoder_out,
             context_embed=contexts['blist'],
-            context_xphone_embed=contexts['blist_xphone_mean'],
+            context_xphone_embed=contexts['blist_xphone'],
+            context_xphone_mean_embed=contexts['blist_xphone_mean'],
             ilens=contexts['ilens'],
+            return_model_proj=True
         )
         print(f'context_prob: {context_prob.shape}')
-        ys_hat = context_prob.argmax(dim=-1)
-        predict = retriever_decode(ys_hat.cpu(), blist)
+        predict = topk_decode(
+            context_prob, 
+            blist, 
+            idx_blank=0, 
+            top_k=5, 
+            threshold=0.6
+        )
         print(f'Retriever predict: {predict}')
-
+    predict = {
+        'text'  : text,
+        'result': predict,
+    }
     ctc_pred = None
     if model.ctc is not None:
-        out      = model.ctc.ctc_lo(encoder_out).squeeze(0)
-        ctc_pred = torch.argmax(out, dim=-1)
+        print(f'encoder_proj: {encoder_proj.shape}')
+        x        = encoder_proj if encoder_proj is not None else encoder_out
+        ctc_pred = model.ctc.argmax(x).squeeze(0)
         print(f'ctc_pred: {ctc_pred.shape}')
 
     logp        = None
     target      = None
-    return logp, target, context_prob, ctc_pred
+    return logp, target, context_prob, ctc_pred, predict
 
 if __name__ == "__main__":
     spm_path   = "whisper_multilingual"
     token_path = "./data/zh_token_list/whisper_multilingual/tokens.txt"
-    model_conf = "./conf/contextual/whisper/train_asr_whisper_medium_xphone_retrieval_balanced_prompting.yaml"
-    model_path = "./exp/asr_whisper/run_medium_xphoneRetriever_prompting/2epoch.pth"
+    model_conf = "./conf/contextual/whisper/train_asr_whisper_medium_multilateinteractive_retrieval_balanced_alpha0.8_annhnw_biglist.yaml"
+    model_path = "./exp/asr_whisper/run_medium_multilateinteractive_retrieval_balanced_alpha0.8_annhnw_biglist/valid.loss.ave_10best.pth"
+    # model_path = "./exp/asr_whisper/run_medium_multilateinteractive_retrieval_balanced_alpha0.8_annhnw/valid.loss.ave_10best.pth"
     stats_path = None
 
-    rare_path  = "./local/contextual/rarewords/rareword_f10_test.txt"
-    # rare_path  = "./local/contextual/rarewords/esun.entity.txt"
+    # rare_path  = "./local/contextual/rarewords/rareword_f10_test.txt"
+    rare_path  = "./local/contextual/rarewords/esun.entity.txt"
     scp_path   = "./dump/raw/test/wav.scp"
-    blist_path = "./dump/raw/test/uttblist_idx"
-    # blist_path = "./dump/raw/test/uttblist_idx_entity"
+    # blist_path = "./dump/raw/test/uttblist_idx"
+    blist_path = "./dump/raw/test/uttblist_idx_entity"
     ref_path   = "./data/test/text"
 
     folder_name = model_path.split('/')[-1].split('.')[0]
@@ -164,19 +181,23 @@ if __name__ == "__main__":
     contextual_conf = {
         'contextual_type': 'rareword',
         'blist_path': rare_path,
-        'blist_xphone_path': './local/contextual/ssl_features/rareword_f10_test.xphone.seq.pt',
-        # 'blist_xphone_path': './local/contextual/ssl_features/esun.entity.xphone.seq.pt',
-        'blist_max': 20,
+        # 'blist_xphone_path': './local/contextual/ssl_features/rareword_f10_test.xphone.seq.pt',
+        'blist_xphone_path': './local/contextual/ssl_features/esun.entity.xphone.seq.pt',
+        'blist_max': 100,
         'blist_drop_out': 0.0,
         'warmup_epoch': 0,
         'structure_type': None,
         'sampling_method': None,
-        'use_oov': True,
+        # 'sampling_method': 'ann_hnw',
+        # 'sampler_drop': 0.0,
+        # 'hnwr_pre_gold_length': 5,
+        # 'use_gpu': False,
+        # 'use_oov': True,
         'prompt_template_context': '今天的主題為',
         'prompt_template_no_context': '好! 我們開始吧.', 
     }
     
-    model, loader = load_espnet_model(
+    model, loader, contextual_processor = load_espnet_model(
         model_conf,
         contextual_conf, 
         token_path,
@@ -186,23 +207,30 @@ if __name__ == "__main__":
         model_path,
         data_path_and_name_and_type,
         use_local_attn_conv=False,
-        token_type='whisper_multilingual'
+        token_type='whisper_multilingual',
+        return_contextual_processor=True,
     )
     preprocessor       = loader.dataset.preprocess
     tokenizer          = preprocessor.tokenizer
     token_id_converter = preprocessor.token_id_converter
     token_list         = get_token_list(token_id_converter) + ['<no-context>']
 
-    model.contextualizer.retriever.temperature = 0.01
+    model.contextualizer.retriever.temperature = 0.1
+    if contextual_processor.sampling_method is not None:
+        contextual_processor.asr_model.contextualizer = model.contextualizer
+        contextual_processor.hn_sampler.update_index()
+
+    print(model)
 
     model.eval()
-    count = 0
+    count   = 0
+    results = {}
     for data in loader:
-        if count >= 5:
+        if count >= 20:
             break
         count += 1
 
-        uid  = data[0][0]
+        uid = data[0][0]
         # if uid != "esun2022Q2_17":
         #     continue
         
@@ -218,21 +246,14 @@ if __name__ == "__main__":
 
         print(f'texts: {text}')
         print(f'uid: {uid}')
-        print(f'blist:\n{blist}')
-        print(f'ilens:\n{ilens}')
-        print(f'speech: {speech}')
-        print(f'speech_lengths: {speech_lengths}')
         print(f'label_ctc:\n{label_ctc}')
-        # print(f'nlp_prompt_tensor:\n{nlp_prompt_tensor}')
 
         nlp_prompt_tokens = [token_list[p] for p in nlp_prompt_tensor]
-        # print(f'nlp_prompt:\n{tokenizer.tokens2text(nlp_prompt_tokens)}')
 
         _blist = []
         for rareword in blist:
             btokens = [token_list[word] for word in rareword if word != -1]
             btokens = tokenizer.tokens2text(btokens)
-            # print(f'btokens: {btokens}, {rareword}')
             _blist.append(btokens)
         blist = _blist
 
@@ -243,7 +264,7 @@ if __name__ == "__main__":
 
         tokens = tokens.unsqueeze(0)
 
-        logp, target, atten, ctc_pred = forward(
+        logp, target, atten, ctc_pred, predict = forward(
             model, 
             speech, 
             speech_lengths,
@@ -251,7 +272,7 @@ if __name__ == "__main__":
             tokens,
             text
         )
-
+        results[uid] = predict
         visualize(
             logp,
             atten,
@@ -266,3 +287,9 @@ if __name__ == "__main__":
             uid,
         )
         # break
+    debug_out_path = os.path.join(debug_path, 'predict')
+    if not os.path.isdir(debug_out_path):
+        os.makedirs(debug_out_path)
+    
+    output_path = os.path.join(debug_out_path, 'result.json')
+    write_json(output_path, results)

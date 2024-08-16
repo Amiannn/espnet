@@ -26,6 +26,8 @@ from espnet2.asr.contextualizer import (
     CONTEXTUAL_ADAPTER_DECODER
 )
 
+from espnet2.asr.contextualizer.func.contextual_retriever_func import topk_decode
+
 seed = 12
 random.seed(seed)
 torch.manual_seed(seed)
@@ -87,6 +89,8 @@ def forward(
         )
         atten = atten.squeeze(1)
         print(f'atten: {atten.shape}')
+        predict = topk_decode(atten, blist, idx_blank=0, top_k=5)
+        print(f'Retriever predict: {predict}')
 
     decoder_in, target, t_len, u_len = get_transducer_task_io(
         tokens,
@@ -111,8 +115,8 @@ def forward(
 if __name__ == "__main__":
     spm_path   = "./data/token_list/bpe_unigram5000suffix/bpe.model"
     token_path = "./data/token_list/bpe_unigram5000suffix/tokens.txt"
-    model_conf = "./conf/contextual/transducer/contextual_xphone_adapter.yaml"
-    model_path = "./exp/asr_transducer/contextual_xphone_adapter_suffix/valid.loss.ave_10best.pth"
+    model_conf = "./conf/contextual/transducer/gamma/contextual_xphone_adapter_lp0.8.yaml"
+    model_path = "./exp/asr_transducer/contextual_xphone_adapter_f65536_suffix/15epoch.pth"
     stats_path = "./exp/asr_stats_raw_bpe5000_sp_suffix/train/feats_lengths_stats.npz"
     
     rare_path  = "./local/contextual/rarewords/rareword_f10_test.txt"
@@ -136,17 +140,17 @@ if __name__ == "__main__":
         'contextual_type': 'rareword',
         'blist_path': rare_path,
         'blist_xphone_path': './local/contextual/ssl_features/rareword_f10_test.xphone.seq.pt',
-        'blist_max': 20,
+        'blist_max': 200,
         'blist_drop_out': 0.0,
         'warmup_epoch': 0,
         'structure_type': None,
-        'sampling_method': 'ann_hnw',
-        # 'sampling_method': None,
-        'sampler_drop': 0.0,
-        'hnwr_pre_gold_length': 5,
+        # 'sampling_method': 'ann_hnw',
+        'sampling_method': None,
+        # 'sampler_drop': 0.0,
+        # 'hnwr_pre_gold_length': 5,
         'use_oov': True,
-        'use_gpu': False,
-        'use_oov': True,
+        # 'use_gpu': False,
+        # 'use_oov': True,
     }
     
     model, loader, contextual_processor = load_espnet_model(

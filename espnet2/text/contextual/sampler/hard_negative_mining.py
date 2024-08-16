@@ -75,6 +75,17 @@ class HardNegativeSampler():
                     self.blist_xphone[start:end, :], dim=0
                 ) for start, end in element_xphone_idx
             ])
+            self.blist_xphone_tensors = pad_sequence(
+                [
+                    self.blist_xphone[
+                        start:end, :
+                    ] for start, end in element_xphone_idx
+                ],  
+                batch_first=True
+            )
+            self.blist_xphone_tensor_ilens = torch.tensor(
+                [(end - start) for start, end in element_xphone_idx]
+            ).long()
 
         self.hardness_range = (
             hardness_range if self.hnwr_pre_gold_length < hardness_range else self.hnwr_pre_gold_length
@@ -104,16 +115,17 @@ class HardNegativeSampler():
 
     @torch.no_grad()
     def build_context_index(self, forward_key=False):
-        build_start_time   = time_.time()
+        build_start_time = time_.time()
         kwargs = {
             'text_embed': self.blist_tensors,
             'ilens'     : self.blist_tensor_ilens,
         }
         if self.blist_xphone_mean_tensors is not None:
             device = next(self.asr_model.parameters()).device
-            kwargs['xphone_embed'] = self.blist_xphone_mean_tensors.to(
-                device
-            )
+            kwargs['xphone_embed']      = self.blist_xphone_tensors.to(device)
+            kwargs['xphone_mean_embed'] = self.blist_xphone_mean_tensors.to(device)
+            kwargs['xphone_ilens']      = self.blist_xphone_tensor_ilens.to(device)
+
         blist_context_embeds, _, _ = self.asr_model.contextualizer.forward_context_encoder(
             **kwargs
         )
@@ -136,6 +148,7 @@ class HardNegativeSampler():
         #     self.index = faiss.index_cpu_to_gpu(self.faiss_res, self.faiss_gpu_id, self.index)
         self.index.add(blist_context_embeds)
         self.blist_context_embeds = blist_context_embeds
+    
         build_time_elapsed  = time_.time() - build_start_time
         logging.info(f'Build index bembeds: {blist_context_embeds.shape}')
         logging.info(f'Build biasing index done: {self.index}')
@@ -143,17 +156,23 @@ class HardNegativeSampler():
 
     @torch.no_grad()
     def ann_hnw_method(self, gold_idx, speech=None, speech_lengths=None, unique_sort=True):
+        logging.info(f'gold_idx: {(gold_idx)}')
+        logging.info(f'gold_idx: {len(gold_idx)}')
+        logging.info(f'gold_idx set: {len(set(gold_idx))}')
+        gold_idx        = list(set(gold_idx))
         skip_sampling   = random.random() <= self.sampler_drop
         ann_distractors = []
         if not skip_sampling:
             gold_embeds = self.blist_context_embeds[gold_idx]
-            G, D = gold_embeds.shape
-            _, I = self.index.search(gold_embeds, self.hardness_range)
-            I    = torch.from_numpy(I)
+            G, D     = gold_embeds.shape
+            S, I     = self.index.search(gold_embeds, self.hardness_range)
+            I        = torch.from_numpy(I)
             rand_idx = torch.randn((G, self.hardness_range)).argsort(dim=1)[:, :self.hnwr_pre_gold_length]
             I_hat    = torch.gather(I, 1, rand_idx).reshape(-1)
+            logging.info(f'.ann_distractors: {sorted(I_hat.tolist())}')
             ann_distractors = torch.unique(I_hat, sorted=unique_sort)
             ann_distractors = ann_distractors.tolist()
+            logging.info(f'ann_distractors: {ann_distractors}')
         return ann_distractors
 
     @torch.no_grad()

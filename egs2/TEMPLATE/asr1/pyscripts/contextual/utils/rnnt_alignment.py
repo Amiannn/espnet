@@ -153,7 +153,7 @@ def forward_backward(logp, target, blank_id, token_list, waveform, debug_path):
         start    = ratio * start
         end      = ratio * end
         # interval = textgrid.Interval(minTime=start, maxTime=end, mark=token)
-        tier_word.addInterval(interval)
+        # tier_word.addInterval(interval)
         start = f'{start:.2f}'
         end   = f'{end:.2f}'
     # tg.tiers.append(tier_word)

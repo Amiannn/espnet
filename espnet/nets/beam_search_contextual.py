@@ -21,7 +21,11 @@ from espnet2.asr.contextualizer import (
     CONTEXTUAL_ADAPTER_DECODER
 )
 
-from espnet2.asr.contextualizer.func.contextual_retriever_func import retrieve_greedy_decode
+from espnet2.asr.contextualizer.func.contextual_retriever_func import (
+    retrieve_ctc_decode, 
+    topk_decode,
+    create_prompt,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -146,11 +150,14 @@ class ContextualBeamSearch(BeamSearch):
         # NOTE (Shih-Lun): added for OpenAI Whisper ASR
         primer = [self.sos] if self.hyp_primer is None else self.hyp_primer
 
-        if isinstance(self.scorers['decoder'], OpenAIWhisperDecoder):
+        if ('decoder' in self.scorers) and isinstance(self.scorers['decoder'], OpenAIWhisperDecoder):
             sot_lang_token     = primer[:2]
             no_timestamp_token = [primer[-1]]
-            primer = sot_lang_token + contexts["nlp_prompt_context_template"].tolist() + pred_contexts + contexts["nlp_prompt_no_context_template"].tolist() + no_timestamp_token
-        logging.info(f'primer: {primer}')
+            if len(pred_contexts) > 0:
+                primer = sot_lang_token + contexts["nlp_prompt_context_template"].tolist() + pred_contexts + contexts["nlp_prompt_no_context_template"].tolist() + no_timestamp_token
+            else:
+                primer = sot_lang_token + contexts["nlp_prompt_no_context_template"].tolist() + no_timestamp_token
+        # logging.info(f'primer: {primer}')
 
         return [
             Hypothesis(
@@ -223,21 +230,30 @@ class ContextualBeamSearch(BeamSearch):
         pred_contexts = None
         if self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_RETRIEVER:
             logging.info(f'Encoder contextualize, use retriever!')
-            contexts     = to_device(contexts, device=x.device)
-            context_prob = self.contextualizer(
+            contexts = to_device(contexts, device=x.device)
+            context_prob, encoder_proj = self.contextualizer(
                 model_embed=x.unsqueeze(0),
                 context_embed=contexts['blist'],
-                context_xphone_embed=contexts['blist_xphone_mean'],
+                context_xphone_embed=contexts['blist_xphone'],
+                context_xphone_mean_embed=contexts['blist_xphone_mean'],
                 ilens=contexts['ilens'],
+                return_model_proj=True,
             )
+            # Watch out!
+            # x = encoder_proj.squeeze(0)
+
             # only for whisper model
-            sep_toknes = [11, 220]
-            pred_contexts = retrieve_greedy_decode(
+            sep_tokens = [11, 220]
+            end_tokens = [13, 220]
+            retrieve_preds = topk_decode(
                 context_prob, 
                 contexts['context_list_idxs'],
-                sep_toknes
+                idx_blank=0, 
+                top_k=5, 
+                threshold=0.6
             )
-        
+            pred_contexts = create_prompt(retrieve_preds, sep_tokens, end_tokens)
+
         elif self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_ADAPTER_ENCODER:
             logging.info(f'Encoder contextualize!')
             contexts = to_device(contexts, device=x.device)
