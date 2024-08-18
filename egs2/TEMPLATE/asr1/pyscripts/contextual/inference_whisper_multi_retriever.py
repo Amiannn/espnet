@@ -135,10 +135,16 @@ def forward(
             top_k=5, 
             threshold=0.6
         )
+        predict_ctc = retrieve_ctc_decode(
+            context_prob,
+            blist,
+            idx_blank=0,
+        )
         print(f'Retriever predict: {predict}')
     predict = {
-        'text'  : text,
-        'result': predict,
+        'text'      : text,
+        'result'    : predict,
+        'result_ctc': predict_ctc,
     }
     ctc_pred = None
     if model.ctc is not None:
@@ -154,8 +160,8 @@ def forward(
 if __name__ == "__main__":
     spm_path   = "whisper_multilingual"
     token_path = "./data/zh_token_list/whisper_multilingual/tokens.txt"
-    model_conf = "./conf/contextual/whisper/train_asr_whisper_medium_multilateinteractive_retrieval_balanced_alpha0.8_annhnw_biglist.yaml"
-    model_path = "./exp/asr_whisper/run_medium_multilateinteractive_retrieval_balanced_alpha0.8_annhnw_biglist/valid.loss.ave_10best.pth"
+    model_conf = "./conf/contextual/whisper/train_asr_whisper_medium_conv2_multilateinteractive_retrieval_balanced_alpha0.5_annhnw_biglist.yaml"
+    model_path = "./exp/asr_whisper/run_medium_conv2_multilateinteractive_retrieval_balanced_alpha0.5_annhnw_biglist/2epoch.pth"
     # model_path = "./exp/asr_whisper/run_medium_multilateinteractive_retrieval_balanced_alpha0.8_annhnw/valid.loss.ave_10best.pth"
     stats_path = None
 
@@ -183,7 +189,7 @@ if __name__ == "__main__":
         'blist_path': rare_path,
         # 'blist_xphone_path': './local/contextual/ssl_features/rareword_f10_test.xphone.seq.pt',
         'blist_xphone_path': './local/contextual/ssl_features/esun.entity.xphone.seq.pt',
-        'blist_max': 100,
+        'blist_max': 200,
         'blist_drop_out': 0.0,
         'warmup_epoch': 0,
         'structure_type': None,

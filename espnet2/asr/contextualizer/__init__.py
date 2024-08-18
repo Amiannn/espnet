@@ -13,6 +13,7 @@ from espnet2.asr.contextualizer.contextual_retriever import (
     ContextualConv2XPhoneDotProductRetriever,
     ContextualLateInteractiveRetriever,
     ContextualMultiLateInteractiveRetriever,
+    ContextualConv2MultiLateInteractiveRetriever,
 )
 
 from espnet2.asr.contextualizer.contextual_history_adapter import (
@@ -20,10 +21,11 @@ from espnet2.asr.contextualizer.contextual_history_adapter import (
 )
 
 CONTEXTUAL_RETRIEVER = {
-    "contextual_dotproduct_retriever"             : ContextualDotProductRetrieverPrototype,
-    "contextual_conv2_xphone_dotproduct_retriever": ContextualConv2XPhoneDotProductRetriever,
-    "contextual_lateinteractive_retriever"        : ContextualLateInteractiveRetriever,
-    "contextual_multilateinteractive_retriever"   : ContextualMultiLateInteractiveRetriever,
+    "contextual_dotproduct_retriever"                : ContextualDotProductRetrieverPrototype,
+    "contextual_conv2_xphone_dotproduct_retriever"   : ContextualConv2XPhoneDotProductRetriever,
+    "contextual_lateinteractive_retriever"           : ContextualLateInteractiveRetriever,
+    "contextual_multilateinteractive_retriever"      : ContextualMultiLateInteractiveRetriever,
+    "contextual_conv2_multilateinteractive_retriever": ContextualConv2MultiLateInteractiveRetriever,
 }
 
 CONTEXTUAL_HISTORY_ADAPTER_ENCODER = {

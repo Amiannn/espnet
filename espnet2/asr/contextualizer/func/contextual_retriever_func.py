@@ -10,25 +10,34 @@ def retrieve_ctc_decode(
     probs,
     token_list,
     idx_blank=0,
+    threshold=0.6,
     **kwargs,
 ):
-    ys_hat = probs.argmax(dim=-1).cpu()
-    for _, y in enumerate(ys_hat):
-        y_hat = [x[0] for x in groupby(y)]
-        seq_hat = []
-        for idx in y_hat:
-            idx = int(idx)
-            token = token_list[int(idx)]
-            if idx != -1 and idx != idx_blank and token not in seq_hat:
-                seq_hat.append(token)
-    return seq_hat
+    ys_hat  = probs.argmax(dim=-1).cpu()
+    ys_prob = probs.max(dim=-1).values.cpu()
+    print(f'ys_prob: {ys_prob}')
+    last_idx = ""
+    for b in range(ys_hat.shape[0]):
+        # y_hat = [x[0] for x in groupby(y)]
+        result  = []
+        for t in range(ys_hat[b].shape[0]):
+            idx   = int(ys_hat[b][t])
+            token = token_list[idx]
+            if idx != idx_blank and idx != last_idx and ys_prob[b][t] > threshold:
+                result.append([
+                    t,
+                    token,
+                    ys_prob[b][t].item()
+                ])
+                last_idx = idx
+    return result
 
 def topk_decode(
     probs, 
     token_list, 
     idx_blank=0, 
     top_k=10, 
-    threshold=0.5
+    threshold=0.6
 ):
     ys_max       = probs.cpu().max(dim=-1)
     value_tensor = ys_max.values[0]

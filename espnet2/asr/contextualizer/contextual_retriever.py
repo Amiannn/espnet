@@ -20,6 +20,7 @@ from espnet2.asr.contextualizer.component.similarity_based_retriever import (
     Conv2DotProductRetriever,
     LateInteractiveRetriever,
     LateMultiInteractiveRetriever,
+    Conv2LateMultiInteractiveRetriever,
 )
 
 class ContextualDotProductRetrieverPrototype(torch.nn.Module):
@@ -451,3 +452,43 @@ class ContextualMultiLateInteractiveRetriever(
             return_model_proj=return_model_proj
         )
         return output
+
+class ContextualConv2MultiLateInteractiveRetriever(
+    ContextualMultiLateInteractiveRetriever
+):
+    def __init__(
+        self,
+        vocab_size: int,
+        context_embed_size: int,
+        context_hidden_size: int,
+        input_hidden_size: int,
+        proj_hidden_size: int,
+        num_blocks: int=1,
+        drop_out: float = 0.1,
+        use_value_norm: bool = False,
+        padding_idx: int = -1,
+        temperature: float = 1.0,
+        xphone_hidden_size: int = 768,
+        merge_conv_kernel: int = 3,
+        **kwargs
+    ):
+        super().__init__(
+            vocab_size=vocab_size,
+            context_embed_size=context_embed_size,
+            context_hidden_size=context_hidden_size,
+            input_hidden_size=input_hidden_size,
+            proj_hidden_size=proj_hidden_size,
+            num_blocks=num_blocks,
+            drop_out=drop_out,
+            use_value_norm=use_value_norm,
+            padding_idx=padding_idx,
+            temperature=temperature,
+            **kwargs
+        )
+        self.retriever = Conv2LateMultiInteractiveRetriever(
+            input_hidden_size=input_hidden_size,
+            proj_hidden_size=proj_hidden_size,
+            drop_out=drop_out,
+            temperature=temperature,
+            **kwargs
+        )

@@ -182,6 +182,56 @@ class LateMultiInteractiveRetriever(LateInteractiveRetriever):
             return prob, query
         return prob
 
+class Conv2LateMultiInteractiveRetriever(LateMultiInteractiveRetriever):
+    def __init__(
+        self,
+        input_hidden_size: int,
+        proj_hidden_size: int,
+        drop_out: float = 0.1,
+        temperature: float = 1.0,
+        downproj_rate: int = 2,
+        **kwargs
+    ):
+        super().__init__(
+            input_hidden_size=input_hidden_size,
+            proj_hidden_size=proj_hidden_size,
+            drop_out=drop_out,
+            temperature=temperature,
+            **kwargs
+        )
+        self.conv_1x1 = torch.nn.Conv1d(
+            in_channels=input_hidden_size,
+            out_channels=(input_hidden_size // downproj_rate), 
+            kernel_size=1, 
+        )
+        self.conv_1 = torch.nn.Conv1d(
+            in_channels=(input_hidden_size // downproj_rate),
+            out_channels=(input_hidden_size // downproj_rate), 
+            kernel_size=3, 
+            stride=1, 
+            padding=1
+        )
+        self.conv_2 = torch.nn.Conv1d(
+            in_channels=(input_hidden_size // downproj_rate),
+            out_channels=input_hidden_size, 
+            kernel_size=3, 
+            stride=1, 
+            padding=1
+        )
+        # self.bn1x1 = torch.nn.BatchNorm1d(input_hidden_size // downproj_rate)
+        # self.bn1   = torch.nn.BatchNorm1d(input_hidden_size // downproj_rate)
+        # self.bn2   = torch.nn.BatchNorm1d(input_hidden_size)
+    
+    def encode_query(self, x):
+        # x1 = self.bn1x1(self.conv_1x1(x.transpose(1, 2)))
+        # x1 = self.bn1(self.conv_1(x1))
+        # x1 = self.bn2(self.conv_2(x1))
+        x1 = (self.conv_1x1(x.transpose(1, 2)))
+        x1 = (self.conv_1(x1))
+        x1 = (self.conv_2(x1))
+        x1 = x1.transpose(1, 2)  # Ensuring the dimensions match for residual addition
+        return x + x1
+
 if __name__ == '__main__':
     attention_heads  = 1 
     attndim          = 4

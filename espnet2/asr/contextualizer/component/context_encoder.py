@@ -208,7 +208,8 @@ class ContextEncoderXPhone(torch.nn.Module):
         use_oov: bool=True,
     ):
         # xphone_embeds: C x S x D
-        x2_embed = self.norm_x2(self.drop_out(xphone_embeds))
+        # x2_embed = self.drop_out(self.norm_x2(xphone_embeds))
+        x2_embed = self.drop_out(xphone_embeds)
         # x2_embed = xphone_embeds
         x_embed  = self.drop_out(self.proj(x2_embed)).squeeze(0)
         C, S, D  = x_embed.shape
