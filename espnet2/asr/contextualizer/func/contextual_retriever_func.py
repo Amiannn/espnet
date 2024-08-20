@@ -10,7 +10,7 @@ def retrieve_ctc_decode(
     probs,
     token_list,
     idx_blank=0,
-    threshold=0.6,
+    threshold=0.0,
     **kwargs,
 ):
     ys_hat  = probs.argmax(dim=-1).cpu()

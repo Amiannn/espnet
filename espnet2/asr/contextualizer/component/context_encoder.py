@@ -207,16 +207,19 @@ class ContextEncoderXPhone(torch.nn.Module):
         ilens: torch.Tensor,
         use_oov: bool=True,
     ):
+        print(f'+' * 30)
         # xphone_embeds: C x S x D
-        # x2_embed = self.drop_out(self.norm_x2(xphone_embeds))
-        x2_embed = self.drop_out(xphone_embeds)
-        # x2_embed = xphone_embeds
+        x2_embed = self.drop_out(self.norm_x2(xphone_embeds))
+        # x2_embed = self.drop_out(xphone_embeds)
         x_embed  = self.drop_out(self.proj(x2_embed)).squeeze(0)
         C, S, D  = x_embed.shape
+        print(f'before: {x_embed.shape}')
         if use_oov:
             oov_embed = (self.oov_embed.weight).unsqueeze(0)
             oov_embed = F.pad(oov_embed, (0, 0, 0, (S - 1), 0, 0))
             x_embed   = torch.cat([oov_embed, x_embed], dim=0)
+        print(f'after: {x_embed.shape}')
+        print(f'xphone use oov: {use_oov}')
         return x_embed, ilens
 
 if __name__ == '__main__':

@@ -174,8 +174,6 @@ class LateMultiInteractiveRetriever(LateInteractiveRetriever):
         maxsim_sw  = self.similarity(query_sw, key_sw)
         maxsim_pho = self.similarity(query_pho, key_pho)
         # combine
-        logging.info(f'maxsim_sw : {maxsim_sw.max()}')
-        logging.info(f'maxsim_pho: {maxsim_pho.max()}')
         maxsim = maxsim_sw + maxsim_pho
         prob   = torch.softmax(maxsim, dim=-1)
         if return_model_proj:
@@ -218,19 +216,77 @@ class Conv2LateMultiInteractiveRetriever(LateMultiInteractiveRetriever):
             stride=1, 
             padding=1
         )
-        # self.bn1x1 = torch.nn.BatchNorm1d(input_hidden_size // downproj_rate)
-        # self.bn1   = torch.nn.BatchNorm1d(input_hidden_size // downproj_rate)
-        # self.bn2   = torch.nn.BatchNorm1d(input_hidden_size)
-    
+
     def encode_query(self, x):
-        # x1 = self.bn1x1(self.conv_1x1(x.transpose(1, 2)))
-        # x1 = self.bn1(self.conv_1(x1))
-        # x1 = self.bn2(self.conv_2(x1))
         x1 = (self.conv_1x1(x.transpose(1, 2)))
         x1 = (self.conv_1(x1))
         x1 = (self.conv_2(x1))
-        x1 = x1.transpose(1, 2)  # Ensuring the dimensions match for residual addition
+        x1 = x1.transpose(1, 2)
         return x + x1
+
+class Conv2LateMultiInteractiveDropoutRetriever(Conv2LateMultiInteractiveRetriever):
+    def __init__(
+        self,
+        input_hidden_size: int,
+        proj_hidden_size: int,
+        drop_out: float = 0.1,
+        temperature: float = 1.0,
+        downproj_rate: int = 2,
+        **kwargs
+    ):
+        super().__init__(
+            input_hidden_size=input_hidden_size,
+            proj_hidden_size=proj_hidden_size,
+            drop_out=drop_out,
+            temperature=temperature,
+            downproj_rate=downproj_rate,
+            **kwargs
+        )
+        self.modality_dropout = ModalityDropout(0.5)
+    
+    def forward(
+        self,
+        model_embed,
+        context_embed,
+        xphone_embed,
+        return_model_proj=False,
+    ):
+        logging.info(f'model_embed  : {model_embed.shape}')
+        logging.info(f'context_embed: {context_embed.shape}')
+        logging.info(f'xphone_embed : {xphone_embed.shape}')
+        
+        query     = self.encode_query(model_embed)
+        query_sw  = self.encode_x1(query)
+        query_pho = self.encode_x3(query)
+
+        key_sw  = self.encode_x2(context_embed)
+        key_pho = self.encode_x4(xphone_embed)
+
+        maxsim_sw  = self.similarity(query_sw, key_sw)
+        maxsim_pho = self.similarity(query_pho, key_pho)
+        # Modality Dropout
+        maxsim = self.modality_dropout(maxsim_sw, maxsim_pho)
+        prob   = torch.softmax(maxsim, dim=-1)
+        if return_model_proj:
+            return prob, query
+        return prob
+
+class ModalityDropout(torch.nn.Module):
+    def __init__(self, dropout_prob=0.5):
+        super(ModalityDropout, self).__init__()
+        self.dropout_prob = dropout_prob
+
+    def forward(self, A, B):
+        # Decide randomly whether to drop A or B, or keep both
+        if self.training:  # only apply this during training
+            rand_val = torch.rand(1).item()  # generate a random value between 0 and 1
+            if rand_val < self.dropout_prob / 2:  # drop A
+                A = torch.zeros_like(A)
+            elif rand_val < self.dropout_prob:  # drop B
+                B = torch.zeros_like(B)
+        # Combine modalities
+        C = A + B
+        return C
 
 if __name__ == '__main__':
     attention_heads  = 1 

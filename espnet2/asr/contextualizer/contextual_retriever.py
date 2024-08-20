@@ -272,6 +272,7 @@ class ContextualMultiLateInteractiveRetriever(
         temperature: float = 1.0,
         xphone_hidden_size: int = 768,
         merge_conv_kernel: int = 3,
+        use_oov: bool = True,
         **kwargs
     ):
         super().__init__(
@@ -314,6 +315,7 @@ class ContextualMultiLateInteractiveRetriever(
             temperature=temperature,
             **kwargs
         )
+        self.use_oov = use_oov
     
     def build_embeddings(
         self,
@@ -321,7 +323,6 @@ class ContextualMultiLateInteractiveRetriever(
         xphone_embed : torch.Tensor,
         ilens        : torch.Tensor,
         xphone_ilens : torch.Tensor,
-        use_oov      : bool=False,
         **kwargs
     ):
         context_embeds, xphone_embeds, ilens, xphone_ilens = self.forward_multi_context_encoder(
@@ -329,7 +330,7 @@ class ContextualMultiLateInteractiveRetriever(
             xphone_embed,
             ilens,
             xphone_ilens,
-            use_oov=use_oov,
+            use_oov=self.use_oov,
         )
         # flatten embedding
         flatten_context_embeds = []
@@ -406,12 +407,6 @@ class ContextualMultiLateInteractiveRetriever(
     ):
         _, context_embeds, ilens    = self.encoder(text_embed, ilens)
         xphone_embeds, xphone_ilens = self.encoder_xphone(xphone_embed, xphone_ilens, use_oov=use_oov)
-
-        # remove oov
-        if not use_oov:
-            context_embeds = context_embeds[1:, :, :]
-            ilens          = ilens[1:]
-        
         return context_embeds, xphone_embeds, ilens, xphone_ilens
 
     def forward_retriever(
@@ -443,7 +438,8 @@ class ContextualMultiLateInteractiveRetriever(
             context_embed,
             context_xphone_embed,
             ilens,
-            xphone_ilens
+            xphone_ilens,
+            use_oov=self.use_oov,
         )
         output = self.forward_retriever(
             model_embed=model_embed,
@@ -470,6 +466,7 @@ class ContextualConv2MultiLateInteractiveRetriever(
         temperature: float = 1.0,
         xphone_hidden_size: int = 768,
         merge_conv_kernel: int = 3,
+        use_oov: bool = True,
         **kwargs
     ):
         super().__init__(
@@ -483,6 +480,7 @@ class ContextualConv2MultiLateInteractiveRetriever(
             use_value_norm=use_value_norm,
             padding_idx=padding_idx,
             temperature=temperature,
+            use_oov=use_oov,
             **kwargs
         )
         self.retriever = Conv2LateMultiInteractiveRetriever(

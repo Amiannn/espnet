@@ -160,9 +160,9 @@ def forward(
 if __name__ == "__main__":
     spm_path   = "whisper_multilingual"
     token_path = "./data/zh_token_list/whisper_multilingual/tokens.txt"
-    model_conf = "./conf/contextual/whisper/train_asr_whisper_medium_conv2_multilateinteractive_retrieval_balanced_alpha0.5_annhnw_biglist.yaml"
-    model_path = "./exp/asr_whisper/run_medium_conv2_multilateinteractive_retrieval_balanced_alpha0.5_annhnw_biglist/2epoch.pth"
-    # model_path = "./exp/asr_whisper/run_medium_multilateinteractive_retrieval_balanced_alpha0.8_annhnw/valid.loss.ave_10best.pth"
+    model_conf = "./conf/contextual/whisper/train_asr_whisper_medium_multilateinteractive_retrieval_balanced_alpha0.8_annhnw.yaml"
+    # model_path = "./exp/asr_whisper/run_medium_conv2_multilateinteractive_retrieval_balanced_alpha0.5_annhnw_biglist/68epoch.pth"
+    model_path = "./exp/asr_whisper/run_medium_multilateinteractive_retrieval_balanced_alpha0.8_annhnw/valid.loss.ave_10best.pth"
     stats_path = None
 
     # rare_path  = "./local/contextual/rarewords/rareword_f10_test.txt"
@@ -189,7 +189,7 @@ if __name__ == "__main__":
         'blist_path': rare_path,
         # 'blist_xphone_path': './local/contextual/ssl_features/rareword_f10_test.xphone.seq.pt',
         'blist_xphone_path': './local/contextual/ssl_features/esun.entity.xphone.seq.pt',
-        'blist_max': 200,
+        'blist_max': 100,
         'blist_drop_out': 0.0,
         'warmup_epoch': 0,
         'structure_type': None,
@@ -198,7 +198,7 @@ if __name__ == "__main__":
         # 'sampler_drop': 0.0,
         # 'hnwr_pre_gold_length': 5,
         # 'use_gpu': False,
-        # 'use_oov': True,
+        'use_oov': True,
         'prompt_template_context': '今天的主題為',
         'prompt_template_no_context': '好! 我們開始吧.', 
     }

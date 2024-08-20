@@ -549,6 +549,7 @@ class ASRTask(AbsTask):
             **args.contextualizer_conf, 
             vocab_size=vocab_size,
             padding_idx=-1,
+            use_oov=args.contextual_conf.get("use_oov", True),
         )
         return contextualizer
 
