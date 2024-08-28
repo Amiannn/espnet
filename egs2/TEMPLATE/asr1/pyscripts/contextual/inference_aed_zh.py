@@ -124,7 +124,7 @@ if __name__ == "__main__":
     # spm_path   = "./data/en_token_list/bpe_unigram600/bpe.model"
     spm_path   = None
     token_path = "./data/zh_token_list/char/tokens.txt"
-    model_conf = "./conf/contextual/conformer/adapter__mediumbatch_f4096_reweight_lp0.9.yaml"
+    model_conf = "./conf/contextual/conformer/gamma/adapter__mediumbatch_f4096_reweight_lp0.9.yaml"
     model_path = "./exp/asr_conformer/adapter__mediumbatch_f4096_reweight_lp0.9/valid.acc.ave_10best.pth"
     stats_path = "./exp/asr_stats_raw_zh_char_sp/train/feats_stats.npz"
 

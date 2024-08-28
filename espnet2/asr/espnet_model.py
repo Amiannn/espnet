@@ -583,12 +583,25 @@ class ESPnetASRModel(AbsESPnetModel):
         ys_pad_lens: torch.Tensor,
     ):
         # Calc CTC loss
+        logging.info(f'-' * 30)
+        logging.info(f'ys_pad:\n{ys_pad}')
+        logging.info(f'ys_pad:\n{ys_pad.shape}')
+        logging.info(f'ys_pad_lens:\n{ys_pad_lens.shape}')
+        ys_hat = self.ctc.argmax(encoder_out).data
+        logging.info(f'ys_hat:\n{ys_hat.cpu()}')
+        ys_pad_char = self.error_calculator.decode(ys_pad.cpu())
+        ys_hat_char = self.error_calculator.decode(ys_hat.cpu())
+        logging.info(f'ys_pad_char:\n{ys_pad_char}')
+        logging.info(f'')
+        logging.info(f'ys_hat_char:\n{ys_hat_char}')
+        
         loss_ctc = self.ctc(encoder_out, encoder_out_lens, ys_pad, ys_pad_lens)
 
         # Calc CER using CTC
         cer_ctc = None
         if not self.training and self.error_calculator is not None:
             ys_hat = self.ctc.argmax(encoder_out).data
+            logging.info(f'ys_hat:\n{ys_hat.cpu()}')
             cer_ctc = self.error_calculator(ys_hat.cpu(), ys_pad.cpu(), is_ctc=True)
         return loss_ctc, cer_ctc
 

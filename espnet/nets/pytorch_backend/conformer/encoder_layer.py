@@ -8,6 +8,7 @@
 """Encoder self-attention layer definition."""
 
 import torch
+import logging
 from torch import nn
 
 from espnet.nets.pytorch_backend.transformer.layer_norm import LayerNorm

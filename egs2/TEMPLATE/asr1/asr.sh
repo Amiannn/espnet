@@ -168,6 +168,9 @@ suffixbpe=
 usesuffixbpe=
 
 contextualization=false
+uttblist_idx_train=
+uttblist_idx_valid=
+uttblist_idx_test=
 
 help_message=$(cat << EOF
 Usage: $0 --train-set "<train_set_name>" --valid-set "<valid_set_name>" --test_sets "<test_set_names>"
@@ -416,12 +419,20 @@ elif [ "${token_type}" = char ]; then
 elif [ "${token_type}" = word ]; then
     token_list="${wordtoken_list}"
     bpemodel=none
-elif [ "${token_type}" = whisper_en ]; then # should make token_list an output filepath here
-    token_list="${token_listdir}"/whisper_en/tokens.txt
+elif [ "${token_type}" = whisper_en ]; then
+    if [ "${nlsyms_txt}" = none ]; then
+        token_list="${token_listdir}"/whisper_en/tokens.txt
+    else
+        token_list="${token_listdir}"/whisper_en_nlsyms/tokens.txt
+    fi
     bpemodel=whisper_en
     hyp_cleaner=${cleaner}
 elif [ "${token_type}" = whisper_multilingual ]; then
-    token_list="${token_listdir}"/whisper_multilingual/tokens.txt
+    if [ "${nlsyms_txt}" = none ]; then
+        token_list="${token_listdir}"/whisper_multilingual/tokens.txt
+    else
+        token_list="${token_listdir}"/whisper_multilingual_nlsyms/tokens.txt
+    fi
     bpemodel=whisper_multilingual
     hyp_cleaner=${cleaner}
 elif [ "${token_type}" = hugging_face ]; then
@@ -502,6 +513,11 @@ if [ -z "${asr_stats_dir}" ]; then
     if [ -n "${speed_perturb_factors}" ]; then
         asr_stats_dir+="_sp"
     fi
+fi
+if [ "${nlsyms_txt}" = none ]; then
+    asr_stats_dir="${asr_stats_dir}"
+else
+    asr_stats_dir="${asr_stats_dir}_nlsyms_txt"
 fi
 if [ -n "${suffixbpe}" ]; then
     asr_stats_dir="${asr_stats_dir}_suffix"
@@ -1412,8 +1428,8 @@ if [ ${stage} -le 11 ] && [ ${stop_stage} -ge 11 ] && ! [[ " ${skip_stages} " =~
         _opts+="--preprocessor contextual "
         _opts+="--collate_fn_type contextual "
         _opts+="--allow_variable_data_keys True "
-        _opts+="--train_data_path_and_name_and_type ${_asr_train_dir}/uttblist_idx,uttblist_idx,multi_columns_text "
-        _opts+="--valid_data_path_and_name_and_type ${_asr_valid_dir}/uttblist_idx,uttblist_idx,multi_columns_text "
+        _opts+="--train_data_path_and_name_and_type ${_asr_train_dir}/${uttblist_idx_train},uttblist_idx,multi_columns_text "
+        _opts+="--valid_data_path_and_name_and_type ${_asr_valid_dir}/${uttblist_idx_valid},uttblist_idx,multi_columns_text "
     fi 
 
     # shellcheck disable=SC2068
@@ -1596,7 +1612,7 @@ if [ ${stage} -le 12 ] && [ ${stop_stage} -ge 12 ] && ! [[ " ${skip_stages} " =~
 
         if [ "${contextualization}" == true ]; then
             _opts+="--allow_variable_data_keys True "
-            _opts+="--data_path_and_name_and_type ${_data}/uttblist_idx,uttblist_idx,multi_columns_text "
+            _opts+="--data_path_and_name_and_type ${_data}/${uttblist_idx_test},uttblist_idx,multi_columns_text "
         fi 
 
         if ${use_prompt}; then

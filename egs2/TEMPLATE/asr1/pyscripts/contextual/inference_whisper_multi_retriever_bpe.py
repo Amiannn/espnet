@@ -38,6 +38,24 @@ random.seed(seed)
 torch.manual_seed(seed)
 np.random.seed(seed)
 
+import torch.nn.functional as F
+
+def median_filter_tensor(input_tensor, kernel_size):
+    # Assuming input_tensor is of shape B x T x C
+    B, T, C = input_tensor.shape
+    
+    # Padding to handle borders
+    pad = kernel_size // 2
+    input_tensor_padded = torch.nn.functional.pad(input_tensor, (0, 0, pad, pad), mode='reflect')
+    
+    # Unfold the T dimension to create overlapping windows of size kernel_size
+    unfolded = input_tensor_padded.unfold(1, kernel_size, 1)  # Shape: B x (T + 2*pad - kernel_size + 1) x kernel_size x C
+    
+    # Compute the median across the kernel_size dimension (third dimension)
+    median_filtered = torch.median(unfolded, dim=2).values  # Shape: B x T x C
+    
+    return median_filtered
+
 def get_token_list(token_id_converter):
     vocab_size = token_id_converter.get_num_vocabulary_size()
     vocab = []
@@ -78,22 +96,9 @@ def visualize(
     frame2align = {}
 
     if ctc_pred is not None:
-        pred_ctc  = [token_list[p] for p in ctc_pred]
-        _pred_ctc = [token_list[p] for p in ctc_pred if p != 0]
-        _texts  = list(tokenizer.tokens2text(_pred_ctc))
-        print(f'_texts: {_texts}')
-        texts  = list(tokenizer.tokens2text(pred_ctc))
-        _texts = ['.' for _ in range(max([len(pred_ctc), len(texts)]))]
-        last   = '!'
-        for i, t in enumerate(texts):
-            if t == last or t == '!':
-                _texts[i] = ' '
-            else:
-                _texts[i] = t
-            last = t
-        frame2align = {i: _texts[i] for i in range(atten.shape[1])}
-        print(f'pred_ctc: {len(pred_ctc)}, texts: {len(texts)}')
-        # print(f'pred_ctc: {pred_ctc}')
+        pred_ctc = [token_list[p] if p != 0 else ' ' for p in ctc_pred]
+        frame2align = {i: pred_ctc[i] for i in range(atten.shape[1])}
+        print(f'pred_ctc: {pred_ctc}')
 
     plot_attention_map(
         frame2align,
@@ -111,7 +116,8 @@ def forward(
     lengths,
     contexts,
     tokens,
-    text
+    text,
+    token_list,
 ):
     encoder_out, enc_olens = model.encode(speech, lengths)
     print(f'encoder_out: {encoder_out.shape}')
@@ -127,8 +133,14 @@ def forward(
             ilens=contexts['ilens'],
             return_model_proj=True
         )
-        context_prob_sw  = model.contextualizer.retriever.maxsim_sw_prob
-        context_prob_pho = model.contextualizer.retriever.maxsim_pho_prob
+        # medium filter
+        # context_prob     = median_filter_tensor(context_prob, kernel_size=3)
+        # print(f'- context_prob: {context_prob.shape}')
+        # context_prob_sw  = model.contextualizer.retriever.maxsim_sw_prob
+        # context_prob_pho = model.contextualizer.retriever.maxsim_pho_prob
+
+        context_prob_sw  = torch.softmax(model.contextualizer.retriever.sw_score, dim=-1)
+        context_prob_pho = torch.softmax(model.contextualizer.retriever.ph_score, dim=-1)
 
         print(f'context_prob: {context_prob.shape}')
         print(f'context_prob_sw: {context_prob_sw.shape}')
@@ -139,44 +151,65 @@ def forward(
             blist, 
             idx_blank=0, 
             top_k=5, 
-            threshold=0.6
+            threshold=0.9
         )
-        predict_ctc = retrieve_ctc_decode(
-            context_prob,
-            blist,
-            idx_blank=0,
-        )
+        # predict_ctc = retrieve_ctc_decode(
+        #     context_prob,
+        #     blist,
+        #     idx_blank=0,
+        #     threshold=0.6,
+        # )
         print(f'Retriever predict: {predict}')
-    predict = {
-        'text'      : text,
-        'result'    : predict,
-        'result_ctc': predict_ctc,
-    }
+    
     ctc_pred = None
     if model.ctc is not None:
         print(f'encoder_proj: {encoder_proj.shape}')
         x        = encoder_proj if encoder_proj is not None else encoder_out
         ctc_pred = model.ctc.argmax(x).squeeze(0)
         print(f'ctc_pred: {ctc_pred.shape}')
-
+    
+    predict_hyp = retrieve_ctc_decode(
+        model.ctc.ctc_lo(x),
+        token_list,
+        idx_blank=0,
+        threshold=0.0,
+    )
+    predict_hyp = "".join([d[1] for d in predict_hyp]).replace("▁", ' ')
+    predict = {
+        'text'      : text,
+        'hyp'       : predict_hyp,
+        'result'    : predict,
+        # 'result_ctc': predict_ctc,
+    }
     logp        = None
     target      = None
     return logp, target, [context_prob, context_prob_sw, context_prob_pho], ctc_pred, predict
 
 if __name__ == "__main__":
-    spm_path   = "whisper_multilingual"
-    token_path = "./data/zh_token_list/whisper_multilingual/tokens.txt"
-    model_conf = "./conf/contextual/whisper/train_asr_whisper_medium_conv2_multilateinteractive_retrieval_balanced_alpha0.5_annhnw.yaml"
-    model_path = "./exp/asr_whisper/run_medium_conv2_multilateinteractive_retrieval_balanced_alpha0.5_annhnw/24epoch.pth"
-    # model_path = "./exp/asr_whisper/run_medium_multilateinteractive_retrieval_balanced_alpha0.8_annhnw/valid.loss.ave_10best.pth"
-    stats_path = None
+    spm_path   = "./data/token_list/bpe_unigram5000suffix/bpe.model"
+    token_path = "./data/token_list/bpe_unigram5000suffix/tokens.txt"
+    model_conf = "./conf/contextual/whisper/train_asr_whisper_medium_conformer_multilateinteractive_retrieval_balanced_alpha0.5_annhnw.yaml"
+    model_path = "./exp/asr_whisper/run_medium_conformer_multilateinteractive_retrieval_balanced_alpha0.5_annhnw_suffix/valid.loss.ave_10best.pth"
+    stats_path = "./exp/asr_stats_raw_bpe5000_sp_suffix/train/feats_lengths_stats.npz"
 
+    # E.SUN
     # rare_path  = "./local/contextual/rarewords/rareword_f10_test.txt"
     rare_path  = "./local/contextual/rarewords/esun.entity.txt"
     scp_path   = "./dump/raw/test/wav.scp"
     # blist_path = "./dump/raw/test/uttblist_idx"
     blist_path = "./dump/raw/test/uttblist_idx_entity"
+    # blist_xphone_path = "./local/contextual/ssl_features/rareword_f10_test.xphone.seq.pt"
+    blist_xphone_path = "./local/contextual/ssl_features/esun.entity.xphone.seq.pt"
     ref_path   = "./data/test/text"
+
+    # AISHELL
+    # scp_path   = "/home/ubuntu/espnet/egs2/aishell/asr1_contextual/dump/raw/test/wav.scp"
+    # ref_path   = "/home/ubuntu/espnet/egs2/aishell/asr1_contextual/data/test/text"
+
+    # rare_path  = "/home/ubuntu/espnet/egs2/aishell/asr1_contextual/local/contextual/rarewords/rareword_f10_test.txt"
+    # blist_path = "/home/ubuntu/espnet/egs2/aishell/asr1_contextual/dump/raw/test/uttblist_idx"
+    # blist_xphone_path = "/home/ubuntu/espnet/egs2/aishell/asr1_contextual/local/contextual/ssl_features/rareword_f10_test.xphone.seq.pt"
+    
 
     folder_name = model_path.split('/')[-1].split('.')[0]
     debug_path = os.path.join("/".join(model_path.split('/')[:-1]), 'debug', folder_name)
@@ -193,8 +226,7 @@ if __name__ == "__main__":
     contextual_conf = {
         'contextual_type': 'rareword',
         'blist_path': rare_path,
-        # 'blist_xphone_path': './local/contextual/ssl_features/rareword_f10_test.xphone.seq.pt',
-        'blist_xphone_path': './local/contextual/ssl_features/esun.entity.xphone.seq.pt',
+        'blist_xphone_path': blist_xphone_path,
         'blist_max': 100,
         'blist_drop_out': 0.0,
         'warmup_epoch': 0,
@@ -213,13 +245,12 @@ if __name__ == "__main__":
         model_conf,
         contextual_conf, 
         token_path,
-        None, 
+        'default', 
         stats_path, 
         spm_path, 
         model_path,
         data_path_and_name_and_type,
         use_local_attn_conv=False,
-        token_type='whisper_multilingual',
         return_contextual_processor=True,
     )
     preprocessor       = loader.dataset.preprocess
@@ -254,13 +285,10 @@ if __name__ == "__main__":
         blist             = contexts['blist']
         ilens             = contexts['ilens']
         label_ctc         = contexts['label_ctc']
-        nlp_prompt_tensor = contexts['nlp_prompt_tensor']
 
         print(f'texts: {text}')
         print(f'uid: {uid}')
         print(f'label_ctc:\n{label_ctc}')
-
-        nlp_prompt_tokens = [token_list[p] for p in nlp_prompt_tensor]
 
         _blist = []
         for rareword in blist:
@@ -282,7 +310,8 @@ if __name__ == "__main__":
             speech_lengths,
             contexts,
             tokens,
-            text
+            text,
+            token_list,
         )
         results[uid] = predict
         

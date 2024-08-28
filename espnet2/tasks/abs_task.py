@@ -708,6 +708,14 @@ class AbsTask(ABC):
             help="Freeze parameters",
         )
 
+        group.add_argument(
+            "--unfreeze_param",
+            type=str,
+            default=[],
+            nargs="*",
+            help="Un freeze parameters",
+        )
+
         group = parser.add_argument_group("BatchSampler related")
         group.add_argument(
             "--num_iters_per_epoch",
@@ -1248,6 +1256,12 @@ class AbsTask(ABC):
                     if k.startswith(t + ".") or k == t:
                         logging.info(f"Setting {k}.requires_grad = False")
                         p.requires_grad = False
+
+            for t in args.unfreeze_param:
+                for k, p in model.named_parameters():
+                    if k.startswith(t + ".") or k == t:
+                        logging.info(f"Setting {k}.requires_grad = True")
+                        p.requires_grad = True
 
             # Use LoRA to finetune the large pre-trained foundation models, like Whisper
             if getattr(args, "use_lora", False):

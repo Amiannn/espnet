@@ -25,6 +25,7 @@ from espnet2.text.cleaner                         import TextCleaner
 
 from espnet2.text.contextual.sampler.hard_negative_mining import HardNegativeSampler
 from espnet2.text.contextual.structure.trie               import TrieProcessor
+from espnet2.text.contextual.prompt.prompter              import WhisperPrompter
 
 from ordered_set import OrderedSet
 
@@ -39,6 +40,7 @@ class RarewordProcessor():
         blist_occurrence_path=None, 
         blist_xphonebert_path=None, 
         drop_out=0.1,
+        full_drop_out=0.1,
         blist_max=500,
         for_transducer=True,
         pad_value=-1,
@@ -127,6 +129,7 @@ class RarewordProcessor():
             logging.info(f'xphone: {self.blist_xphone.shape}')
 
         self.drop_out       = drop_out
+        self.full_drop_out  = full_drop_out
         self.blist_max      = blist_max
         self.pad_value      = pad_value
         self.for_transducer = for_transducer
@@ -173,6 +176,23 @@ class RarewordProcessor():
                 use_gpu=self.use_gpu,
             )
 
+        # prompting
+        self.prompter = None
+        if isinstance(self.token_id_converter, OpenAIWhisperTokenIDConverter):
+            self.prompter = WhisperPrompter(
+                id2context=self.blist_words,
+                prompt_template_context=self.prompt_template_context,
+                prompt_template_no_context=self.prompt_template_no_context,
+                do_context_shuffle=False,
+            )
+
+    def encode(self, text, text_clean=True):
+        if text_clean:
+            text = self.text_cleaner(text)
+        tokens    = self.tokenizer.text2tokens(text)
+        text_ints = self.token_id_converter_fn(tokens)
+        return text_ints
+
     def load_blist(self, blist_path):
         blist, blist_words = [], []
         with open(blist_path, 'r', encoding='utf-8') as frs:
@@ -180,14 +200,14 @@ class RarewordProcessor():
                 bword = fr.replace('\n', '')
                 if bword == '':
                     continue
+                blist.append(self.encode(bword))
                 blist_words.append(bword)
-                bword     = self.text_cleaner(bword)
-                tokens    = self.tokenizer.text2tokens(bword)
-                text_ints = self.token_id_converter_fn(tokens)
-                blist.append(text_ints)
         return blist, blist_words
 
-    def build_batch_contextual(self, batch_data, uttblist):
+    def build_batch_contextual(self, batch_data, uttblist, ensure_max_length=False):
+        if self.full_drop_out > random.random():
+            return []
+        
         droped_uttblist = list(OrderedSet([b for b in uttblist if random.random() > self.drop_out]))
         hnw_distractors = []
         # hard negative mining
@@ -200,8 +220,6 @@ class RarewordProcessor():
             hnw_distractors = list(OrderedSet(hnw_distractors) - OrderedSet(droped_uttblist))
         blist = droped_uttblist + hnw_distractors
         rand_distractors = []
-        logging.info(f'droped_uttblist: {len(droped_uttblist)}')
-        logging.info(f'hnw_distractors: {len(hnw_distractors)}')
         # random sampling
         if self.blist_max > len(blist):
             rand_distractors = random.choices(
@@ -209,8 +227,11 @@ class RarewordProcessor():
                 k = (self.blist_max - len(blist))
             )
             rand_distractors = list(OrderedSet(rand_distractors) - OrderedSet(blist))
-        blist = blist + rand_distractors
-        logging.info(f'blist: {len(blist)}')
+        
+        blist = (blist + rand_distractors)
+        if ensure_max_length:
+            blist = blist[:self.blist_max]
+
         # remove empty bword
         blist = [b for b in blist if len(self.blist[b]) > 0]
         return blist
@@ -289,58 +310,16 @@ class RarewordProcessor():
             label_occurrence_tensors,
             label_occurrence_tensor_ilens,
         )
-
-    def build_context_prompt(self, elements):
-        if len(elements) == 0:
-            nlp_prompt = self.prompt_template_no_context
-        else:
-            shuffle_elements = elements.copy()
-            random.shuffle(shuffle_elements)
-            contexts   = ", ".join([self.blist_words[e] for e in shuffle_elements])
-            nlp_prompt = f'{self.prompt_template_context} {contexts}. {self.prompt_template_no_context}'
-        return self.build_prompt(nlp_prompt, inference_template=False)
-
-    def build_inference_prompt(self):
-        _, prompt_inference_context    = self.build_prompt(self.prompt_template_context, inference_template=True)
-        _, prompt_inference_no_context = self.build_prompt(self.prompt_template_no_context, inference_template=True)
-        return prompt_inference_context, prompt_inference_no_context
-
-    def build_prompt(self, nlp_prompt, inference_template=False):
-        prompt_tokens     = self.tokenizer.text2tokens(nlp_prompt)
-        prompt_tokens_str = " ".join(prompt_tokens)
-        if len(prompt_tokens_str.split()) > 1:
-            prompt_ids    = self.token_id_converter.tokenizer.tokenizer.convert_tokens_to_ids(prompt_tokens_str.split())
-            prompt_tensor = torch.tensor(prompt_ids).to(torch.int64)
-        else:
-            prompt_ids    = [self.token_id_converter.tokenizer.tokenizer.convert_tokens_to_ids(prompt_tokens_str)]
-            prompt_tensor = torch.tensor(prompt_ids).to(torch.int64)
-        # special tokens
-        if isinstance(self.token_id_converter, OpenAIWhisperTokenIDConverter):
-            lang_token              = self.token_id_converter.tokenizer.sot_sequence_including_notimestamps[1]
-            no_time_stamp_token     = self.token_id_converter.tokenizer.sot_sequence_including_notimestamps[3]
-            if not inference_template:
-                prompt_tokens_special = [lang_token] + prompt_ids + [no_time_stamp_token]
-            else:
-                prompt_tokens_special = prompt_ids
-            prompt_tensor= torch.tensor(prompt_tokens_special).to(torch.int64)
-        return nlp_prompt, prompt_tensor
-        
-    def sample(
+    
+    def sample_contexts(
         self,
         batch_data,
-        uttblists,
-        pad_value=-1
+        uttblists_resolve,
+        uttblists_batch_resolve,
+        pad_value=-1,
+        ensure_max_length=False
     ):
-        batch_size = len(uttblists)
-        output     = {}
-        
-        uttblists_resolve       = []
-        uttblists_batch_resolve = []
-        for i in range(batch_size):
-            uttblists_resolve.extend(uttblists[i])
-            uttblists_batch_resolve.append(uttblists[i])
-        
-        element_idxs = self.build_batch_contextual(batch_data, uttblists_resolve)
+        element_idxs = self.build_batch_contextual(batch_data, uttblists_resolve, ensure_max_length=ensure_max_length)
         elements     = [self.blist[idx] for idx in element_idxs]
         # oov
         if self.use_oov:
@@ -352,12 +331,6 @@ class RarewordProcessor():
             padding_value=pad_value
         ).long()
         element_tensor_ilens = (element_tensors != pad_value).sum(dim=-1)
-
-        output = {
-            'blist'     : element_tensors,
-            'blist_idxs': element_idxs,
-            'ilens'     : element_tensor_ilens,
-        }
         # ssl features
         element_xphone_mean_tensors = None
         element_xphone_tensors      = None
@@ -377,12 +350,10 @@ class RarewordProcessor():
                 ],
                 batch_first=True
             )
-        output['blist_xphone_mean'] = element_xphone_mean_tensors
-        output['blist_xphone']      = element_xphone_tensors
         # structure blist
+        tree = None
         if self.structure_type == "trie":
-            tree           = self.build_batch_trie(elements)
-            output['trie'] = tree
+            tree = self.build_batch_trie(elements)
         # for attention guided auxiliary loss
         (
             label_ctc_tensors, 
@@ -397,7 +368,13 @@ class RarewordProcessor():
             pad_value,
             use_oov=self.use_oov,
         )
-        
+        output = {}
+        output['blist']                  = element_tensors
+        output['blist_idxs']             = element_idxs
+        output['ilens']                  = element_tensor_ilens
+        output['trie']                   = tree
+        output['blist_xphone_mean']      = element_xphone_mean_tensors
+        output['blist_xphone']           = element_xphone_tensors
         output['label_ctc']              = label_ctc_tensors
         output['label_ctc_ilens']        = label_ctc_tensor_ilens
         output['context_label']          = context_label_tensors
@@ -407,16 +384,62 @@ class RarewordProcessor():
         output['context_list']           = [self.blist_words[e] for e in element_idxs]
         output['context_list_idxs']      = [self.blist[e] for e in element_idxs]
         
-        # special tokens
-        if isinstance(self.token_id_converter, OpenAIWhisperTokenIDConverter):
-            # build text prompt
-            nlp_prompt, nlp_prompt_tensor = self.build_context_prompt(element_idxs)
-            prompt_inference_context, prompt_inference_no_context = self.build_inference_prompt()
-            output['nlp_prompt']                     = nlp_prompt
-            output['nlp_prompt_tensor']              = nlp_prompt_tensor
-            output['nlp_prompt_context_template']    = prompt_inference_context
-            output['nlp_prompt_no_context_template'] = prompt_inference_no_context
-            if self.use_oov:
-                output['context_list']      = ['<no-context>'] + output['context_list']
-                output['context_list_idxs'] = [self.oov_value] + output['context_list_idxs']
+        if self.use_oov:
+            output['context_list']      = ['<no-context>'] + output['context_list']
+            output['context_list_idxs'] = [self.oov_value] + output['context_list_idxs']
+
+        # build text prompt
+        if self.prompter is not None:
+            elements = [{
+                "idx"       : id,
+                "confidence": 0.0,
+                "position"  : [0.0, 0.0], 
+            } for id in element_idxs]
+
+            context_prompt = self.prompter.build_training_prompt(elements)
+            context_prompt_template, no_context_prompt_template = self.prompter.build_inference_prompt()
+            
+            context_prompt_tensor             = torch.tensor(self.encode(context_prompt, text_clean=False)).to(torch.int64)
+            context_prompt_template_tensor    = torch.tensor(self.encode(context_prompt_template, text_clean=False)).to(torch.int64)
+            no_context_prompt_template_tensor = torch.tensor(self.encode(no_context_prompt_template, text_clean=False)).to(torch.int64)
+
+            output['nlp_prompt']                     = context_prompt
+            output['nlp_prompt_tensor']              = context_prompt_tensor
+            output['nlp_prompt_context_template']    = context_prompt_template_tensor
+            output['nlp_prompt_no_context_template'] = no_context_prompt_template_tensor
         return output
+
+    def sample(
+        self,
+        batch_data,
+        uttblists,
+        pad_value=-1
+    ):
+        batch_size              = len(uttblists)
+        uttblists_resolve       = []
+        uttblists_batch_resolve = []
+
+        for i in range(batch_size):
+            uttblists_resolve.extend(uttblists[i])
+            uttblists_batch_resolve.append(uttblists[i])
+        
+        batch_wise_output = self.sample_contexts(
+            batch_data=batch_data,
+            uttblists_resolve=uttblists_resolve,
+            uttblists_batch_resolve=uttblists_batch_resolve,
+            pad_value=pad_value,
+        )
+
+        utterance_wise_output   = []
+        for i in range(batch_size):
+            utterance_wise_output.append(
+                self.sample_contexts(
+                    batch_data=batch_data,
+                    uttblists_resolve=uttblists[i],
+                    uttblists_batch_resolve=[uttblists[i]],
+                    pad_value=pad_value,
+                    # ensure_max_length=True,
+                )
+            )
+        batch_wise_output['utterance_wise_contexts'] = utterance_wise_output
+        return batch_wise_output

@@ -26,6 +26,7 @@ from espnet2.train.abs_espnet_model import AbsESPnetModel
 from espnet.nets.e2e_asr_common import ErrorCalculator
 from espnet.nets.pytorch_backend.nets_utils import th_accuracy
 from espnet.nets.pytorch_backend.transformer.add_sos_eos import add_sos_eos
+from espnet.nets.pytorch_backend.transformer.add_sos_eos import add_sop_sos_eos
 from espnet.nets.pytorch_backend.transformer.label_smoothing_loss import (  # noqa: H301
     LabelSmoothingLoss,
 )
@@ -76,7 +77,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         ctc: CTC,
         joint_network: Optional[torch.nn.Module],
         contextualizer: Optional[torch.nn.Module],
-        contextualizer_conf: dict,
+        contextualizer_conf: dict = {},
         aux_ctc: dict = None,
         ctc_weight: float = 0.5,
         interctc_weight: float = 0.0,
@@ -93,6 +94,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         # Pretrained HF Tokenizer needs custom sym_sos and sym_eos
         sym_sos: str = "<sos/eos>",
         sym_eos: str = "<sos/eos>",
+        sym_sop: str = "<|startofprev|>",
         extract_feats_in_collect_stats: bool = True,
         lang_token_id: int = -1,
         **kwargs
@@ -132,6 +134,14 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         self.contextualizer      = contextualizer
         self.contextualizer_conf = contextualizer_conf
         self.warmup_epoch        = contextualizer_conf['warmup_epoch'] if 'warmup_epoch' in contextualizer_conf else 0
+
+        if sym_sop in token_list:
+            self.sop = token_list.index(sym_sop)
+        else:
+            self.sop = None
+
+        if 'contextualizer_type' not in self.contextualizer_conf:
+            self.contextualizer_conf['contextualizer_type'] = None
 
         # contextualizer loss
         self.contextualizer_weight = self.contextualizer_conf[
@@ -240,7 +250,6 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             )
             # mean across attention heads
             context_prob = torch.mean(enc_attn, dim=1)
-            gate_prob    = self.contextualizer.gate_prob if hasattr(self.contextualizer, 'gate_prob') else None
             if (self.epoch >= self.warmup_epoch) and (not self.use_transducer_decoder):
                 if encoder_out.shape[1] == enc_bias_vec.shape[1]:
                     encoder_out = encoder_out + enc_bias_vec
@@ -296,14 +305,15 @@ class ESPnetContextualASRModel(ESPnetASRModel):
                 
         # 1. CTC branch
         if self.ctc_weight != 0.0:
-            # if encoder_out_proj is None:
-            loss_ctc, cer_ctc = self._calc_ctc_loss(
-                encoder_out, encoder_out_lens, text, text_lengths
-            )
-            # else:
-            #     loss_ctc, cer_ctc = self._calc_ctc_loss(
-            #         encoder_out_proj, encoder_out_lens, text, text_lengths
-            #     )
+            if encoder_out_proj is None:
+                loss_ctc, cer_ctc = self._calc_ctc_loss(
+                    encoder_out, encoder_out_lens, text, text_lengths
+                )
+            else:
+                logging.info(f'go encoder out proj route.')
+                loss_ctc, cer_ctc = self._calc_ctc_loss(
+                    encoder_out_proj, encoder_out_lens, text, text_lengths
+                )
             # Collect CTC branch stats
             stats["loss_ctc"] = loss_ctc.detach() if loss_ctc is not None else None
             stats["cer_ctc"] = cer_ctc
@@ -384,19 +394,10 @@ class ESPnetContextualASRModel(ESPnetASRModel):
 
         else:
             # 2b. Attention decoder branch
-            if self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_RETRIEVER:
-                # TODO: convert retriever's output into prompts 
-                # for now, we use teacher forcing prompting method
-                batch_prompt = (contexts["nlp_prompt_tensor"].unsqueeze(0).repeat(batch_size, 1))
-                # watch out! this is only for prompting whisper decoder 
-                text         = torch.cat([batch_prompt, text[:, 3:]], dim=-1)
-                text_lengths = text_lengths + (batch_prompt.shape[-1] - 3)
-
             if self.ctc_weight != 1.0:
                 loss_att, acc_att, cer_att, wer_att = self._calc_att_loss(
-                    encoder_out, encoder_out_lens, text, text_lengths
+                    encoder_out, encoder_out_lens, text, text_lengths, contexts
                 )
-
             # 3. CTC-Att loss definition
             if self.ctc_weight == 0.0:
                 if loss_contextualizer is not None:
@@ -433,6 +434,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         encoder_out_lens: torch.Tensor,
         ys_pad: torch.Tensor,
         ys_pad_lens: torch.Tensor,
+        contexts: object,
     ):
         if hasattr(self, "lang_token_id") and self.lang_token_id is not None:
             ys_pad = torch.cat(
@@ -444,9 +446,20 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             )
             ys_pad_lens += 1
 
-        ys_in_pad, ys_out_pad = add_sos_eos(ys_pad, self.sos, self.eos, self.ignore_id)
-        ys_in_lens = ys_pad_lens + 1
-
+        # Add text prompt (Whisper style only)
+        if "nlp_prompt_tensor" in contexts:
+            # TODO: convert retriever's output into prompts 
+            # for now, we use teacher forcing prompting method
+            prompts     = [c['nlp_prompt_tensor'] for c in contexts['utterance_wise_contexts']]
+            prompt_lens = torch.tensor([p.shape[0] for p in prompts]).to(ys_pad.device)
+            prompts_nlp = "\n".join([c['nlp_prompt'] for c in contexts['utterance_wise_contexts']])
+            logging.info(f'\n{"_" * 30}\n{prompts_nlp}')
+            ys_in_pad, ys_out_pad = add_sop_sos_eos(ys_pad, prompts, self.sop, self.sos, self.eos, self.ignore_id)
+            ys_in_lens = ys_pad_lens + prompt_lens + 2
+        else:
+            ys_in_pad, ys_out_pad = add_sos_eos(ys_pad, self.sos, self.eos, self.ignore_id)
+            ys_in_lens = ys_pad_lens + 1
+        
         # 1. Forward decoder
         decoder_out, _ = self.decoder(
             encoder_out, encoder_out_lens, ys_in_pad, ys_in_lens

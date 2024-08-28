@@ -1,5 +1,6 @@
 import copy
 import os
+import logging
 from typing import Iterable, List
 
 from typeguard import check_argument_types
@@ -72,13 +73,6 @@ class OpenAIWhisperTokenizer(AbsTokenizer):
             self.tokenizer = whisper.tokenizer.get_tokenizer(
                 multilingual=True, language=self.language, task=self.task
             )
-            if added_tokens_txt is not None:
-                _added_tokens = []
-                with open(added_tokens_txt) as f:
-                    lines = f.readlines()
-                    for line in lines:
-                        _added_tokens.append(line.rstrip())
-                self.tokenizer.tokenizer.add_tokens(_added_tokens)
         else:
             raise ValueError("tokenizer unsupported:", model_type)
 
@@ -86,8 +80,21 @@ class OpenAIWhisperTokenizer(AbsTokenizer):
         # Whisper uses discrete tokens (20ms) to encode timestamp
         timestamps = [f"<|{i*0.02:.2f}|>" for i in range(0, 1501)]
         sc = [speaker_change_symbol] if sot else []
+
+        # I moved the added token to the back of the original token list
+        
+        # special_tokens = (
+        #     self.tokenizer.tokenizer.additional_special_tokens + timestamps + sc
+        # )
+        _added_tokens = []
+        if added_tokens_txt is not None:
+            with open(added_tokens_txt) as f:
+                lines = f.readlines()
+                for line in lines:
+                    _added_tokens.append(line.rstrip())
+            self.tokenizer.tokenizer.add_tokens(_added_tokens)
         special_tokens = (
-            self.tokenizer.tokenizer.additional_special_tokens + timestamps + sc
+            self.tokenizer.tokenizer.additional_special_tokens + timestamps + sc + _added_tokens
         )
         self.tokenizer.tokenizer.add_special_tokens(
             dict(additional_special_tokens=special_tokens)

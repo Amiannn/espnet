@@ -23,6 +23,7 @@ def create_lora_adapter(
     rank: int = 8,
     alpha: int = 8,
     dropout_rate: float = 0.0,
+    target_prefixs: List[str] = ["encoder", "decoder"],
     target_modules: List[str] = ["query"],
     bias_type: str = "none",
 ):
@@ -59,7 +60,7 @@ def create_lora_adapter(
     key_list = [key for key, _ in model.named_modules()]
 
     for key in key_list:
-        if not check_target_module_exists(key, target_modules):
+        if not check_target_module_exists(key, target_prefixs, target_modules):
             continue
 
         is_traget_module_exists = True
@@ -79,10 +80,9 @@ def create_lora_adapter(
     lora.mark_only_lora_as_trainable(model, bias_type)
 
 
-def check_target_module_exists(key: str, target_modules: List[str]):
+def check_target_module_exists(key: str, target_prefixs: List[str], target_modules: List[str]):
     """Check if the target_modules matchs the given key."""
-
-    return any([key.endswith(target_key) for target_key in target_modules])
+    return any([(key.endswith(target_key)) for target_key in target_modules]) and any([(key.startswith(target_prefix)) for target_prefix in target_prefixs])
 
 
 def get_submodules(model: torch.nn.Module, key: str):

@@ -21,6 +21,9 @@ from espnet2.asr.contextualizer.component.similarity_based_retriever import (
     LateInteractiveRetriever,
     LateMultiInteractiveRetriever,
     Conv2LateMultiInteractiveRetriever,
+    Conv2LateMultiInteractiveDropoutRetriever,
+    ConformerLateMultiInteractiveRetriever,
+    MultiLateInteractiveRetriever,
 )
 
 class ContextualDotProductRetrieverPrototype(torch.nn.Module):
@@ -490,3 +493,223 @@ class ContextualConv2MultiLateInteractiveRetriever(
             temperature=temperature,
             **kwargs
         )
+
+class ContextualConv2MultiLateInteractiveDropoutRetriever(
+    ContextualMultiLateInteractiveRetriever
+):
+    def __init__(
+        self,
+        vocab_size: int,
+        context_embed_size: int,
+        context_hidden_size: int,
+        input_hidden_size: int,
+        proj_hidden_size: int,
+        num_blocks: int=1,
+        drop_out: float = 0.1,
+        use_value_norm: bool = False,
+        padding_idx: int = -1,
+        temperature: float = 1.0,
+        xphone_hidden_size: int = 768,
+        merge_conv_kernel: int = 3,
+        use_oov: bool = True,
+        **kwargs
+    ):
+        super().__init__(
+            vocab_size=vocab_size,
+            context_embed_size=context_embed_size,
+            context_hidden_size=context_hidden_size,
+            input_hidden_size=input_hidden_size,
+            proj_hidden_size=proj_hidden_size,
+            num_blocks=num_blocks,
+            drop_out=drop_out,
+            use_value_norm=use_value_norm,
+            padding_idx=padding_idx,
+            temperature=temperature,
+            use_oov=use_oov,
+            **kwargs
+        )
+        self.retriever = Conv2LateMultiInteractiveDropoutRetriever(
+            input_hidden_size=input_hidden_size,
+            proj_hidden_size=proj_hidden_size,
+            drop_out=drop_out,
+            temperature=temperature,
+            **kwargs
+        )
+
+class ContextualConformerMultiLateInteractiveRetriever(
+    ContextualMultiLateInteractiveRetriever
+):
+    def __init__(
+        self,
+        vocab_size: int,
+        context_embed_size: int,
+        context_hidden_size: int,
+        input_hidden_size: int,
+        proj_hidden_size: int,
+        num_blocks: int=1,
+        drop_out: float = 0.1,
+        use_value_norm: bool = False,
+        padding_idx: int = -1,
+        temperature: float = 1.0,
+        xphone_hidden_size: int = 768,
+        merge_conv_kernel: int = 3,
+        use_oov: bool = True,
+        **kwargs
+    ):
+        super().__init__(
+            vocab_size=vocab_size,
+            context_embed_size=context_embed_size,
+            context_hidden_size=context_hidden_size,
+            input_hidden_size=input_hidden_size,
+            proj_hidden_size=proj_hidden_size,
+            num_blocks=num_blocks,
+            drop_out=drop_out,
+            use_value_norm=use_value_norm,
+            padding_idx=padding_idx,
+            temperature=temperature,
+            use_oov=use_oov,
+            **kwargs
+        )
+        self.retriever = ConformerLateMultiInteractiveRetriever(
+            input_hidden_size=input_hidden_size,
+            proj_hidden_size=proj_hidden_size,
+            drop_out=drop_out,
+            temperature=temperature,
+            **kwargs
+        )
+
+class MultiLateInteractiveContextRetriever(
+    ContextualLateInteractiveRetriever
+):
+    def __init__(
+        self,
+        vocab_size: int,
+        context_embed_size: int,
+        context_hidden_size: int,
+        input_hidden_size: int,
+        proj_hidden_size: int,
+        num_blocks: int=1,
+        drop_out: float = 0.1,
+        use_value_norm: bool = False,
+        padding_idx: int = -1,
+        temperature: float = 1.0,
+        xphone_hidden_size: int = 768,
+        merge_conv_kernel: int = 3,
+        use_oov: bool = True,
+        **kwargs
+    ):
+        super().__init__(
+            vocab_size=vocab_size,
+            context_embed_size=context_embed_size,
+            context_hidden_size=context_hidden_size,
+            input_hidden_size=input_hidden_size,
+            proj_hidden_size=proj_hidden_size,
+            num_blocks=num_blocks,
+            drop_out=drop_out,
+            use_value_norm=use_value_norm,
+            padding_idx=padding_idx,
+            temperature=temperature,
+            **kwargs
+        )
+        self.encoder = ContextEncoderBiLSTM(
+            vocab_size=vocab_size,
+            hidden_size=context_hidden_size,
+            output_size=input_hidden_size,
+            drop_out=drop_out,
+            num_blocks=num_blocks,
+            padding_idx=padding_idx,
+            xphone_hidden_size=xphone_hidden_size,
+            merge_conv_kernel=merge_conv_kernel,
+        )
+        self.encoder_xphone = ContextEncoderXPhone(
+            vocab_size=vocab_size,
+            hidden_size=context_hidden_size,
+            output_size=input_hidden_size,
+            drop_out=drop_out,
+            num_blocks=num_blocks,
+            padding_idx=padding_idx,
+            xphone_hidden_size=xphone_hidden_size,
+            merge_conv_kernel=merge_conv_kernel,
+        )
+        self.retriever = MultiLateInteractiveRetriever(
+            input_hidden_size=input_hidden_size,
+            proj_hidden_size=proj_hidden_size,
+            drop_out=drop_out,
+            temperature=temperature,
+            **kwargs
+        )
+        self.use_oov = use_oov
+
+    def forward_context_encoder(
+        self,
+        text_embed       : torch.Tensor,
+        xphone_embed     : torch.Tensor,
+        xphone_mean_embed: torch.Tensor,
+        ilens            : torch.Tensor,
+        xphone_ilens     : torch.Tensor,
+        **kwargs
+    ):
+        # TODO: Fix the collapse problems!
+        # For now, we use the same xphone embeddings
+        _, D = xphone_mean_embed.shape
+        xphone_embeds = xphone_embed
+
+        # dummy oov
+        xphone_embed_mean = torch.cat([
+            torch.randn(1, D).to(xphone_embeds.device),
+            xphone_mean_embed
+        ])
+        return xphone_embed_mean, xphone_embeds, ilens
+
+    def forward_multi_context_encoder(
+        self,
+        text_embed   : torch.Tensor,
+        xphone_embed : torch.Tensor,
+        ilens        : torch.Tensor,
+        xphone_ilens : torch.Tensor,
+        use_oov      : bool=True,
+        **kwargs
+    ):
+        _, context_embeds, ilens    = self.encoder(text_embed, ilens)
+        xphone_embeds, xphone_ilens = self.encoder_xphone(xphone_embed, xphone_ilens, use_oov=use_oov)
+        return context_embeds, xphone_embeds, ilens, xphone_ilens
+
+    def forward_retriever(
+        self,
+        model_embed      : torch.Tensor,
+        context_embed    : torch.Tensor,
+        xphone_embed     : torch.Tensor,
+        return_model_proj: bool=False,
+        **kwargs
+    ):
+        return self.retriever(
+            model_embed, 
+            context_embed,
+            xphone_embed,
+            return_model_proj=return_model_proj,
+        )
+
+    def forward(
+        self,
+        model_embed         : torch.Tensor,
+        context_embed       : torch.Tensor,
+        context_xphone_embed: torch.Tensor,
+        ilens               : torch.Tensor = None,
+        xphone_ilens        : torch.Tensor = None,
+        return_model_proj   : bool=False,
+        **kwargs
+    ):
+        context_embeds, xphone_embeds, ilens, xphone_ilens = self.forward_multi_context_encoder(
+            context_embed,
+            context_xphone_embed,
+            ilens,
+            xphone_ilens,
+            use_oov=self.use_oov,
+        )
+        output = self.forward_retriever(
+            model_embed=model_embed,
+            context_embed=context_embeds,
+            xphone_embed=xphone_embeds,
+            return_model_proj=return_model_proj
+        )
+        return output

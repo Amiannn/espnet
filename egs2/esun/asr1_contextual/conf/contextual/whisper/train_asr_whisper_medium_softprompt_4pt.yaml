@@ -1,3 +1,4 @@
+model: contextual_asr_espnet
 normalize: null
 
 encoder: whisper
@@ -20,11 +21,11 @@ encoder_conf:
         - 0.12
         num_time_mask: 5
 
-
 decoder: whisper
 decoder_conf:
     whisper_model: medium
     dropout_rate: 0.0
+    load_origin_token_embedding: true
 
 model_conf:
     ctc_weight: 0.0
@@ -40,21 +41,30 @@ input_size: 1                   # to prevent build_model() from complaining
 seed: 2022
 log_interval: 100
 num_att_plot: 0
-num_workers: 4
+num_workers: 8
 sort_in_batch: descending       # how to sort data in making batch
 sort_batch: descending          # how to sort created batches
 batch_type: numel
 # batch_bins: 12000000            # good for single GPU w/ 40G mem
-batch_bins: 3000000            # good for single GPU w/ 40G mem
-accum_grad: 16
-max_epoch: 3
+batch_bins: 48000000            # good for single GPU w/ 40G mem
+accum_grad: 2
+max_epoch: 100
 patience: none
 init: none
+# best_model_criterion:
+# -   - valid
+#     - acc
+#     - max
+# keep_nbest_models: 3
+
+val_scheduler_criterion:
+    - valid
+    - loss
 best_model_criterion:
 -   - valid
-    - acc
-    - max
-keep_nbest_models: 3
+    - loss
+    - min
+keep_nbest_models: 10
 
 use_amp: true
 cudnn_deterministic: false
@@ -75,3 +85,19 @@ scheduler_conf:
 
 preprocessor_conf:
     whisper_language: zh
+
+# contextual information settings
+contextual: rareword
+contextual_conf:
+    contextual_type: rareword
+    blist_path: ./local/contextual/rarewords/rareword_f65536_train.txt
+    blist_max: 0
+    blist_drop_out: 1.0
+    structure_type: null
+    sampling_method: null
+    prompt_template_context: "<SOPT_1><SOPT_2><SOPT_3><SOPT_4>"
+    prompt_template_no_context: "<SOPT_1><SOPT_2><SOPT_3><SOPT_4>"
+
+# soft prompt tuning decoder
+freeze_param  : ["encoder", "decoder"]
+unfreeze_param: ["decoder.decoders.token_embedding.add_emb"]

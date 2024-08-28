@@ -251,3 +251,14 @@ class ErrorCalculator(object):
             word_eds.append(editdistance.eval(hyp_words, ref_words))
             word_ref_lens.append(len(ref_words))
         return float(sum(word_eds)) / sum(word_ref_lens)
+
+    def decode(self, ys_hat):
+        for i, y in enumerate(ys_hat):
+            y_hat = [x[0] for x in groupby(y)]
+            seq_hat = []
+            for idx in y_hat:
+                idx = int(idx)
+                if idx != -1 and idx != self.idx_blank and idx != self.idx_space:
+                    seq_hat.append(self.char_list[int(idx)])
+            hyp_chars = "".join(seq_hat)
+        return hyp_chars

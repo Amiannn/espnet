@@ -47,6 +47,7 @@ class ContextualBeamSearch(BeamSearch):
         vocab_size: int,
         sos: int,
         eos: int,
+        sop: str = '<|startofprev|>',
         token_list: List[str] = None,
         pre_beam_ratio: float = 1.5,
         pre_beam_score_key: str = None,
@@ -72,7 +73,12 @@ class ContextualBeamSearch(BeamSearch):
         # contextual asr
         self.contextualizer      = contextualizer
         self.contextualizer_conf = contextualizer_conf
-
+        
+        if sop in token_list:
+            self.sop = token_list.index(sop)
+        else:
+            self.sop = None
+        
         self.use_ctc_only_deocding = ('decoder' not in self.scorers)
         if not self.use_ctc_only_deocding:
             self.decoder = self.scorers['decoder']
@@ -107,20 +113,10 @@ class ContextualBeamSearch(BeamSearch):
                 scores[k], hs, states[k] = d.score(
                     hyp.yseq, hyp.states[k], x, return_hs=self.return_hs
                 )
-                # logging.info(f'scores[k]: {scores[k].shape}')
-                # logging.info(f'hs: {scores[k].shape}')
-                # logging.info(f'states[k]: {states[k]}')
-
             elif pre_x is not None:
-                raise NotImplementedError(
-                    "Score pre_x for contextual asr is not supported."
-                )
-                # scores[k], states[k] = d.score(hyp.yseq, hyp.states[k], x, pre_x)
+                scores[k], states[k] = d.score(hyp.yseq, hyp.states[k], x, pre_x)
             else:
-                raise NotImplementedError(
-                    "Sore not return hs for contextual asr is not supported."
-                )
-                # scores[k], states[k] = d.score(hyp.yseq, hyp.states[k], x)
+                scores[k], states[k] = d.score(hyp.yseq, hyp.states[k], x)
 
         if self.return_hs:
             return hs, scores, states
@@ -151,13 +147,14 @@ class ContextualBeamSearch(BeamSearch):
         primer = [self.sos] if self.hyp_primer is None else self.hyp_primer
 
         if ('decoder' in self.scorers) and isinstance(self.scorers['decoder'], OpenAIWhisperDecoder):
-            sot_lang_token     = primer[:2]
-            no_timestamp_token = [primer[-1]]
-            if len(pred_contexts) > 0:
-                primer = sot_lang_token + contexts["nlp_prompt_context_template"].tolist() + pred_contexts + contexts["nlp_prompt_no_context_template"].tolist() + no_timestamp_token
+            nlp_prompt_context_template    = contexts["nlp_prompt_context_template"].tolist()
+            nlp_prompt_no_context_template = contexts["nlp_prompt_no_context_template"].tolist()
+            
+            if pred_contexts != None and len(pred_contexts) > 0:
+                primer = [self.sop] + nlp_prompt_context_template + pred_contexts + primer
             else:
-                primer = sot_lang_token + contexts["nlp_prompt_no_context_template"].tolist() + no_timestamp_token
-        # logging.info(f'primer: {primer}')
+                primer = [self.sop] + nlp_prompt_no_context_template + primer
+        logging.info(f'primer: {primer}')
 
         return [
             Hypothesis(
@@ -240,19 +237,19 @@ class ContextualBeamSearch(BeamSearch):
                 return_model_proj=True,
             )
             # Watch out!
-            # x = encoder_proj.squeeze(0)
+            x = encoder_proj.squeeze(0)
 
             # only for whisper model
-            sep_tokens = [11, 220]
-            end_tokens = [13, 220]
-            retrieve_preds = topk_decode(
-                context_prob, 
-                contexts['context_list_idxs'],
-                idx_blank=0, 
-                top_k=5, 
-                threshold=0.6
-            )
-            pred_contexts = create_prompt(retrieve_preds, sep_tokens, end_tokens)
+            # sep_tokens = [11, 220]
+            # end_tokens = [13, 220]
+            # retrieve_preds = topk_decode(
+            #     context_prob, 
+            #     contexts['context_list_idxs'],
+            #     idx_blank=0, 
+            #     top_k=5, 
+            #     threshold=0.6
+            # )
+            # pred_contexts = create_prompt(retrieve_preds, sep_tokens, end_tokens)
 
         elif self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_ADAPTER_ENCODER:
             logging.info(f'Encoder contextualize!')

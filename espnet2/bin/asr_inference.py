@@ -388,7 +388,7 @@ class Speech2Text:
                         token_list=token_list,
                         pre_beam_score_key=None if ctc_weight == 1.0 else "full",
                         normalize_length=normalize_length,
-                        return_hs=True
+                        return_hs=False
                     )
 
                 # TODO(karita): make all scorers batchfied
@@ -819,7 +819,9 @@ class Speech2Text:
             token_int = list(filter(lambda x: x != 0, token_int))
 
             # Change integer-ids to tokens
+            logging.info(f'>>> token_int: {token_int}')
             token = self.converter.ids2tokens(token_int)
+            logging.info(f'>>> token: {token}')
 
             if self.tokenizer is not None:
                 text = self.tokenizer.tokens2text(token)

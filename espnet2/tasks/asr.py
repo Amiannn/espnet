@@ -99,6 +99,7 @@ from espnet2.text.contextual.rareword_processor import RarewordProcessor
 from espnet2.asr.contextual_asr_espnet_model import ESPnetContextualASRModel
 
 from espnet2.asr.contextualizer import CONTEXTUALIZERS
+from espnet2.asr.contextualizer.component.context_encoder import CustomEmbeddingLayer
 
 frontend_choices = ClassChoices(
     name="frontend",
@@ -564,6 +565,7 @@ class ASRTask(AbsTask):
                 blist_occurrence_path=args.contextual_conf.get("blist_occurrence_path", None), 
                 blist_xphonebert_path=args.contextual_conf.get("blist_xphone_path", None),
                 drop_out=args.contextual_conf.get("blist_drop_out", 0),
+                full_drop_out=args.contextual_conf.get("full_drop_out", 0),
                 blist_max=args.contextual_conf.get("blist_max", 500),
                 pad_value=-1,
                 oov_value=len(args.token_list),
@@ -700,14 +702,24 @@ class ASRTask(AbsTask):
             joint_network = None
 
         # ?. contextualizer methods
+        contextualizer_conf = {}
+        ctc_lo_fn = None
         if getattr(args, "contextualizer_conf", {}) != {}:
-            contextualizer           = cls.build_contextualizer(vocab_size, args)
+            contextualizer = cls.build_contextualizer(vocab_size, args)
+            contextualizer_conf = getattr(args, "contextualizer_conf", {})
+            if "embed_share_weight_ctc" in contextualizer_conf and contextualizer_conf['embed_share_weight_ctc']:
+                ctc_lo_fn = CustomEmbeddingLayer(
+                    blank_fn=contextualizer.encoder.oov_embed,
+                    embed_fn=contextualizer.encoder.embed,
+                )
         else:
             contextualizer = None
-
+        if 'ctc_lo_fn' in args.ctc_conf:
+            del args.ctc_conf['ctc_lo_fn']
         # 7. CTC
+        logging.info(f'args.ctc_conf: {args.ctc_conf}')
         ctc = CTC(
-            odim=vocab_size, encoder_output_size=encoder_output_size, **args.ctc_conf
+            odim=vocab_size, encoder_output_size=encoder_output_size, ctc_lo_fn=ctc_lo_fn, **args.ctc_conf
         )
 
         # 8. Build model
@@ -715,7 +727,6 @@ class ASRTask(AbsTask):
             model_class = model_choices.get_class(args.model)
         except AttributeError:
             model_class = model_choices.get_class("espnet")
-        contextualizer_conf = getattr(args, "contextualizer_conf", {})
         model = model_class(
             vocab_size=vocab_size,
             frontend=frontend,

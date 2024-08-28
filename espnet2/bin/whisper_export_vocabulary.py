@@ -59,14 +59,6 @@ def export_vocabulary(
         tokenizer = whisper.tokenizer.get_tokenizer(
             multilingual=True, language=whisper_language, task=whisper_task
         )
-        # import pdb;pdb.set_trace()
-        if add_token_file_name != "none":
-            _added_tokens = []
-            with open(add_token_file_name) as f:
-                lines = f.readlines()
-                for line in lines:
-                    _added_tokens.append(line.rstrip())
-            tokenizer.tokenizer.add_tokens(_added_tokens)
     else:
         raise ValueError("tokenizer unsupported:", whisper_model)
 
@@ -92,6 +84,16 @@ def export_vocabulary(
         full_vocab_size += 1
         fout.write(speaker_change_symbol + "\n")
 
+    # TODO: i moved the add token to the end of the original tokens, 
+    # this may cause some problems
+    if add_token_file_name != "none":
+        _added_tokens = []
+        with open(add_token_file_name) as f:
+            lines = f.readlines()
+            for line in lines:
+                _added_tokens.append(line.rstrip())
+        for token in _added_tokens:
+            fout.write(f"{token}" + "\n")
 
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(

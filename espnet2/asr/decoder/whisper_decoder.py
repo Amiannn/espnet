@@ -27,6 +27,10 @@ class ExpandedTokenEmbedding(torch.nn.Module):
     def weight(self):
         return torch.cat([self.ori_emb.weight, self.add_emb.weight], dim=0)
 
+    @property
+    def weight_zero_out(self):
+        return torch.cat([self.ori_emb.weight, torch.zeros_like(self.add_emb.weight)], dim=0)
+
     def forward(self, input):
         return torch.nn.functional.embedding(
             input,
@@ -111,6 +115,12 @@ class OpenAIWhisperDecoder(AbsDecoder, BatchScorerInterface):
     def output_layer(self, x):
         x = (
             x @ torch.transpose(self.decoders.token_embedding.weight.to(x.dtype), 0, 1)
+        ).float()
+        return x
+
+    def output_layer_ori(self, x):
+        x = (
+            x @ torch.transpose(self.decoders.token_embedding.ori_emb.weight.to(x.dtype), 0, 1)
         ).float()
         return x
 
@@ -210,7 +220,16 @@ class OpenAIWhisperDecoder(AbsDecoder, BatchScorerInterface):
         if return_hs:
             hidden = y
         y = self.output_layer(y)
+        # y = self.output_layer_ori(y)
         y = torch.log_softmax(y, dim=-1)
+        # y = torch.softmax(y, dim=-1)
+
+        # U, _ = y.shape
+        # D_hat, _ = self.decoders.token_embedding.add_emb.weight.shape
+
+        # zero_out = torch.zeros(U, D_hat).to(y.device)
+        # y = torch.cat([y, zero_out], dim=-1)
+        # y = torch.log(y)
 
         if return_hs:
             return (y, hidden), None

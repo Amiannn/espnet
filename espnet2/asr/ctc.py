@@ -30,12 +30,18 @@ class CTC(torch.nn.Module):
         brctc_risk_strategy: str = "exp",
         brctc_group_strategy: str = "end",
         brctc_risk_factor: float = 0.0,
+        ctc_lo_fn: object = None,
     ):
         assert check_argument_types()
         super().__init__()
         eprojs = encoder_output_size
         self.dropout_rate = dropout_rate
-        self.ctc_lo = torch.nn.Linear(eprojs, odim)
+
+        if ctc_lo_fn is not None:
+            logging.info(f'ctc_lo is using share weights.')
+            self.ctc_lo = ctc_lo_fn
+        else:
+            self.ctc_lo = torch.nn.Linear(eprojs, odim)
         self.ctc_type = ctc_type
         if ignore_nan_grad is not None:
             zero_infinity = ignore_nan_grad
