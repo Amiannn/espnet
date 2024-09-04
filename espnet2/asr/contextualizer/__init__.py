@@ -23,6 +23,10 @@ from espnet2.asr.contextualizer.contextual_history_adapter import (
     ContextualHistoryAdapterPrototype,
 )
 
+from espnet2.asr.contextualizer.contextual_retriever_new import (
+    DotProductContextualRetriever,
+)
+
 CONTEXTUAL_RETRIEVER = {
     "contextual_dotproduct_retriever"                        : ContextualDotProductRetrieverPrototype,
     "contextual_conv2_xphone_dotproduct_retriever"           : ContextualConv2XPhoneDotProductRetriever,
@@ -32,6 +36,9 @@ CONTEXTUAL_RETRIEVER = {
     "contextual_conv2_multilateinteractive_dropout_retriever": ContextualConv2MultiLateInteractiveDropoutRetriever,
     "contextual_conformer_multilateinteractive_retriever"    : ContextualConformerMultiLateInteractiveRetriever,
     "multilateinteractive_context_retriever"                 : MultiLateInteractiveContextRetriever,
+
+    # new contextual retriever
+    "dotproduct_contextual_retriever": DotProductContextualRetriever,
 }
 
 CONTEXTUAL_HISTORY_ADAPTER_ENCODER = {

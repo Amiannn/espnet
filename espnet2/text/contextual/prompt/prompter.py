@@ -20,6 +20,8 @@ class WhisperPrompter():
         self.prompt_template_no_context = prompt_template_no_context
         self.do_context_shuffle         = do_context_shuffle
 
+        logging.info(f'do_context_shuffle: {do_context_shuffle}')
+
     def build_training_prompt(self, elements):
         """
             elements: {
@@ -30,6 +32,7 @@ class WhisperPrompter():
         """
         elements     = elements.copy()
         element_idxs = [e['idx'] for e in elements]
+        logging.info(f'element_idxs: {element_idxs}')
         
         if len(element_idxs) == 0:
             nlp_prompt = self.prompt_template_no_context

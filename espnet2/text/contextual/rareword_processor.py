@@ -40,7 +40,7 @@ class RarewordProcessor():
         blist_occurrence_path=None, 
         blist_xphonebert_path=None, 
         drop_out=0.1,
-        full_drop_out=0.1,
+        full_drop_out=0.0,
         blist_max=500,
         for_transducer=True,
         pad_value=-1,
@@ -72,6 +72,7 @@ class RarewordProcessor():
         text_cleaner: Collection[str] = None,
         prompt_template_context    : str = "THE TOPIC OF TODAY'S",
         prompt_template_no_context : str = "OKAY THEN I'LL CONTINUE.",
+        do_context_shuffle: bool = False,
     ):
         self.tokenizer = build_tokenizer(
             token_type=token_type,
@@ -183,7 +184,7 @@ class RarewordProcessor():
                 id2context=self.blist_words,
                 prompt_template_context=self.prompt_template_context,
                 prompt_template_no_context=self.prompt_template_no_context,
-                do_context_shuffle=False,
+                do_context_shuffle=do_context_shuffle,
             )
 
     def encode(self, text, text_clean=True):

@@ -26,6 +26,8 @@ from espnet2.asr.contextualizer.component.similarity_based_retriever import (
     MultiLateInteractiveRetriever,
 )
 
+# TODO: replace these by contextual retriever new!
+
 class ContextualDotProductRetrieverPrototype(torch.nn.Module):
     def __init__(
         self,

@@ -229,12 +229,24 @@ class ESPnetContextualASRModel(ESPnetASRModel):
 
         # c1.1 Contextual Retriever
         if self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_RETRIEVER:
+            # context_prob, encoder_out_proj = self.contextualizer(
+            #     model_embed=encoder_out,
+            #     context_embed=contexts['blist'],
+            #     context_xphone_embed=contexts['blist_xphone'],
+            #     context_xphone_mean_embed=contexts['blist_xphone_mean'],
+            #     ilens=contexts['ilens'],
+            #     return_model_proj=True
+            # )
+            logging.info(f"contexts['blist']:\n{contexts['blist']}")
+            logging.info(f"contexts['label_ctc']:\n{contexts['label_ctc']}")
+            logging.info(f"blist:\n{contexts['blist'].shape}")
+            logging.info(f"label_ctc:\n{contexts['label_ctc'].shape}")
             context_prob, encoder_out_proj = self.contextualizer(
-                model_embed=encoder_out,
-                context_embed=contexts['blist'],
-                context_xphone_embed=contexts['blist_xphone'],
-                context_xphone_mean_embed=contexts['blist_xphone_mean'],
-                ilens=contexts['ilens'],
+                query=encoder_out,
+                query_ilens=encoder_out_lens,
+                context_subword=contexts['blist'],
+                context_subword_ilens=contexts['ilens'],
+                context_phoneme=contexts['blist_xphone'],
                 return_model_proj=True
             )
 
@@ -450,9 +462,9 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         if "nlp_prompt_tensor" in contexts:
             # TODO: convert retriever's output into prompts 
             # for now, we use teacher forcing prompting method
-            prompts     = [c['nlp_prompt_tensor'] for c in contexts['utterance_wise_contexts']]
+            prompts     = contexts['nlp_prompt_tensor']
             prompt_lens = torch.tensor([p.shape[0] for p in prompts]).to(ys_pad.device)
-            prompts_nlp = "\n".join([c['nlp_prompt'] for c in contexts['utterance_wise_contexts']])
+            prompts_nlp = "\n".join(contexts['nlp_prompt'])
             logging.info(f'\n{"_" * 30}\n{prompts_nlp}')
             ys_in_pad, ys_out_pad = add_sop_sos_eos(ys_pad, prompts, self.sop, self.sos, self.eos, self.ignore_id)
             ys_in_lens = ys_pad_lens + prompt_lens + 2

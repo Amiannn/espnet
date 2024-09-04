@@ -96,10 +96,11 @@ from espnet2.utils.nested_dict_action import NestedDictAction
 from espnet2.utils.types import float_or_none, int_or_none, str2bool, str_or_none
 
 from espnet2.text.contextual.rareword_processor import RarewordProcessor
+from espnet2.text.contextual.context_sampler    import ContextSampler
 from espnet2.asr.contextual_asr_espnet_model import ESPnetContextualASRModel
 
 from espnet2.asr.contextualizer import CONTEXTUALIZERS
-from espnet2.asr.contextualizer.component.context_encoder import CustomEmbeddingLayer
+from espnet2.asr.contextualizer.component.utils import CustomLinear
 
 frontend_choices = ClassChoices(
     name="frontend",
@@ -213,7 +214,8 @@ contextualizer_choices = ClassChoices(
 contextual_choices = ClassChoices(
     "contextual",
     classes=dict(
-        rareword=RarewordProcessor,
+        rareword_processor=RarewordProcessor,
+        context_sampler=ContextSampler,
     ),
     default="rareword_processor",
 )
@@ -559,7 +561,8 @@ class ASRTask(AbsTask):
         contextual_type  = args.contextual_conf.get("contextual_type", None)
         contextual_class = contextual_choices.get_class(contextual_type)
         logging.info(f'args.contextual_conf: {args.contextual_conf}')
-        if contextual_type == "rareword":
+        if contextual_type == "rareword_processor":
+            # TODO: remove rareword processor and replace by context sampler
             contextual_processor = contextual_class(
                 blist_path=args.contextual_conf.get("blist_path", None), 
                 blist_occurrence_path=args.contextual_conf.get("blist_occurrence_path", None), 
@@ -585,7 +588,19 @@ class ASRTask(AbsTask):
                 text_cleaner=args.cleaner,
                 prompt_template_context=args.contextual_conf.get("prompt_template_context", "THE TOPIC OF TODAY'S"),
                 prompt_template_no_context=args.contextual_conf.get("prompt_template_no_context", "OKAY THEN I'LL CONTINUE."),
+                do_context_shuffle=args.contextual_conf.get("do_context_shuffle", False),
                 **args.preprocessor_conf,
+            )
+        elif contextual_type == "context_sampler":
+            preprocessor = cls.build_preprocess_fn(args, train=True)
+            contextual_processor = contextual_class(
+                tokenizer=preprocessor.tokenizer,
+                token_id_converter=preprocessor.token_id_converter,
+                text_cleaner=preprocessor.text_cleaner,
+                pad_token_value=-1,
+                asr_model=model,
+                no_context_token_value=len(args.token_list),
+                **args.contextual_conf,
             )
         return contextual_processor
 
@@ -708,9 +723,9 @@ class ASRTask(AbsTask):
             contextualizer = cls.build_contextualizer(vocab_size, args)
             contextualizer_conf = getattr(args, "contextualizer_conf", {})
             if "embed_share_weight_ctc" in contextualizer_conf and contextualizer_conf['embed_share_weight_ctc']:
-                ctc_lo_fn = CustomEmbeddingLayer(
-                    blank_fn=contextualizer.encoder.oov_embed,
-                    embed_fn=contextualizer.encoder.embed,
+                ctc_lo_fn = CustomLinear(
+                    embedding=contextualizer.context_encoder.embed,
+                    no_context_embedding=contextualizer.context_encoder.oov_embed,
                 )
         else:
             contextualizer = None

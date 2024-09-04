@@ -41,7 +41,7 @@ input_size: 1                   # to prevent build_model() from complaining
 seed: 2022
 log_interval: 100
 num_att_plot: 0
-num_workers: 8
+num_workers: 4
 sort_in_batch: descending       # how to sort data in making batch
 sort_batch: descending          # how to sort created batches
 batch_type: numel
@@ -90,7 +90,7 @@ preprocessor_conf:
 contextual: rareword
 contextual_conf:
     contextual_type: rareword
-    blist_path: ./local/contextual/rarewords/rareword_f65536_train.txt
+    blist_path: ./local/contextual/rarewords/rareword_f1000_train.txt
     blist_max: 10
     blist_drop_out: 0.3
     full_drop_out: 0.5
@@ -103,6 +103,7 @@ contextual_conf:
     # use_gpu: False
     prompt_template_context: '主題為:'
     prompt_template_no_context: '開始吧'
+    do_context_shuffle: True
 
 use_lora: true
 lora_conf:

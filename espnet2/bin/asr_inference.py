@@ -384,6 +384,7 @@ class Speech2Text:
                         scorers=scorers,
                         sos=asr_model.sos,
                         eos=asr_model.eos,
+                        sop=asr_model.sop,
                         vocab_size=len(token_list),
                         token_list=token_list,
                         pre_beam_score_key=None if ctc_weight == 1.0 else "full",
@@ -817,6 +818,9 @@ class Speech2Text:
 
             # remove blank symbol id, which is assumed to be 0
             token_int = list(filter(lambda x: x != 0, token_int))
+
+            if self.asr_model.sos in token_int:
+                token_int = [t if t != self.asr_model.sos else 25 for t in token_int]
 
             # Change integer-ids to tokens
             logging.info(f'>>> token_int: {token_int}')

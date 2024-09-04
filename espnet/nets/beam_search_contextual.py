@@ -47,7 +47,7 @@ class ContextualBeamSearch(BeamSearch):
         vocab_size: int,
         sos: int,
         eos: int,
-        sop: str = '<|startofprev|>',
+        sop: int,
         token_list: List[str] = None,
         pre_beam_ratio: float = 1.5,
         pre_beam_score_key: str = None,
@@ -74,10 +74,7 @@ class ContextualBeamSearch(BeamSearch):
         self.contextualizer      = contextualizer
         self.contextualizer_conf = contextualizer_conf
         
-        if sop in token_list:
-            self.sop = token_list.index(sop)
-        else:
-            self.sop = None
+        self.sop = sop
         
         self.use_ctc_only_deocding = ('decoder' not in self.scorers)
         if not self.use_ctc_only_deocding:
@@ -146,11 +143,21 @@ class ContextualBeamSearch(BeamSearch):
         # NOTE (Shih-Lun): added for OpenAI Whisper ASR
         primer = [self.sos] if self.hyp_primer is None else self.hyp_primer
 
+        use_ground_prompt = True
         if ('decoder' in self.scorers) and isinstance(self.scorers['decoder'], OpenAIWhisperDecoder):
             nlp_prompt_context_template    = contexts["nlp_prompt_context_template"].tolist()
             nlp_prompt_no_context_template = contexts["nlp_prompt_no_context_template"].tolist()
-            
-            if pred_contexts != None and len(pred_contexts) > 0:
+            nlp_prompt_tensor              = contexts["nlp_prompt_tensor"][0].tolist()
+
+            logging.info(f'-' * 30)
+            logging.info(f'nlp_prompt_context_template: {nlp_prompt_context_template}')
+            logging.info(f'nlp_prompt_no_context_template: {nlp_prompt_no_context_template}')
+            logging.info(f'nlp_prompt_tensor: {nlp_prompt_tensor}')
+
+
+            if use_ground_prompt:
+                primer = [self.sop] + nlp_prompt_tensor + primer
+            elif pred_contexts != None and len(pred_contexts) > 0:
                 primer = [self.sop] + nlp_prompt_context_template + pred_contexts + primer
             else:
                 primer = [self.sop] + nlp_prompt_no_context_template + primer

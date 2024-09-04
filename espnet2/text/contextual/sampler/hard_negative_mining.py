@@ -156,7 +156,6 @@ class HardNegativeSampler():
 
     @torch.no_grad()
     def ann_hnw_method(self, gold_idx, speech=None, speech_lengths=None, unique_sort=True):
-        gold_idx        = list(set(gold_idx))
         skip_sampling   = random.random() <= self.sampler_drop
         ann_distractors = []
         if not skip_sampling:
@@ -166,8 +165,9 @@ class HardNegativeSampler():
             I        = torch.from_numpy(I)
             rand_idx = torch.randn((G, self.hardness_range)).argsort(dim=1)[:, :self.hnwr_pre_gold_length]
             I_hat    = torch.gather(I, 1, rand_idx).reshape(-1)
-            ann_distractors = torch.unique(I_hat, sorted=unique_sort)
-            ann_distractors = ann_distractors.tolist()
+            # ann_distractors = torch.unique(I_hat, sorted=unique_sort)
+            # ann_distractors = ann_distractors.tolist()
+            ann_distractors = I_hat.tolist()
         return ann_distractors
 
     @torch.no_grad()

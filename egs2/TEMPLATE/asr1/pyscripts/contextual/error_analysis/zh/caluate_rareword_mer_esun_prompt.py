@@ -25,14 +25,17 @@ ref_path       = './data/test/text'
 # hyp_path       = "/share/nas165/amian/experiments/speech/espnet/egs2/esun/asr1_contextual/exp/asr_transducer/contextual_adapter_lp0.8_suffix/decode_contextual_adapter_greedy_asr_model_valid.loss.ave_10best/test/text"
 
 # hyp_path = "../asr1/exp/asr_whisper_medium_prompt_finetune/decode_asr_whisper_noctc_greedy_asr_model_valid.acc.ave_3best/test/text"
-hyp_path = "/home/ubuntu/espnet/egs2/esun/asr1_contextual/exp/asr_whisper/run_medium_alpha0.9_xphoneRetriever_annhnw_prompting/decode_asr_whisper_noctc_greedy_c20_k3_asr_model_0epoch/test/text"
+# hyp_path = "/home/ubuntu/espnet/egs2/esun/asr1_contextual/exp/asr_whisper/run_medium_prefix_tuning/decode_asr_whisper_prefix_tuning_asr_model_3epoch/test/text"
+# hyp_path = "/home/ubuntu/espnet/egs2/esun/asr1/exp/asr_whisper_medium_lora_decoder/decode_asr_whisper_noctc_greedy_asr_model_1epoch/test/text"
+
+hyp_path = "/home/ubuntu/espnet/egs2/esun/asr1_contextual/exp/asr_whisper/run_medium_prefix_tuning_shuffle_test/decode_asr_whisper_prefix_tuning_asr_model_38epoch/test/text"
 
 def filter_prompt(datas):
     _datas = []
     for uid, data in datas:
         texts = " ".join(data)
-        _, texts = texts.split('我們開始吧.')
-        data = texts.split(' ')
+        texts = texts.split(':')[-1]
+        data  = texts.split(' ')
         _datas.append([uid, data])
     return _datas
 

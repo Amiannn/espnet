@@ -11,17 +11,17 @@ test_sets="test"
 
 uttblist_idx_train="uttblist_idx_f1000"
 uttblist_idx_valid="uttblist_idx_f1000"
-uttblist_idx_test="uttblist_idx_f10"
+uttblist_idx_test="uttblist_idx"
 
-asr_config=conf/contextual/whisper/train_asr_whisper_medium_lora_prefix_tuning.yaml
+asr_config=conf/contextual/whisper/train_asr_whisper_medium_lora_prefix_tuning_shuffle.yaml
 inference_config=conf/contextual/whisper/decode_asr_whisper_prefix_tuning.yaml
-asr_tag=whisper/run_medium_prefix_tuning
+asr_tag=whisper/run_medium_prefix_tuning_shuffle
 
-pretrained_model=../asr1/exp/asr_whisper_medium_lora_decoder/3epoch.pth
+# pretrained_model=../asr1/exp/asr_whisper_medium_lora_decoder/3epoch.pth
 CUDA_VISIBLE_DEVICES=0 ./asr.sh \
-    --nj 15 \
+    --nj 5 \
     --gpu_inference true \
-    --inference_nj 4 \
+    --inference_nj 2 \
     --lang zh \
     --ngpu 1 \
     --token_type whisper_multilingual \
@@ -42,8 +42,9 @@ CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --speed_perturb_factors "0.9 1.0 1.1" \
     --asr_speech_fold_length 512 \
     --asr_text_fold_length 150 \
-    --inference_asr_model 2epoch.pth \
+    --inference_asr_model 3epoch.pth \
     --contextualization true \
-    --pretrained_model "${pretrained_model}" \
     --lm_fold_length 150 "$@"
+
+    # --pretrained_model "${pretrained_model}" \
 
