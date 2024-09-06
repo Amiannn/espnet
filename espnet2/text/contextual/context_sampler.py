@@ -75,7 +75,7 @@ class ContextSampler():
         asr_model: object,
         # metadata for context list
         context_list_path           : str,
-        context_embedding_path      : str,
+        context_phone_embedding_path: str,
         context_list_occurrence_path: str,
         # context settings
         use_no_context_token  : bool = True,
@@ -121,13 +121,18 @@ class ContextSampler():
             self.context_ints_list
         ) = self.load_context_list(context_list_path)
 
-        # load context embedding
-        if context_embedding_path is not None:
-            ...
-
         # load context occurrence
-        if context_embedding_path is not None:
-            ...
+        self.context_occurrence_list = None
+        if context_list_occurrence_path is not None:
+            self.context_occurrence_list = self.load_context_occurrence_list(context_list_occurrence_path)
+
+        # load context embedding
+        self.context_phone_embeddings = None
+        if context_phone_embedding_path is not None:
+            (
+                self.context_phone_embeddings, 
+                self.context_phone_embedding_indexis
+            ) = self.load_context_phone_embedding(context_phone_embedding_path)
 
         # context settings
         self.use_no_context_token   = use_no_context_token
@@ -208,6 +213,17 @@ class ContextSampler():
         context_ints_list = [self.text2int(context) for context in context_list]
         return context_list, context_idxs_list, context_ints_list 
 
+    def load_context_occurrence_list(self, path):
+        context_occurrence = read_file(path)
+        context_occurrence = [int(occur) for occur in context_occurrence]
+        return context_occurrence
+
+    def load_context_phone_embedding(self, path):
+        datas = torch.load(path)
+        context_phone_embeddings        = datas['features']
+        context_phone_embedding_indexis = datas['indexis']
+        logging.info(f'Loaded conetxt phone embeddings ({context_phone_embeddings.shape})')
+        return context_phone_embeddings, context_phone_embedding_indexis
 
     def tensorify(self, Xs):
         x_tensors = pad_sequence(
@@ -273,6 +289,29 @@ class ContextSampler():
         outputs.label_ctc_ilens           = batch_wise_context_ctc_label_tensor_lens
         outputs.label_utterance_ctc       = utterance_wise_context_ctc_label_tensors
         outputs.label_utterance_ctc_ilens = utterance_wise_context_ctc_label_tensor_lens
+
+        # build label for context-balanced objective
+        if self.context_occurrence_list is not None:
+            context_occurrences_labels  = []
+            no_context_occurrence_label = self.context_occurrence_list[-1]
+            for i in range(batch_size):
+                context_occurrences_label = [
+                    (
+                        self.context_occurrence_list[idx]
+                    ) for idx in utterance_wise_gold_contexts[i]
+                ]
+                if self.use_no_context_token:
+                    label_occurrence = [no_context_occurrence_label] + label_occurrence
+                context_occurrences_labels.append(context_occurrences_label)
+
+            (
+                batch_wise_context_occurrences_label_tensors, 
+                batch_wise_context_occurrences_label_tensor_lens
+            ) = self.tensorify(
+                context_occurrences_labels
+            )
+            outputs.label_occurrence       = batch_wise_context_occurrences_label_tensors
+            outputs.label_occurrence_ilens = batch_wise_context_occurrences_label_tensor_lens
 
     def construct_prompt_labels(
         self,

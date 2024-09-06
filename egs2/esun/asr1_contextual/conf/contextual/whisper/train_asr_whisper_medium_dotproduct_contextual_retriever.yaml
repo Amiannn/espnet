@@ -84,6 +84,7 @@ contextual_conf:
     contextual_type: context_sampler
     # metadata for context list
     context_list_path: ./local/contextual/rarewords/rareword_f65536_train.txt
+    context_embedding_path: null
     context_list_occurrence_path: null
     # context settings
     use_no_context_token: true
