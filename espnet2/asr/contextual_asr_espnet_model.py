@@ -3,8 +3,6 @@ import torch
 import logging
 import torchaudio
 
-from warprnnt_pytorch import RNNTLoss
-
 from contextlib import contextmanager
 from typing import Dict, List, Optional, Tuple, Union
 
@@ -56,6 +54,11 @@ logging.basicConfig(
     format=f"[{os.uname()[1].split('.')[0]}{''}]"
     f" %(asctime)s (%(module)s:%(lineno)d) %(levelname)s: %(message)s",
 )
+
+try:
+    from warprnnt_pytorch import RNNTLoss
+except:
+    logging.info(f'Warning: Cannot import warprnnt_pytorch!')
 
 try:
     import optimized_transducer
@@ -246,7 +249,8 @@ class ESPnetContextualASRModel(ESPnetASRModel):
                 query_ilens=encoder_out_lens,
                 context_subword=contexts['blist'],
                 context_subword_ilens=contexts['ilens'],
-                context_phoneme=contexts['blist_xphone'],
+                context_phone=contexts['blist_xphone'],
+                context_phone_ilens=contexts['blist_xphone_ilens'],
                 return_model_proj=True
             )
 

@@ -1,5 +1,6 @@
 import abc
 import torch
+import logging
 
 from espnet2.asr.contextualizer.component.context_encoder import (
     ContextEncoderBiLSTM,
@@ -27,18 +28,20 @@ class ContextualRetriever(torch.nn.Module, abc.ABC):
         ilens: torch.Tensor, 
         **kwargs
     ):
-        """Encode the context input."""
-        raise NotImplementedError("The method `forward_context_subword_encoder` must be implemented by the subclass.")
+        """Encode the query input."""
+        raise NotImplementedError("The method `forward_query_encoder` must be implemented by the subclass.")
     
     @abc.abstractmethod
-    def forward_context_subword_encoder(
+    def forward_context_encoder(
         self, 
-        context: torch.Tensor, 
-        ilens  : torch.Tensor, 
+        context_subword      : torch.Tensor, 
+        context_subword_ilens: torch.Tensor,
+        context_phone        : torch.Tensor, 
+        context_phone_ilens  : torch.Tensor,
         **kwargs
     ):
         """Encode the context input."""
-        raise NotImplementedError("The method `forward_context_subword_encoder` must be implemented by the subclass.")
+        raise NotImplementedError("The method `forward_context_encoder` must be implemented by the subclass.")
     
     @abc.abstractmethod
     def forward_hnc_encoder(
@@ -66,12 +69,19 @@ class ContextualRetriever(torch.nn.Module, abc.ABC):
         query_ilens          : torch.Tensor, 
         context_subword      : torch.Tensor, 
         context_subword_ilens: torch.Tensor,
+        context_phone        : torch.Tensor, 
+        context_phone_ilens  : torch.Tensor,
         return_model_proj    : bool = False, 
         **kwargs
     ):
         """Compute the forward pass."""
         query, query_ilens                     = self.forward_query_encoder(query, query_ilens)
-        context_subword, context_subword_ilens = self.forward_context_subword_encoder(context_subword, context_subword_ilens)
+        context_subword, context_subword_ilens = self.forward_context_encoder(
+            context_subword, 
+            context_subword_ilens,
+            context_phone,
+            context_phone_ilens,
+        )
 
         scores = self.forward_retriever(query, query_ilens, context_subword, context_subword_ilens)
         probs  = torch.softmax(scores, dim=-1)
@@ -122,23 +132,30 @@ class DotProductContextualRetriever(ContextualRetriever):
         query_hat, mask = self.query_encoder(query, mask=None)
         return (query + query_hat), ilens
 
-    def forward_context_subword_encoder(
+    def forward_context_encoder(
         self, 
-        context: torch.Tensor, 
-        ilens  : torch.Tensor, 
+        context_subword      : torch.Tensor, 
+        context_subword_ilens: torch.Tensor,
+        context_phone        : torch.Tensor, 
+        context_phone_ilens  : torch.Tensor,
         **kwargs
     ):
         # TODO: move mean operation out of the context encoder
-        context, _, ilens = self.context_encoder(context, ilens)
+        context, _, ilens = self.context_encoder(context_subword, context_subword_ilens)
         return context, ilens
 
     def forward_hnc_encoder(
         self, 
-        context: torch.Tensor, 
-        ilens  : torch.Tensor, 
+        context_subword      : torch.Tensor, 
+        context_subword_ilens: torch.Tensor,
+        context_phone        : torch.Tensor, 
+        context_phone_ilens  : torch.Tensor,
         **kwargs
     ):
-        return self.forward_context_subword_encoder(context, ilens)
+        return self.forward_context_encoder(
+            context_subword, 
+            context_subword_ilens,
+        )
 
     def forward_retriever(
         self,
@@ -181,4 +198,37 @@ class DotProductXPhoneContextualRetriever(DotProductContextualRetriever):
             num_blocks=2,
             drop_out=dropout,
             padding_idx=pad_token_value,
+        )
+
+    def forward_context_encoder(
+        self, 
+        context_subword      : torch.Tensor, 
+        context_subword_ilens: torch.Tensor,
+        context_phone        : torch.Tensor, 
+        context_phone_ilens  : torch.Tensor,
+        **kwargs
+    ):
+        # TODO: move mean operation out of the context encoder
+        context_phone_mean = torch.sum(context_phone, dim=1) / context_phone_ilens.unsqueeze(1)
+        
+        context, _, ilens = self.context_encoder(
+            context_subword, 
+            context_phone_mean,
+            context_subword_ilens,
+        )
+        return context, ilens
+
+    def forward_hnc_encoder(
+        self, 
+        context_subword      : torch.Tensor, 
+        context_subword_ilens: torch.Tensor,
+        context_phone        : torch.Tensor, 
+        context_phone_ilens  : torch.Tensor,
+        **kwargs
+    ):
+        return self.forward_context_encoder(
+            context_subword, 
+            context_subword_ilens,
+            context_phone,
+            context_phone_ilens
         )

@@ -48,6 +48,7 @@ class ContextSampleOutput:
     trie: Optional[object] = None
     blist_xphone_mean: Optional[torch.Tensor] = None
     blist_xphone: Optional[torch.Tensor] = None
+    blist_xphone_ilens: Optional[torch.Tensor] = None
     label_ctc: Optional[torch.Tensor] = None
     label_ctc_ilens: Optional[torch.Tensor] = None
     label_utterance_ctc: Optional[torch.Tensor] = None
@@ -472,6 +473,24 @@ class ContextSampler():
             blist_idxs=batch_wise_sub_context_idxs_list,
             ilens=batch_wise_sub_context_ints_tensor_lens,
         )
+
+        # build phone embeddings
+        batch_wise_sub_context_embedding_phone_element_idx = [
+            self.context_phone_embedding_indexis[idx] for idx in batch_wise_sub_context_idxs_list
+        ]
+        batch_wise_sub_context_phone_embeddings = pad_sequence(
+            [
+                self.context_phone_embeddings[
+                    start:end, :
+                ] for start, end in batch_wise_sub_context_embedding_phone_element_idx
+            ],
+            batch_first=True
+        )
+        batch_wise_sub_context_phone_embedding_ilens = torch.tensor(
+            [(end - start) for start, end in batch_wise_sub_context_embedding_phone_element_idx]
+        )
+        outputs.blist_xphone       = batch_wise_sub_context_phone_embeddings
+        outputs.blist_xphone_ilens = batch_wise_sub_context_phone_embedding_ilens
 
         # build auxiliary loss label
         self.construct_auxiliary_loss_label(
