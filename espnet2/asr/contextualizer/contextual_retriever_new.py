@@ -155,6 +155,8 @@ class DotProductContextualRetriever(ContextualRetriever):
         return self.forward_context_encoder(
             context_subword, 
             context_subword_ilens,
+            context_phone,
+            context_phone_ilens,
         )
 
     def forward_retriever(
@@ -217,18 +219,3 @@ class DotProductXPhoneContextualRetriever(DotProductContextualRetriever):
             context_subword_ilens,
         )
         return context, ilens
-
-    def forward_hnc_encoder(
-        self, 
-        context_subword      : torch.Tensor, 
-        context_subword_ilens: torch.Tensor,
-        context_phone        : torch.Tensor, 
-        context_phone_ilens  : torch.Tensor,
-        **kwargs
-    ):
-        return self.forward_context_encoder(
-            context_subword, 
-            context_subword_ilens,
-            context_phone,
-            context_phone_ilens
-        )

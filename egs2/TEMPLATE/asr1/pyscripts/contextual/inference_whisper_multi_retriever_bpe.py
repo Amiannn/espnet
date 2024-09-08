@@ -68,7 +68,8 @@ def forward(model, speech, speech_length, context_data, tokens, text, token_list
             query_ilens=encoder_output_lengths,
             context_subword=context_data['blist'],
             context_subword_ilens=context_data['ilens'],
-            context_phoneme=context_data['blist_xphone'],
+            context_phone=context_data['blist_xphone'],
+            context_phone_ilens=context_data['blist_xphone_ilens'],
             return_model_proj=True
         )
         
@@ -97,8 +98,8 @@ if __name__ == "__main__":
     # File paths
     spm_path = "./data/token_list/bpe_unigram5000suffix/bpe.model"
     token_path = "./data/token_list/bpe_unigram5000suffix/tokens.txt"
-    model_conf = "./conf/contextual/whisper/train_asr_whisper_medium_dotproduct_contextual_retriever.yaml"
-    model_path = "./exp/asr_whisper/run_medium_dotproduct_contextual_retriever_suffix/valid.loss.ave_10best.pth"
+    model_conf = "./conf/contextual/whisper/train_asr_whisper_medium_xdotproduct_contextual_retriever.yaml"
+    model_path = "./exp/asr_whisper/run_medium_xdotproduct_contextual_retriever_suffix/74epoch.pth"
     stats_path = "./exp/asr_stats_raw_bpe5000_sp_suffix/train/feats_lengths_stats.npz"
     rareword_path = "./local/contextual/rarewords/esun.entity.txt"
     speech_scp_path = "./dump/raw/test/wav.scp"
@@ -120,6 +121,7 @@ if __name__ == "__main__":
     contextual_conf = {
         'contextual_type': 'context_sampler',
         'context_list_path': rareword_path,
+        'context_phone_embedding_path': biasing_list_xphone_path,
         'max_batch_disrupt_context': 10,
         'sub_context_list_dropout': 0.0,
         'warmup_epoch': 0,
