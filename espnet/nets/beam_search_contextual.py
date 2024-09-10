@@ -30,9 +30,30 @@ from espnet2.asr.contextualizer.func.contextual_retriever_func import (
 logger = logging.getLogger(__name__)
 
 
-class ContextualHypothesis(Hypothesis):
-    """Contextual hypothesis data type."""
-    ...
+class ContextualHypothesis(NamedTuple):
+    yseq: torch.Tensor
+    context_yseq: torch.Tensor
+    score: Union[float, torch.Tensor] = 0
+    context_score: Union[float, torch.Tensor] = 0
+    scores: Dict[str, Union[float, torch.Tensor]] = dict()
+    context_scores: Dict[str, Union[float, torch.Tensor]] = dict()
+    context_states: Dict[str, Any] = dict()
+    states: Dict[str, Any] = dict()
+    # dec hidden state corresponding to yseq, used for searchable hidden ints
+    hs: List[torch.Tensor] = []
+    # dec hidden state corresponding to yseq, used for searchable hidden ints
+    context_hs: List[torch.Tensor] = []
+
+    def asdict(self) -> dict:
+        """Convert data to JSON-friendly dict."""
+        return self._replace(
+            yseq=self.yseq.tolist(),
+            score=float(self.score),
+            scores={k: float(v) for k, v in self.scores.items()},
+            context_yseq=self.yseq.tolist(),
+            context_score=float(self.score),
+            context_scores={k: float(v) for k, v in self.scores.items()},
+        )._asdict()
 
 class ContextualBeamSearch(BeamSearch):
     """Beam search implementation."""
@@ -75,7 +96,7 @@ class ContextualBeamSearch(BeamSearch):
         self.contextualizer_conf = contextualizer_conf
         
         self.sop = sop
-        
+
         self.use_ctc_only_deocding = ('decoder' not in self.scorers)
         if not self.use_ctc_only_deocding:
             self.decoder = self.scorers['decoder']
@@ -164,12 +185,17 @@ class ContextualBeamSearch(BeamSearch):
         logging.info(f'primer: {primer}')
 
         return [
-            Hypothesis(
+            ContextualHypothesis(
                 score=0.0,
                 scores=init_scores,
                 states=init_states,
                 hs=[],
                 yseq=torch.tensor(primer, device=x.device),
+                context_score=0.0,
+                context_scores=init_scores,
+                context_states=init_states,
+                context_hs=[],
+                context_yseq=torch.tensor(primer, device=x.device),
             )
         ]
 
@@ -236,12 +262,13 @@ class ContextualBeamSearch(BeamSearch):
             logging.info(f'Encoder contextualize, use retriever!')
             contexts = to_device(contexts, device=x.device)
             context_prob, encoder_proj = self.contextualizer(
-                model_embed=x.unsqueeze(0),
-                context_embed=contexts['blist'],
-                context_xphone_embed=contexts['blist_xphone'],
-                context_xphone_mean_embed=contexts['blist_xphone_mean'],
-                ilens=contexts['ilens'],
-                return_model_proj=True,
+                query=x.unsqueeze(0),
+                query_ilens=None,
+                context_subword=contexts['blist'],
+                context_subword_ilens=contexts['ilens'],
+                context_phone=contexts['blist_xphone'],
+                context_phone_ilens=contexts['blist_xphone_ilens'],
+                return_model_proj=True
             )
             # Watch out!
             x = encoder_proj.squeeze(0)
@@ -249,13 +276,14 @@ class ContextualBeamSearch(BeamSearch):
             # only for whisper model
             # sep_tokens = [11, 220]
             # end_tokens = [13, 220]
-            # retrieve_preds = topk_decode(
-            #     context_prob, 
-            #     contexts['context_list_idxs'],
-            #     idx_blank=0, 
-            #     top_k=5, 
-            #     threshold=0.6
-            # )
+            retrieve_preds = topk_decode(
+                context_prob, 
+                contexts['context_list_idxs'],
+                idx_blank=0, 
+                top_k=5, 
+                threshold=0.6
+            )
+            logging.info(f'retrieve_preds: {retrieve_preds}')
             # pred_contexts = create_prompt(retrieve_preds, sep_tokens, end_tokens)
 
         elif self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_ADAPTER_ENCODER:
@@ -342,6 +370,7 @@ class ContextualBeamSearch(BeamSearch):
                 "decoding may be stopped by the max output length limitation, "
                 + "please consider to increase the maxlenratio."
             )
+        logging.info(f'nbest_hyps: {nbest_hyps}')
         return nbest_hyps
 
 def beam_search(

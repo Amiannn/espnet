@@ -2,6 +2,7 @@
 
 import numpy as np
 import torch
+import logging
 
 from espnet.nets.ctc_prefix_score import CTCPrefixScore, CTCPrefixScoreTH
 from espnet.nets.scorer_interface import BatchPartialScorerInterface

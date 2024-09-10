@@ -1,5 +1,7 @@
 import abc
 import torch
+import torch.nn.functional as F
+
 import logging
 
 from espnet2.asr.contextualizer.component.context_encoder import (
@@ -21,6 +23,66 @@ class ContextualRetriever(torch.nn.Module, abc.ABC):
     def __init__(self):
         super().__init__()
     
+    def softmax(
+        self,
+        query                : torch.Tensor, 
+        query_ilens          : torch.Tensor, 
+        context_subword      : torch.Tensor, 
+        context_subword_ilens: torch.Tensor,
+        context_phone        : torch.Tensor, 
+        context_phone_ilens  : torch.Tensor,
+        **kwargs
+    ):
+        return self.forward(
+            query,
+            query_ilens,
+            context_subword,      
+            context_subword_ilens,
+            context_phone,        
+            context_phone_ilens,  
+            **kwargs
+        )
+
+    def log_softmax(
+        self,
+        query                : torch.Tensor, 
+        query_ilens          : torch.Tensor, 
+        context_subword      : torch.Tensor, 
+        context_subword_ilens: torch.Tensor,
+        context_phone        : torch.Tensor, 
+        context_phone_ilens  : torch.Tensor,
+        **kwargs
+    ):
+        return torch.log(self.forward(
+            query,
+            query_ilens,
+            context_subword,      
+            context_subword_ilens,
+            context_phone,        
+            context_phone_ilens,  
+            **kwargs
+        ))
+
+    def argmax(
+        self, 
+        query                : torch.Tensor, 
+        query_ilens          : torch.Tensor, 
+        context_subword      : torch.Tensor, 
+        context_subword_ilens: torch.Tensor,
+        context_phone        : torch.Tensor, 
+        context_phone_ilens  : torch.Tensor,
+        **kwargs
+    ):
+        return torch.argmax(self.forward(
+            query,
+            query_ilens,
+            context_subword,      
+            context_subword_ilens,
+            context_phone,        
+            context_phone_ilens,  
+            **kwargs
+        ))
+
     @abc.abstractmethod
     def forward_query_encoder(
         self, 

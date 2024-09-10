@@ -923,6 +923,7 @@ def inference(
     logging.basicConfig(
         level=log_level,
         format="%(asctime)s (%(module)s:%(lineno)d) %(levelname)s: %(message)s",
+        force=True
     )
 
     if ngpu >= 1:

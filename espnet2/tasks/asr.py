@@ -717,11 +717,10 @@ class ASRTask(AbsTask):
             joint_network = None
 
         # ?. contextualizer methods
-        contextualizer_conf = {}
         ctc_lo_fn = None
-        if getattr(args, "contextualizer_conf", {}) != {}:
+        contextualizer_conf = getattr(args, "contextualizer_conf", {})
+        if contextualizer_conf != {}:
             contextualizer = cls.build_contextualizer(vocab_size, args)
-            contextualizer_conf = getattr(args, "contextualizer_conf", {})
             if "embed_share_weight_ctc" in contextualizer_conf and contextualizer_conf['embed_share_weight_ctc']:
                 ctc_lo_fn = CustomLinear(
                     embedding=contextualizer.context_encoder.embed,

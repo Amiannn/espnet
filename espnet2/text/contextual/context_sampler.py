@@ -20,6 +20,7 @@ from dataclasses import (
     asdict,
 )
 
+from ordered_set import OrderedSet
 from torch.nn.utils.rnn import pad_sequence
 
 from espnet2.text.contextual.sampler.hard_negative_mining import HardNegativeSampler
@@ -353,7 +354,7 @@ class ContextSampler():
             return [[] for _ in range(batch_size)], []
 
         utterance_wise_sub_context_lists = [
-            list(set(
+            list(OrderedSet(
                 [context for context in contexts if random.random() > self.gold_context_dropout]
             )) for contexts in utterance_wise_gold_contexts
         ]
@@ -418,9 +419,9 @@ class ContextSampler():
 
         # remove repeat contexts
         utterance_wise_sub_context_lists = [
-            list(set(context)) for context in utterance_wise_sub_context_lists
+            list(OrderedSet(context)) for context in utterance_wise_sub_context_lists
         ]
-        batch_wise_sub_context_list = list(set(batch_wise_sub_context_list))
+        batch_wise_sub_context_list = list(OrderedSet(batch_wise_sub_context_list))
 
         return utterance_wise_sub_context_lists, batch_wise_sub_context_list
 
@@ -472,6 +473,7 @@ class ContextSampler():
             blist=batch_wise_sub_context_ints_tensors,
             blist_idxs=batch_wise_sub_context_idxs_list,
             ilens=batch_wise_sub_context_ints_tensor_lens,
+            context_list_idxs=batch_wise_sub_context_ints_lists,
         )
 
         # build phone embeddings
