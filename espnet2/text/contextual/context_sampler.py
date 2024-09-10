@@ -302,7 +302,7 @@ class ContextSampler():
                     ) for idx in utterance_wise_gold_contexts[i]
                 ]
                 if self.use_no_context_token:
-                    label_occurrence = [no_context_occurrence_label] + label_occurrence
+                    context_occurrences_label = [no_context_occurrence_label] + context_occurrences_label
                 context_occurrences_labels.append(context_occurrences_label)
 
             (
@@ -475,22 +475,23 @@ class ContextSampler():
         )
 
         # build phone embeddings
-        batch_wise_sub_context_embedding_phone_element_idx = [
-            self.context_phone_embedding_indexis[idx] for idx in batch_wise_sub_context_idxs_list
-        ]
-        batch_wise_sub_context_phone_embeddings = pad_sequence(
-            [
-                self.context_phone_embeddings[
-                    start:end, :
-                ] for start, end in batch_wise_sub_context_embedding_phone_element_idx
-            ],
-            batch_first=True
-        )
-        batch_wise_sub_context_phone_embedding_ilens = torch.tensor(
-            [(end - start) for start, end in batch_wise_sub_context_embedding_phone_element_idx]
-        )
-        outputs.blist_xphone       = batch_wise_sub_context_phone_embeddings
-        outputs.blist_xphone_ilens = batch_wise_sub_context_phone_embedding_ilens
+        if self.context_phone_embeddings is not None:
+            batch_wise_sub_context_embedding_phone_element_idx = [
+                self.context_phone_embedding_indexis[idx] for idx in batch_wise_sub_context_idxs_list
+            ]
+            batch_wise_sub_context_phone_embeddings = pad_sequence(
+                [
+                    self.context_phone_embeddings[
+                        start:end, :
+                    ] for start, end in batch_wise_sub_context_embedding_phone_element_idx
+                ],
+                batch_first=True
+            )
+            batch_wise_sub_context_phone_embedding_ilens = torch.tensor(
+                [(end - start) for start, end in batch_wise_sub_context_embedding_phone_element_idx]
+            )
+            outputs.blist_xphone       = batch_wise_sub_context_phone_embeddings
+            outputs.blist_xphone_ilens = batch_wise_sub_context_phone_embedding_ilens
 
         # build auxiliary loss label
         self.construct_auxiliary_loss_label(

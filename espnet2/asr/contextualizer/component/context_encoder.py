@@ -11,42 +11,6 @@ from espnet.nets.pytorch_backend.transformer.layer_norm import LayerNorm
 from espnet.nets.pytorch_backend.nets_utils             import make_pad_mask
 from espnet.nets.pytorch_backend.transformer.embedding  import PositionalEncoding
 
-class CustomEmbeddingLayer(torch.nn.Module):
-    def __init__(self, blank_fn, embed_fn):
-        super(CustomEmbeddingLayer, self).__init__()
-        # self.blank_fn = blank_fn
-        # self.embed_fn = embed_fn
-        output_dim, input_dim = embed_fn.weight.shape
-        # Define weight parameter
-        self.weight = torch.nn.Parameter(torch.Tensor(output_dim, input_dim))
-        # Define bias parameter if needed
-        self.bias   = torch.nn.Parameter(torch.Tensor(output_dim))
-        # Initialize weights and bias
-        self.reset_parameters()
-
-    def reset_parameters(self):
-        # Initialize the weight and bias (if it exists)
-        torch.nn.init.kaiming_uniform_(self.weight, a=math.sqrt(5))
-        if self.bias is not None:
-            fan_in, _ = torch.nn.init._calculate_fan_in_and_fan_out(self.weight)
-            bound = 1 / math.sqrt(fan_in)
-            torch.nn.init.uniform_(self.bias, -bound, bound)
-
-    def forward(self, input):
-        # Apply the linear transformation: y = xW^T + b
-        output = input.matmul(self.weight.t())
-        output += self.bias
-        return output
-
-    # def forward(self, x):
-    #     logging.info(f'x shape: {x.shape}')
-    #     embedding_matrix = torch.cat([
-    #         self.blank_fn.weight,
-    #         # filter out original blank in the embedding
-    #         self.embed_fn.weight[1:, :], 
-    #     ], dim=0)
-    #     return (x @ embedding_matrix.T) + self.bias
-
 class ContextEncoderBiLSTM(torch.nn.Module):
     def __init__(
         self,

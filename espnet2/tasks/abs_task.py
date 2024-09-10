@@ -1211,6 +1211,7 @@ class AbsTask(ABC):
                 level=args.log_level,
                 format=f"[{os.uname()[1].split('.')[0]}{_rank}]"
                 f" %(asctime)s (%(module)s:%(lineno)d) %(levelname)s: %(message)s",
+                force=True
             )
         else:
             # Suppress logging if RANK != 0

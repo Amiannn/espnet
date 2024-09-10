@@ -33,7 +33,6 @@ frontend: null
 input_size: 1                   # to prevent build_model() from complaining
 
 seed: 2022
-log_interval: 100
 num_att_plot: 0
 num_workers: 4
 sort_in_batch: descending       # how to sort data in making batch
@@ -84,7 +83,7 @@ contextual_conf:
     contextual_type: context_sampler
     # metadata for context list
     context_list_path: ./local/contextual/rarewords/rareword_f65536_train.txt
-    context_embedding_path: null
+    context_phone_embedding_path: null
     context_list_occurrence_path: ./local/contextual/rarewords/rareword_f65536_train_occurrence.txt
 
     # context settings
@@ -123,7 +122,9 @@ contextualizer_conf:
     embed_share_weight_ctc: true
     contextualizer_weight: 0.5
     contextualizer_losses:
-        loss_contextualizer_ga_ctc: 1
+        loss_contextualizer_ga_ctc: 0.5
+        loss_contextualizer_ga_reweight_lp: 0.5
+    lp_gamma: 0.8
 
 # adapter style training
 freeze_param: ["encoder", "contextualizer.encoder.pad_embed"]

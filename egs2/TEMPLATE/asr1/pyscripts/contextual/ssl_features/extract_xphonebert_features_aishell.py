@@ -21,7 +21,7 @@ def split_list(lst, chunk_size):
     return [lst[i:i + chunk_size] for i in range(0, len(lst), chunk_size)]
 
 model_tag     = "vinai/xphonebert-base"
-rareword_path = "./local/contextual/rarewords/rareword_f1000_train.txt"
+rareword_path = "./local/contextual/rarewords/esun.entity.txt"
 output_path   = "./local/contextual/ssl_features"
 
 filename  = (rareword_path.split('/')[-1]).replace('.txt', '')

@@ -47,10 +47,10 @@ else:
     def autocast(enabled=True):
         yield
 
-print(f'Setting logging config!')
+# print(f'Setting logging config!')
 logging.basicConfig(
-    # level=args.log_level,
-    level="INFO",
+    level=logging.INFO,
+    # level="INFO",
     format=f"[{os.uname()[1].split('.')[0]}{''}]"
     f" %(asctime)s (%(module)s:%(lineno)d) %(levelname)s: %(message)s",
 )

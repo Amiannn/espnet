@@ -34,6 +34,7 @@ input_size: 1                   # to prevent build_model() from complaining
 
 seed: 2022
 log_interval: 100
+log_level: INFO
 num_att_plot: 0
 num_workers: 4
 sort_in_batch: descending       # how to sort data in making batch
@@ -108,9 +109,9 @@ contextual_conf:
     sub_context_list_structure_type: null
 
 # contextualizer settings
-contextualizer: dotproduct_contextual_retriever
+contextualizer: lateinteraction_contextual_retriever
 contextualizer_conf:
-    contextualizer_type: dotproduct_contextual_retriever
+    contextualizer_type: lateinteraction_contextual_retriever
     query_input_dim: 1024
     context_input_dim: 1024
     proj_dim: 1024

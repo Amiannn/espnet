@@ -84,8 +84,8 @@ contextual_conf:
     contextual_type: context_sampler
     # metadata for context list
     context_list_path: ./local/contextual/rarewords/rareword_f65536_train.txt
-    context_phone_embedding_path: null
-    context_list_occurrence_path: null
+    context_phone_embedding_path: ./local/contextual/ssl_features/rareword_f65536_train.xphone.seq.pt
+    context_list_occurrence_path: ./local/contextual/rarewords/rareword_f65536_train_occurrence.txt
     # context settings
     use_no_context_token: true
     # sampling settings
@@ -108,9 +108,9 @@ contextual_conf:
     sub_context_list_structure_type: null
 
 # contextualizer settings
-contextualizer: dotproduct_contextual_retriever
+contextualizer: dotproduct_xphone_contextual_retriever
 contextualizer_conf:
-    contextualizer_type: dotproduct_contextual_retriever
+    contextualizer_type: dotproduct_xphone_contextual_retriever
     query_input_dim: 1024
     context_input_dim: 1024
     proj_dim: 1024
@@ -122,7 +122,10 @@ contextualizer_conf:
     embed_share_weight_ctc: true
     contextualizer_weight: 0.5
     contextualizer_losses:
-        loss_contextualizer_ga_ctc: 1
+        loss_contextualizer_ga_ctc: 0.5
+        loss_contextualizer_ga_reweight_lp: 0.5
+    lp_gamma: 0.8
+
 
 # adapter style training
 freeze_param: ["encoder", "contextualizer.encoder.pad_embed"]
