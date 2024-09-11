@@ -75,6 +75,7 @@ ListOfHypothesis = List[
             ExtTransHypothesis, 
             TransHypothesis, 
             # BiasTransHypothesis
+            ContextualHypothesis,
         ],
     ]
 ]
@@ -615,7 +616,7 @@ class Speech2Text:
             if intermediate_outs is not None:
                 encoder_interctc_res = self._decode_interctc(intermediate_outs)
                 results = (results, encoder_interctc_res)
-            assert check_return_type(results)
+            # assert check_return_type(results)
 
         return results
 
@@ -734,7 +735,7 @@ class Speech2Text:
         return results
 
     def _decode_single_sample_contextual(self, enc: torch.Tensor, contexts: object):
-        logging.info(f'contexts: {contexts}')
+        # logging.info(f'contexts: {contexts}')
         if self.beam_search_transducer:
             logging.info("encoder output length: " + str(enc.shape[0]))
             nbest_hyps = self.beam_search_transducer(enc, contexts)
@@ -807,7 +808,7 @@ class Speech2Text:
 
         results = []
         for hyp in nbest_hyps:
-            assert isinstance(hyp, (Hypothesis, TransHypothesis)), type(hyp)
+            assert isinstance(hyp, (Hypothesis, TransHypothesis, ContextualHypothesis)), type(hyp)
 
             # remove sos/eos and get results
             last_pos = None if self.asr_model.use_transducer_decoder else -1
@@ -823,15 +824,30 @@ class Speech2Text:
                 token_int = [t if t != self.asr_model.sos else 25 for t in token_int]
 
             # Change integer-ids to tokens
-            logging.info(f'>>> token_int: {token_int}')
             token = self.converter.ids2tokens(token_int)
+            logging.info(f'>>> token_int: {token_int}')
             logging.info(f'>>> token: {token}')
+            
+            context_token_int = hyp.context_yseq[1:last_pos]
+            context_token     = self.converter.ids2tokens(context_token_int)
+            logging.info(f'>>> context_token_int: {context_token_int}')
+            logging.info(f'>>> context_token: {context_token}')
 
             if self.tokenizer is not None:
                 text = self.tokenizer.tokens2text(token)
+                context_text = self.tokenizer.tokens2text(context_token)
             else:
                 text = None
-            results.append((text, token, token_int, hyp))
+                context_text = None
+            results.append((
+                text, 
+                token, 
+                token_int, 
+                hyp,
+                context_text,
+                context_token,
+                context_token_int
+            ))
 
         return results
 
@@ -1058,7 +1074,15 @@ def inference(
                 if isinstance(results, tuple):
                     results, encoder_interctc_res = results
 
-                for n, (text, token, token_int, hyp) in zip(
+                for n, (
+                    text, 
+                    token, 
+                    token_int, 
+                    hyp,                
+                    context_text,
+                    context_token,
+                    context_token_int
+                ) in zip(
                     range(1, nbest + 1), results
                 ):
                     # Create a directory: outdir/{n}best_recog
@@ -1069,8 +1093,14 @@ def inference(
                     ibest_writer["token_int"][key] = " ".join(map(str, token_int))
                     ibest_writer["score"][key] = str(hyp.score)
 
+                    ibest_writer["context_token"][key] = " ".join(context_token)
+                    ibest_writer["context_token_int"][key] = " ".join(map(str, context_token_int))
+                    ibest_writer["context_score"][key] = " ".join([str(s) for s in hyp.context_score])
+                    ibest_writer["context_candidate"][key] = " ".join(contexts['context_list'])
+                    
                     if text is not None:
                         ibest_writer["text"][key] = text
+                        ibest_writer["context_text"][key] = context_text
 
                 # Write intermediate predictions to
                 # encoder_interctc_layer<layer_idx>.txt

@@ -175,7 +175,6 @@ class ContextualBeamSearch(BeamSearch):
             logging.info(f'nlp_prompt_no_context_template: {nlp_prompt_no_context_template}')
             logging.info(f'nlp_prompt_tensor: {nlp_prompt_tensor}')
 
-
             if use_ground_prompt:
                 primer = [self.sop] + nlp_prompt_tensor + primer
             elif pred_contexts != None and len(pred_contexts) > 0:
@@ -257,7 +256,8 @@ class ContextualBeamSearch(BeamSearch):
         logger.info("min output length: " + str(minlen))
 
         # Encoder contextualization
-        pred_contexts = None
+        pred_contexts  = None
+        context_preds = None
         if self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_RETRIEVER:
             logging.info(f'Encoder contextualize, use retriever!')
             contexts = to_device(contexts, device=x.device)
@@ -276,15 +276,14 @@ class ContextualBeamSearch(BeamSearch):
             # only for whisper model
             # sep_tokens = [11, 220]
             # end_tokens = [13, 220]
-            retrieve_preds = topk_decode(
+            context_preds = topk_decode(
                 context_prob, 
                 contexts['context_list_idxs'],
                 idx_blank=0, 
                 top_k=5, 
                 threshold=0.6
             )
-            logging.info(f'retrieve_preds: {retrieve_preds}')
-            # pred_contexts = create_prompt(retrieve_preds, sep_tokens, end_tokens)
+            # pred_contexts = create_prompt(context_preds, sep_tokens, end_tokens)
 
         elif self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_ADAPTER_ENCODER:
             logging.info(f'Encoder contextualize!')
@@ -370,8 +369,31 @@ class ContextualBeamSearch(BeamSearch):
                 "decoding may be stopped by the max output length limitation, "
                 + "please consider to increase the maxlenratio."
             )
-        logging.info(f'nbest_hyps: {nbest_hyps}')
-        return nbest_hyps
+       
+        if context_preds is not None:
+            context_yseq  = []
+            context_score = []
+            for pred in context_preds:
+                context_yseq.extend(pred[1])
+                context_score.append(pred[2])
+            context_yseq  = [1] + context_yseq + [1]
+        else:
+            context_yseq  = [1, 1]
+            context_score = []
+
+        contextual_nbest_hyps = []
+        for nbest_hyp in nbest_hyps:
+            contextual_nbest_hyp = ContextualHypothesis(
+                score=nbest_hyp.score,
+                scores=nbest_hyp.scores,
+                states=nbest_hyp.states,
+                hs=nbest_hyp.hs,
+                yseq=nbest_hyp.yseq,
+                context_score=context_score,
+                context_yseq=context_yseq,
+            )
+            contextual_nbest_hyps.append(contextual_nbest_hyp)
+        return contextual_nbest_hyps
 
 def beam_search(
     x: torch.Tensor,

@@ -473,6 +473,7 @@ class ContextSampler():
             blist=batch_wise_sub_context_ints_tensors,
             blist_idxs=batch_wise_sub_context_idxs_list,
             ilens=batch_wise_sub_context_ints_tensor_lens,
+            context_list=[self.context_list[c] for c in batch_wise_sub_context_idxs_list],
             context_list_idxs=batch_wise_sub_context_ints_lists,
         )
 

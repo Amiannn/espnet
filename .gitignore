@@ -97,8 +97,4 @@ tools/miniconda
 tools/ffmpeg-*-static
 tools/ffmpeg-release
 tools/ffmpeg-release-*.tar.xz
-<<<<<<< HEAD
 tools/Miniconda3-latest-*.sh
-=======
-tools/Miniconda3-latest-*.sh
->>>>>>> upstream/master
