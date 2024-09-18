@@ -218,6 +218,7 @@ class ContextEncoderXPhone(torch.nn.Module):
             oov_embed = (self.oov_embed.weight).unsqueeze(0)
             oov_embed = F.pad(oov_embed, (0, 0, 0, (S - 1), 0, 0))
             x_embed   = torch.cat([oov_embed, x_embed], dim=0)
+            ilens     = torch.cat([torch.zeros(1).to(ilens.device), ilens])
         return x_embed, ilens
 
 if __name__ == '__main__':

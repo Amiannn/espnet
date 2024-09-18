@@ -27,6 +27,7 @@ from espnet2.asr.contextualizer.contextual_retriever_new import (
     DotProductContextualRetriever,
     DotProductXPhoneContextualRetriever,
     LateInteractionContextualRetriever,
+    LateInteractionXPhoneContextualRetriever,
 )
 
 CONTEXTUAL_RETRIEVER = {
@@ -40,9 +41,10 @@ CONTEXTUAL_RETRIEVER = {
     "multilateinteractive_context_retriever"                 : MultiLateInteractiveContextRetriever,
 
     # new contextual retriever
-    "dotproduct_contextual_retriever"       : DotProductContextualRetriever,
-    "dotproduct_xphone_contextual_retriever": DotProductXPhoneContextualRetriever,
-    "lateinteraction_contextual_retriever"  : LateInteractionContextualRetriever,
+    "dotproduct_contextual_retriever"          : DotProductContextualRetriever,
+    "dotproduct_xphone_contextual_retriever"   : DotProductXPhoneContextualRetriever,
+    "lateinteraction_contextual_retriever"     : LateInteractionContextualRetriever,
+    "multilateinteraction_contextual_retriever": LateInteractionXPhoneContextualRetriever,
 }
 
 CONTEXTUAL_HISTORY_ADAPTER_ENCODER = {

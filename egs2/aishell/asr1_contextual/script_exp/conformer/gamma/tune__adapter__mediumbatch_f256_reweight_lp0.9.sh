@@ -9,9 +9,13 @@ train_set=train
 valid_set=dev
 test_sets="test"
 
-asr_config=conf/contextual/conformer/gamma/adapter__mediumbatch_f4096_reweight_lp0.6.yaml
-inference_config=conf/contextual/conformer/decode_asr_conformer_adapter_greedy.yaml
-asr_tag=conformer/adapter__mediumbatch_f4096_reweight_lp0.6
+uttblist_idx_train="uttblist_idx_f256"
+uttblist_idx_valid="uttblist_idx_f256"
+uttblist_idx_test="uttblist_idx"
+
+asr_config=conf/contextual/conformer/gamma/adapter__mediumbatch_f256_reweight_lp0.9.yaml
+inference_config=conf/contextual/conformer/decode_asr_conformer_adapter_bs5.yaml
+asr_tag=conformer/adapter__mediumbatch_f256_reweight_lp0.9
 
 lm_config=conf/train_lm_transformer.yaml
 use_lm=false
@@ -38,6 +42,9 @@ CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --train_set "${train_set}"                         \
     --valid_set "${valid_set}"                         \
     --test_sets "${test_sets}"                         \
+    --uttblist_idx_train "${uttblist_idx_train}" \
+    --uttblist_idx_valid "${uttblist_idx_valid}" \
+    --uttblist_idx_test "${uttblist_idx_test}" \
     --speed_perturb_factors "${speed_perturb_factors}" \
     --asr_tag "${asr_tag}" \
     --asr_speech_fold_length 512 \

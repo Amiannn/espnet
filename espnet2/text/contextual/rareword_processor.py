@@ -431,16 +431,16 @@ class RarewordProcessor():
             pad_value=pad_value,
         )
 
-        utterance_wise_output   = []
-        for i in range(batch_size):
-            utterance_wise_output.append(
-                self.sample_contexts(
-                    batch_data=batch_data,
-                    uttblists_resolve=uttblists[i],
-                    uttblists_batch_resolve=[uttblists[i]],
-                    pad_value=pad_value,
-                    # ensure_max_length=True,
-                )
-            )
-        batch_wise_output['utterance_wise_contexts'] = utterance_wise_output
+        # utterance_wise_output   = []
+        # for i in range(batch_size):
+        #     utterance_wise_output.append(
+        #         self.sample_contexts(
+        #             batch_data=batch_data,
+        #             uttblists_resolve=uttblists[i],
+        #             uttblists_batch_resolve=[uttblists[i]],
+        #             pad_value=pad_value,
+        #             # ensure_max_length=True,
+        #         )
+        #     )
+        # batch_wise_output['utterance_wise_contexts'] = utterance_wise_output
         return batch_wise_output

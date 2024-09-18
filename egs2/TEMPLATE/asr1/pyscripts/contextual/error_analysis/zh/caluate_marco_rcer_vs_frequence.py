@@ -28,13 +28,13 @@ test_rareword_list  = f'./local/contextual/rarewords/rareword_f{test_gamma}_test
 test_utt_blist_path = f'./dump/raw/zh_test/uttblist_idx_f{test_gamma}'
 
 train_gamma_baseline   = f"{2 ** 4}"
-train_gamma_our        = f"{2 ** 12}"
+train_gamma_our        = f"{2 ** 8}"
 train_balance_baseline = ""
-train_balance_our      = "_reweight_lp0.8"
+train_balance_our      = "_reweight_lp0.9"
 
-hyp_baseline_path    = '/share/nas165/amian/experiments/speech/espnet/egs2/aishell/asr1/exp/asr_train_asr_conformer_raw_zh_char_sp/decode_asr_conformer_asr_model_valid.acc.ave_10best/test/text'
-hyp_casr_path        = f'/share/nas165/amian/experiments/speech/espnet/egs2/aishell/asr1_contextual/exp/asr_conformer/adapter__mediumbatch_f{train_gamma_baseline}{train_balance_baseline}/decode_asr_conformer_adapter_bs5_asr_model_valid.acc.ave_10best/test/text'
-hyp_our_path         = f'/share/nas165/amian/experiments/speech/espnet/egs2/aishell/asr1_contextual/exp/asr_conformer/adapter__mediumbatch_f{train_gamma_our}{train_balance_our}/decode_asr_conformer_adapter_bs5_asr_model_valid.acc.ave_10best/test/text'
+hyp_baseline_path    = '/home/ubuntu/espnet/egs2/aishell/asr1/exp/asr_train_asr_conformer_raw_zh_char_sp/decode_asr_conformer_asr_model_valid.acc.ave_10best/test/text'
+# hyp_casr_path        = f'/home/ubuntu/espnet/egs2/aishell/asr1_contextual/exp/asr_conformer/adapter__mediumbatch_f{train_gamma_baseline}{train_balance_baseline}/decode_asr_conformer_adapter_bs5_asr_model_valid.acc.ave_10best/test/text'
+hyp_our_path         = f'/home/ubuntu/espnet/egs2/aishell/asr1_contextual/exp/asr_conformer/adapter__mediumbatch_f{train_gamma_our}{train_balance_our}/decode_asr_conformer_adapter_bs5_asr_model_valid.acc.ave_10best/test/text'
 
 def smoothing(data, kernel_size=20):
     kernel = np.ones(kernel_size) / kernel_size
@@ -175,8 +175,8 @@ if __name__ == '__main__':
     ref_train_datas    = read_file(train_ref_path, sp=' ')
 
     hyp_datas          = read_file(hyp_our_path, sp=' ')
-    hyp_casr_datas     = read_file(hyp_casr_path, sp=' ')
-    hyp_baseline_datas = read_file(hyp_baseline_path, sp=' ')
+    # hyp_casr_datas     = read_file(hyp_casr_path, sp=' ')
+    # hyp_baseline_datas = read_file(hyp_baseline_path, sp=' ')
 
     test_blist_idxs = [[d[0], [int(x) for x in d[1:] if x != '']] for d in read_file(test_utt_blist_path, sp=' ')]
     test_bwords     = list(map(lambda x: x[0], read_file(test_rareword_list, sp=',')))
@@ -185,24 +185,24 @@ if __name__ == '__main__':
     test_freq_dict  = get_frequence(ref_test_datas, test_bwords)
 
     # baseline
-    error_dict_baseline = get_context_error(ref_test_datas, hyp_baseline_datas, test_blist_idxs, test_bwords)
-    baseline_error_rate = get_sorted_error_rate(error_dict_baseline, train_freq_dict, test_freq_dict)
+    # error_dict_baseline = get_context_error(ref_test_datas, hyp_baseline_datas, test_blist_idxs, test_bwords)
+    # baseline_error_rate = get_sorted_error_rate(error_dict_baseline, train_freq_dict, test_freq_dict)
     # casr
-    error_dict_casr     = get_context_error(ref_test_datas, hyp_casr_datas, test_blist_idxs, test_bwords)
-    casr_error_rate     = get_sorted_error_rate(error_dict_casr, train_freq_dict, test_freq_dict)
+    # error_dict_casr     = get_context_error(ref_test_datas, hyp_casr_datas, test_blist_idxs, test_bwords)
+    # casr_error_rate     = get_sorted_error_rate(error_dict_casr, train_freq_dict, test_freq_dict)
     # our
     error_dict_our      = get_context_error(ref_test_datas, hyp_datas, test_blist_idxs, test_bwords)
     our_error_rate      = get_sorted_error_rate(error_dict_our, train_freq_dict, test_freq_dict)
     
     occurence = np.array(list(train_freq_dict.values()))
-    plot_error_rate(
-        dump_path, 
-        occurence, 
-        baseline_error_rate, 
-        casr_error_rate,
-        our_error_rate, 
-        tag=f'aishell-train-test-error-rate_f{train_gamma_our}_test_f{test_gamma}'
-    )
+    # plot_error_rate(
+    #     dump_path, 
+    #     occurence, 
+    #     baseline_error_rate, 
+    #     casr_error_rate,
+    #     our_error_rate, 
+    #     tag=f'aishell-train-test-error-rate_f{train_gamma_our}_test_f{test_gamma}'
+    # )
 
     shots_dict = {
         'many_shot'  : [4096, 100],
@@ -219,8 +219,8 @@ if __name__ == '__main__':
             if smax >= occurrence and occurrence > smin:
                 shot_bwords[shot].append(bword)
 
-    display_result(shot_bwords, error_dict_baseline, test_freq_dict, tag=f'baseline')
-    display_result(shot_bwords, error_dict_casr, test_freq_dict, tag=f'casr_gammma:{train_gamma_baseline}')
+    # display_result(shot_bwords, error_dict_baseline, test_freq_dict, tag=f'baseline')
+    # display_result(shot_bwords, error_dict_casr, test_freq_dict, tag=f'casr_gammma:{train_gamma_baseline}')
     display_result(shot_bwords, error_dict_our, test_freq_dict, tag=f'our_gammma:{train_gamma_our}')
 
     
