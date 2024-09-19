@@ -79,7 +79,7 @@ class MultiMaxSimInteractor(MultiLateInteractionBasedInteractorABC):
         self.context_subwrod_proj = torch.nn.Linear(input_dim, proj_dim)
         self.context_phoneme_proj = torch.nn.Linear(input_dim, proj_dim)
         self.dropout              = torch.nn.Dropout(p=dropout)
-        self.interaction_dropout  = InteractionDropout(dropout_prob=interaction_dropout)
+        self.interacte_dropout  = InteractionDropout(dropout_prob=interaction_dropout)
 
     def encode_query(self, query):
         query = self.dropout(self.query_proj(query))
@@ -94,7 +94,7 @@ class MultiMaxSimInteractor(MultiLateInteractionBasedInteractorABC):
         return context
 
     def interaction_dropout(self, subword_scores, context_phoneme):
-        return self.interaction_dropout(subword_scores, context_phoneme)
+        return self.interacte_dropout(subword_scores, context_phoneme)
     
     def similarity(self, query, context):
         # (B x T x D), (C x J x D) -> (B x T x C x J)

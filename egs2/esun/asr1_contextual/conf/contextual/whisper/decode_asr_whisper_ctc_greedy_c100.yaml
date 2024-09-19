@@ -20,4 +20,4 @@ contextual_conf:
   gold_context_dropout: 0.0
   sub_context_list_dropout: 0.0
   max_utterance_disrupt_context: 0
-  max_batch_disrupt_context: 10
+  max_batch_disrupt_context: 100
