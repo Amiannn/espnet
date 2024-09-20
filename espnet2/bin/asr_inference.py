@@ -48,8 +48,6 @@ from espnet.nets.beam_search_timesync         import BeamSearchTimeSync
 
 from espnet.nets.beam_search_contextual       import ContextualHypothesis
 from espnet.nets.beam_search_contextual       import ContextualBeamSearch
-from espnet.nets.batch_beam_search_contextual import ContextualBatchBeamSearch
-
 
 from espnet.nets.pytorch_backend.transformer.add_sos_eos import add_sos_eos
 from espnet.nets.pytorch_backend.transformer.subsampling import TooShortUttError
@@ -403,7 +401,7 @@ class Speech2Text:
                         for k, v in beam_search.full_scorers.items()
                         if not isinstance(v, BatchScorerInterface)
                     ]
-                    if len(non_batch) == 0:
+                    if len(non_batch) == 0 and len(contextual_conf) == 0:
                         if streaming:
                             beam_search.__class__ = BatchBeamSearchOnlineSim
                             beam_search.set_streaming_config(asr_train_config)

@@ -97,8 +97,8 @@ class ContextualBeamSearch(BeamSearch):
         
         self.sop = sop
 
-        self.use_ctc_only_deocding = ('decoder' not in self.scorers)
-        if not self.use_ctc_only_deocding:
+        self.use_ctc_only_decoding = ('decoder' not in self.scorers)
+        if not self.use_ctc_only_decoding:
             self.decoder = self.scorers['decoder']
         else:
             self.return_hs = False
@@ -245,7 +245,7 @@ class ContextualBeamSearch(BeamSearch):
             minlen = int(minlenratio * inp.size(0))
         
         # May cause some problem
-        if not self.use_ctc_only_deocding and isinstance(self.scorers['decoder'], OpenAIWhisperDecoder):
+        if not self.use_ctc_only_decoding and isinstance(self.scorers['decoder'], OpenAIWhisperDecoder):
             pos_len = self.scorers['decoder'].decoders.positional_embedding.shape[0]
             if maxlen > pos_len:
                 # logging.info(f'original maxlen: {maxlen}, after: {pos_len}')
@@ -280,8 +280,8 @@ class ContextualBeamSearch(BeamSearch):
                 context_prob, 
                 contexts['context_list_idxs'],
                 idx_blank=0, 
-                top_k=5, 
-                threshold=0.6
+                top_k=100, 
+                threshold=0.01
             )
             # pred_contexts = create_prompt(context_preds, sep_tokens, end_tokens)
 
