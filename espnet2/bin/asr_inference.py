@@ -48,6 +48,8 @@ from espnet.nets.beam_search_timesync         import BeamSearchTimeSync
 
 from espnet.nets.beam_search_contextual       import ContextualHypothesis
 from espnet.nets.beam_search_contextual       import ContextualBeamSearch
+from espnet.nets.batch_beam_search_contextual import ContextualBatchBeamSearch
+
 
 from espnet.nets.pytorch_backend.transformer.add_sos_eos import add_sos_eos
 from espnet.nets.pytorch_backend.transformer.subsampling import TooShortUttError
@@ -395,7 +397,7 @@ class Speech2Text:
 
                 # TODO(karita): make all scorers batchfied
                 # Batch beam search for contextual asr is not supported yet.
-                if batch_size == 1 and len(contextual_conf) == 0:
+                if batch_size == 1:
                     non_batch = [
                         k
                         for k, v in beam_search.full_scorers.items()

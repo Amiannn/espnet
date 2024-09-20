@@ -98,8 +98,8 @@ if __name__ == "__main__":
     # File paths
     spm_path = "./data/token_list/bpe_unigram5000suffix/bpe.model"
     token_path = "./data/token_list/bpe_unigram5000suffix/tokens.txt"
-    model_conf = "./conf/contextual/whisper/train_asr_whisper_medium_lateinteraction_contextual_retriever_balanced_alpha0.8.yaml"
-    model_path = "./exp/asr_whisper/run_medium_lateinteraction_contextual_retriever_balanced_alpha0.8_suffix/valid.loss.ave_10best.pth"
+    model_conf = "./conf/contextual/whisper/train_asr_whisper_medium_multilateinteraction_contextual_retriever.yaml"
+    model_path = "./exp/asr_whisper/run_medium_multilateinteraction_contextual_retriever_suffix/valid.loss.ave_10best.pth"
     stats_path = "./exp/asr_stats_raw_bpe5000_sp_suffix/train/feats_lengths_stats.npz"
     rareword_path = "./local/contextual/rarewords/esun.entity.txt"
     speech_scp_path = "./dump/raw/test/wav.scp"

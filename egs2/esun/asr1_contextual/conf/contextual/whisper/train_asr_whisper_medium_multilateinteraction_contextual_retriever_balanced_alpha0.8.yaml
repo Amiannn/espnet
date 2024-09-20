@@ -34,6 +34,7 @@ input_size: 1                   # to prevent build_model() from complaining
 
 seed: 2022
 log_interval: 100
+log_level: INFO
 num_att_plot: 0
 num_workers: 4
 sort_in_batch: descending       # how to sort data in making batch
@@ -79,38 +80,52 @@ scheduler_conf:
     warmup_steps: 1500
 
 # contextual information settings
-contextual: rareword
+contextual: context_sampler
 contextual_conf:
-    contextual_type: rareword
-    blist_path: ./local/contextual/rarewords/rareword_f65536_train.txt
-    blist_xphone_path: ./local/contextual/ssl_features/rareword_f65536_train.xphone.seq.pt
-    blist_occurrence_path: ./local/contextual/rarewords/rareword_f65536_train_occurrence.txt
-    blist_max: 1000
-    blist_drop_out: 0.0
-    structure_type: null
-    sampling_method: ann_hnw 
-    sampler_drop: 0.1
-    hnwr_pre_gold_length: 2
-    hardness_range: 5
-    use_gpu: False
+    contextual_type: context_sampler
+    # metadata for context list
+    context_list_path: ./local/contextual/rarewords/rareword_f65536_train.txt
+    context_phone_embedding_path: ./local/contextual/ssl_features/rareword_f65536_train.xphone.seq.pt
+    context_list_occurrence_path: ./local/contextual/rarewords/rareword_f65536_train_occurrence.txt
+    # context settings
+    use_no_context_token: true
+    # sampling settings
+    gold_context_dropout: 0.0
+    sub_context_list_dropout: 0.0
+    max_utterance_disrupt_context: 0
+    max_batch_disrupt_context: 1000
+    shuffle_sub_context_list: false
+    # hard negative context settings
+    hnc_sampler_type: null
+    # hnc_per_gold_context: 1
+    # hnc_dropout: 0.2
+    # hnc_hardness_range: 20
+    # hnc_use_gpu: false
+    # nlp prompt setting
+    use_context_prompt: False
+    # context_prompt_has_context_template: "主題為:"
+    # context_prompt_no_context_template: "開始吧"
+    # special structure type
+    sub_context_list_structure_type: null
 
 # contextualizer settings
-contextualizer: contextual_conformer_multilateinteractive_retriever
+contextualizer: multilateinteraction_contextual_retriever
 contextualizer_conf:
-    contextualizer_type: contextual_conformer_multilateinteractive_retriever
-    context_embed_size: 1024
-    context_hidden_size: 1024
-    model_hidden_size: 1024
-    input_hidden_size: 1024
-    proj_hidden_size: 1024
-    attndim: 1024
-    drop_out: 0.1
+    contextualizer_type: multilateinteraction_contextual_retriever
+    query_input_dim: 1024
+    context_input_dim: 1024
+    proj_dim: 1024
+    interaction_proj_dim: 1024
+    dropout: 0.1
+    pad_token_value: -1
+    # contextualizer loss settings
     warmup_epoch: 0
+    embed_share_weight_ctc: true
     contextualizer_weight: 0.5
     contextualizer_losses:
-        loss_contextualizer_ga_ctc: 0.3
-        loss_contextualizer_ga_reweight_lp: 0.7
-    lp_gamma: 0.5
+        loss_contextualizer_ga_ctc: 0.5
+        loss_contextualizer_ga_reweight_lp: 0.5
+    lp_gamma: 0.8
 
 # adapter style training
-freeze_param: ["encoder", "contextualizer.encoder.embed", "contextualizer.encoder.pad_embed"]
+freeze_param: ["encoder", "contextualizer.encoder.pad_embed"]
