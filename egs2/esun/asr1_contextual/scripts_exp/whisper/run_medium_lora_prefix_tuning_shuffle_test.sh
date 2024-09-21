@@ -20,8 +20,8 @@ asr_tag=whisper/run_medium_prefix_tuning_shuffle_test
 # pretrained_model=../asr1/exp/asr_whisper_medium_lora_decoder/3epoch.pth
 CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --nj 5 \
-    --gpu_inference true \
-    --inference_nj 2 \
+    --gpu_inference false \
+    --inference_nj 20 \
     --lang zh \
     --ngpu 1 \
     --token_type whisper_multilingual \

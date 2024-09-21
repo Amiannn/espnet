@@ -46,8 +46,8 @@ nbpe=5000
 
 CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --nj 20 \
-    --gpu_inference true \
-    --inference_nj 5 \
+    --gpu_inference false \
+    --inference_nj 20 \
     --ngpu 1 \
     --stage ${stage} \
     --stop_stage ${stop_stage} \
