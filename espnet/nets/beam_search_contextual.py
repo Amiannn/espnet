@@ -274,8 +274,6 @@ class ContextualBeamSearch(BeamSearch):
             x = encoder_proj.squeeze(0)
 
             # only for whisper model
-            # sep_tokens = [11, 220]
-            # end_tokens = [13, 220]
             context_preds = topk_decode(
                 context_prob, 
                 contexts['context_list_idxs'],
@@ -283,7 +281,7 @@ class ContextualBeamSearch(BeamSearch):
                 top_k=100, 
                 threshold=0.01
             )
-            # pred_contexts = create_prompt(context_preds, sep_tokens, end_tokens)
+            # pred_contexts = create_prompt(context_preds, sep_tokens=[11, 220], end_tokens=[13, 220])
 
         elif self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_ADAPTER_ENCODER:
             logging.info(f'Encoder contextualize!')
