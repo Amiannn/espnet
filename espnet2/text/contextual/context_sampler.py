@@ -30,6 +30,10 @@ from espnet2.text.contextual.structure.trie               import TrieProcessor
 from espnet2.text.abs_tokenizer              import AbsTokenizer
 from espnet2.text.whisper_token_id_converter import OpenAIWhisperTokenIDConverter
 
+seed=2024
+random.seed(seed)
+torch.manual_seed(seed)
+np.random.seed(seed)
 
 def read_file(path):
     datas = []

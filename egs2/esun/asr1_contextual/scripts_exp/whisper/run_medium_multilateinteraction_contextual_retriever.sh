@@ -17,7 +17,7 @@ uttblist_idx_valid="uttblist_idx_f65536.txt"
 uttblist_idx_test="uttblist_idx"
 
 asr_config=conf/contextual/whisper/train_asr_whisper_medium_multilateinteraction_contextual_retriever.yaml
-inference_config=conf/contextual/whisper/decode_asr_whisper_ctc_greedy.yaml
+inference_config=conf/contextual/whisper/decode_asr_whisper_ctc_greedy_c100.yaml
 asr_tag=whisper/run_medium_multilateinteraction_contextual_retriever
 
 
@@ -62,7 +62,7 @@ CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --asr_tag "${asr_tag}" \
     --asr_config "${asr_config}" \
     --inference_config "${inference_config}" \
-    --inference_asr_model 24epoch.pth \
+    --inference_asr_model valid.loss.ave_10best.pth \
     --train_set "${train_set}" \
     --valid_set "${valid_set}" \
     --test_sets "${test_sets}" \
