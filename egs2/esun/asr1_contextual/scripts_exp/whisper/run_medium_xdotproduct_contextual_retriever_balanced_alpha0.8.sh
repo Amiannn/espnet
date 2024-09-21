@@ -14,10 +14,10 @@ test_sets="test"
 
 uttblist_idx_train="uttblist_idx_f65536.txt"
 uttblist_idx_valid="uttblist_idx_f65536.txt"
-uttblist_idx_test="uttblist_idx"
+uttblist_idx_test="uttblist_idx_entity"
 
 asr_config=conf/contextual/whisper/train_asr_whisper_medium_xdotproduct_contextual_retriever_balanced_alpha0.8.yaml
-inference_config=conf/contextual/whisper/decode_asr_whisper_ctc_greedy_c100.yaml
+inference_config=conf/contextual/whisper/decode_asr_whisper_ctc_greedy_c100_entity.yaml
 asr_tag=whisper/run_medium_xdotproduct_contextual_retriever_balanced_alpha0.8
 
 

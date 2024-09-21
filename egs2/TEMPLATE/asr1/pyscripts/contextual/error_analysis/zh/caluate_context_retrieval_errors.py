@@ -1,293 +1,216 @@
 import os
+import argparse
 from collections import defaultdict
+import numpy as np
+from sklearn.metrics import precision_recall_curve, roc_curve, auc, f1_score
 
-from jiwer import cer, wer, mer
+def filter_space(data):
+    return [d for d in data if d != '']
 
-from pyscripts.utils.fileio import read_file, write_file
-from pyscripts.utils.text_aligner import align_to_index
+def read_file(file_path, sp=' '):
+    with open(file_path, 'r', encoding='utf-8') as f:
+        lines = f.readlines()
+    return [line.strip().split(sp) for line in lines]
 
+def average_precision_at_k(relevant_items, retrieved_items, k):
+    """Compute Average Precision at K for a single query"""
+    relevant_set = set(relevant_items)
+    retrieved_list = retrieved_items[:k]
+    score = 0.0
+    num_hits = 0.0
 
-def is_ascii(string):
-    """Check if a string contains only ASCII characters (English letters)."""
-    try:
-        string.encode("ascii")
-        return True
-    except UnicodeEncodeError:
-        return False
+    for i, item in enumerate(retrieved_list):
+        if item in relevant_set:
+            num_hits += 1.0
+            score += num_hits / (i + 1.0)
+    if not relevant_items:
+        return 1.0
+    return score / min(len(relevant_items), k)
 
+def mean_average_precision(relevant_list, retrieved_list, k):
+    """Compute Mean Average Precision at K over all queries"""
+    avg_precisions = []
+    for relevant_items, retrieved_items in zip(relevant_list, retrieved_list):
+        avg_prec = average_precision_at_k(relevant_items, retrieved_items, k)
+        avg_precisions.append(avg_prec)
+    return np.mean(avg_precisions)
 
-def split_non_english_words(words):
-    """
-    Split non-English words into individual characters.
-    Keep English words as they are.
-    """
-    processed = []
-    for word in words:
-        if is_ascii(word):
-            processed.append(word)
-        else:
-            processed.extend(list(word))
-    return processed
+def reciprocal_rank(relevant_items, retrieved_items):
+    """Compute Reciprocal Rank for a single query"""
+    relevant_set = set(relevant_items)
+    for i, item in enumerate(retrieved_items):
+        if item in relevant_set:
+            return 1.0 / (i + 1)
+    return 0.0
 
+def mean_reciprocal_rank(relevant_list, retrieved_list):
+    """Compute Mean Reciprocal Rank over all queries"""
+    rr_scores = []
+    for relevant_items, retrieved_items in zip(relevant_list, retrieved_list):
+        rr = reciprocal_rank(relevant_items, retrieved_items)
+        rr_scores.append(rr)
+    return np.mean(rr_scores)
 
-def concatenate_non_english_chars(words):
-    """
-    Concatenate consecutive non-English characters.
-    Keep English words separated by spaces.
-    """
-    result = []
-    temp_word = ""
-    for word in words:
-        if is_ascii(word):
-            if temp_word:
-                result.append(temp_word)
-                temp_word = ""
-            result.append(word)
-        else:
-            temp_word += word
-    if temp_word:
-        result.append(temp_word)
-    return " ".join(result)
+def dcg_at_k(relevant_items, retrieved_items, k):
+    """Compute Discounted Cumulative Gain at K for a single query"""
+    relevant_set = set(relevant_items)
+    dcg = 0.0
+    for i, item in enumerate(retrieved_items[:k]):
+        if item in relevant_set:
+            dcg += 1.0 / np.log2(i + 2)
+    return dcg
 
+def idcg_at_k(relevant_items, k):
+    """Compute Ideal Discounted Cumulative Gain at K for a single query"""
+    idcg = 0.0
+    for i in range(min(len(relevant_items), k)):
+        idcg += 1.0 / np.log2(i + 2)
+    return idcg
 
-def find_rare_words(sentence, rare_words):
-    """
-    Find rare words in a sentence.
-    For English words, check for exact matches with spaces.
-    For non-English words, check for substring matches without spaces.
-    """
-    found_words = []
-    sentence_no_space = sentence.replace(" ", "")
-    for word in rare_words:
-        if is_ascii(word):
-            if (
-                f" {word} " in sentence
-                or sentence.startswith(f"{word} ")
-                or sentence.endswith(f" {word}")
-                or sentence == word
-            ):
-                found_words.append(word)
-        else:
-            if word in sentence_no_space:
-                found_words.append(word)
-    return found_words
+def ndcg_at_k(relevant_items, retrieved_items, k):
+    """Compute Normalized Discounted Cumulative Gain at K for a single query"""
+    dcg = dcg_at_k(relevant_items, retrieved_items, k)
+    idcg = idcg_at_k(relevant_items, k)
+    if idcg == 0:
+        return 0.0
+    return dcg / idcg
 
+def mean_ndcg(relevant_list, retrieved_list, k):
+    """Compute Mean NDCG at K over all queries"""
+    ndcg_scores = []
+    for relevant_items, retrieved_items in zip(relevant_list, retrieved_list):
+        ndcg = ndcg_at_k(relevant_items, retrieved_items, k)
+        ndcg_scores.append(ndcg)
+    return np.mean(ndcg_scores)
 
-class ASREvaluator:
-    def __init__(self, rare_words_list):
-        self.rare_words = rare_words_list
-        self.initialize_data()
+def precision_at_k(relevant_items, retrieved_items, k):
+    """計算單一查詢的 Precision at K"""
+    relevant_set = set(relevant_items)
+    retrieved_set = set(retrieved_items[:k])
+    return len(relevant_set & retrieved_set) / k
 
-    def initialize_data(self):
-        """Initialize data structures for storing sentences and error patterns."""
-        self.reference_sentences = []
-        self.hypothesis_sentences = []
-        self.ref_rareword_sentences = []
-        self.hyp_rareword_sentences = []
-        self.ref_common_sentences = []
-        self.hyp_common_sentences = []
-        self.ref_rare_english = []
-        self.hyp_rare_english = []
-        self.ref_rare_non_english = []
-        self.hyp_rare_non_english = []
-        self.error_patterns = defaultdict(lambda: defaultdict(int))
-        self.rareword_counts = defaultdict(int)
+def mean_precision_at_k(relevant_list, retrieved_list, k):
+    """計算整個資料集的 Mean Precision at K"""
+    precisions = []
+    for relevant_items, retrieved_items in zip(relevant_list, retrieved_list):
+        prec = precision_at_k(relevant_items, retrieved_items, k)
+        precisions.append(prec)
+    return np.mean(precisions)
 
-    def process_utterance(self, reference, hypothesis):
-        """
-        Process a single reference and hypothesis pair.
-        Updates internal data structures with alignment and error patterns.
-        """
-        ref_id, ref_words = reference
-        hyp_id, hyp_words = hypothesis
+def precision_recall_f1(relevant_items, retrieved_items):
+    """Compute Precision, Recall, and F1 for a single query"""
+    relevant_set = set(relevant_items)
+    retrieved_set = set(retrieved_items)
+    tp = len(relevant_set & retrieved_set)
+    fp = len(retrieved_set - relevant_set)
+    fn = len(relevant_set - retrieved_set)
 
-        if not hyp_words:
-            print(f"Error: Hypothesis for {ref_id} is empty!")
-            return
+    precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+    recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+    f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0.0
 
-        # Find rare words in the reference
-        ref_sentence = " ".join(ref_words)
-        rare_words_in_ref = find_rare_words(ref_sentence, self.rare_words)
+    return precision, recall, f1
 
-        # Align reference and hypothesis words
-        alignment_chunks = align_to_index(ref_words, hyp_words)
+def mean_precision_recall_f1(relevant_list, retrieved_list):
+    """Compute mean Precision, Recall, and F1 over all queries"""
+    precisions = []
+    recalls = []
+    f1_scores = []
+    for relevant_items, retrieved_items in zip(relevant_list, retrieved_list):
+        precision, recall, f1 = precision_recall_f1(relevant_items, retrieved_items)
+        precisions.append(precision)
+        recalls.append(recall)
+        f1_scores.append(f1)
+    mean_precision = np.mean(precisions)
+    mean_recall = np.mean(recalls)
+    mean_f1 = np.mean(f1_scores)
+    return mean_precision, mean_recall, mean_f1
 
-        # Preprocess sentences
-        ref_processed = split_non_english_words(ref_words)
-        hyp_processed = split_non_english_words(hyp_words)
-        self.reference_sentences.append(" ".join(ref_processed))
-        self.hypothesis_sentences.append(" ".join(hyp_processed))
+def compute_roc_auc(y_true_list, y_score_list):
+    """Compute ROC Curve and AUC"""
+    y_true = np.concatenate(y_true_list)
+    y_scores = np.concatenate(y_score_list)
 
-        # Initialize temporary lists for this utterance
-        ref_rare_words = []
-        hyp_rare_words = []
-        ref_common_words = []
-        hyp_common_words = []
-        ref_rare_eng_words = []
-        hyp_rare_eng_words = []
-        ref_rare_non_eng_words = []
-        hyp_rare_non_eng_words = []
-        processed_hyp_indices = set()
+    fpr, tpr, thresholds = roc_curve(y_true, y_scores)
+    roc_auc = auc(fpr, tpr)
 
-        for ref_word, hyp_chunk, _, hyp_indices in alignment_chunks:
-            ref_word_clean = ref_word.replace("-", "")
-            hyp_word_combined = concatenate_non_english_chars(
-                [w.replace("-", "") for w in hyp_chunk]
-            )
-
-            if ref_word_clean in rare_words_in_ref:
-                # Update rare word counts and error patterns
-                self.rareword_counts[ref_word_clean] += 1
-                if ref_word_clean != hyp_word_combined:
-                    self.error_patterns[ref_word_clean][hyp_word_combined] += 1
-
-                ref_rare_words.append(ref_word_clean)
-                hyp_rare_words.append(hyp_word_combined)
-
-                if is_ascii(ref_word_clean):
-                    ref_rare_eng_words.append(ref_word_clean)
-                    hyp_rare_eng_words.append(hyp_word_combined)
-                else:
-                    ref_rare_non_eng_words.append(ref_word_clean)
-                    hyp_rare_non_eng_words.append(hyp_word_combined)
-            elif not processed_hyp_indices.intersection(hyp_indices):
-                ref_common_words.append(ref_word_clean)
-                hyp_common_words.append(hyp_word_combined)
-                processed_hyp_indices.update(hyp_indices)
-
-        # Append processed data for this utterance
-        self.ref_rareword_sentences.append(
-            " ".join(ref_rare_words) if ref_rare_words else "correct"
-        )
-        self.hyp_rareword_sentences.append(
-            " ".join(hyp_rare_words) if hyp_rare_words else "correct"
-        )
-        self.ref_common_sentences.append(
-            " ".join(ref_common_words) if ref_common_words else "correct"
-        )
-        self.hyp_common_sentences.append(
-            " ".join(hyp_common_words) if hyp_common_words else "correct"
-        )
-
-        if ref_rare_eng_words:
-            self.ref_rare_english.append(" ".join(ref_rare_eng_words))
-            self.hyp_rare_english.append(" ".join(hyp_rare_eng_words))
-        if ref_rare_non_eng_words:
-            self.ref_rare_non_english.append(" ".join(ref_rare_non_eng_words))
-            self.hyp_rare_non_english.append(" ".join(hyp_rare_non_eng_words))
-
-    def finalize_sentences(self):
-        """Clean up sentences by splitting non-English words into characters."""
-        def clean(sentences):
-            cleaned = []
-            for sentence in sentences:
-                tokens = split_non_english_words(sentence.split())
-                cleaned.append(" ".join(tokens).strip())
-            return cleaned
-
-        self.ref_rareword_sentences = clean(self.ref_rareword_sentences)
-        self.hyp_rareword_sentences = clean(self.hyp_rareword_sentences)
-        self.ref_common_sentences = clean(self.ref_common_sentences)
-        self.hyp_common_sentences = clean(self.hyp_common_sentences)
-
-    def compute_metrics(self):
-        """Compute MER, WER, and CER for the collected sentences."""
-        self.finalize_sentences()
-
-        self.overall_mer = mer(self.reference_sentences, self.hypothesis_sentences)
-        self.rareword_mer = mer(
-            self.ref_rareword_sentences, self.hyp_rareword_sentences
-        )
-        self.common_mer = mer(self.ref_common_sentences, self.hyp_common_sentences)
-        self.rare_eng_wer = wer(self.ref_rare_english, self.hyp_rare_english)
-        self.rare_non_eng_cer = cer(
-            self.ref_rare_non_english, self.hyp_rare_non_english
-        )
-
-        # Display metrics
-        print(f"Overall MER: {self.overall_mer * 100:.2f}%")
-        print(f"Rare Words MER: {self.rareword_mer * 100:.2f}%")
-        print(f"Common Words MER: {self.common_mer * 100:.2f}%")
-        print(f"Rare English Words WER: {self.rare_eng_wer * 100:.2f}%")
-        print(f"Rare Non-English Words CER: {self.rare_non_eng_cer * 100:.2f}%")
-
-    def save_results(self, output_dir="./exp/test"):
-        """Write processed sentences and error patterns to files."""
-        os.makedirs(output_dir, exist_ok=True)
-
-        # Define file mappings
-        file_data = {
-            "reference_sentences": self.reference_sentences,
-            "hypothesis_sentences": self.hypothesis_sentences,
-            "ref_common_sentences": self.ref_common_sentences,
-            "hyp_common_sentences": self.hyp_common_sentences,
-            "ref_rareword_sentences": self.ref_rareword_sentences,
-            "hyp_rareword_sentences": self.hyp_rareword_sentences,
-            "ref_rare_english": self.ref_rare_english,
-            "hyp_rare_english": self.hyp_rare_english,
-            "ref_rare_non_english": self.ref_rare_non_english,
-            "hyp_rare_non_english": self.hyp_rare_non_english,
-        }
-
-        # Write sentences to files
-        for filename, data in file_data.items():
-            output_path = os.path.join(output_dir, filename)
-            write_file(output_path, [[line] for line in data], sp="")
-
-        # Write error patterns to a TSV file
-        error_pattern_list = []
-        for word, errors in self.error_patterns.items():
-            total_errors = sum(errors.values())
-            frequency = self.rareword_counts[word]
-            error_rate = total_errors / frequency if frequency > 0 else 0.0
-            patterns = [
-                f"{err} ({count})"
-                for err, count in sorted(errors.items(), key=lambda x: x[1], reverse=True)
-            ]
-            error_pattern_list.append(
-                [
-                    word,
-                    str(frequency),
-                    f"{error_rate:.2f}",
-                    str(total_errors),
-                    ", ".join(patterns),
-                ]
-            )
-
-        error_pattern_list.sort(key=lambda x: int(x[1]), reverse=True)
-        output_path = os.path.join(output_dir, "error_patterns.tsv")
-        write_file(output_path, error_pattern_list, sp="\t")
-
-
-def main():
-    # Define file paths
-    rareword_list_path = "./local/contextual/rarewords/rareword_f10_test.txt"
-    reference_path = "./data/test/text"
-    hypothesis_path = (
-        "../asr1/exp/asr_whisper_medium_finetune_lr1e-5_adamw_wd1e-2_3epochs/"
-        "decode_asr_whisper_noctc_greedy_asr_model_valid.acc.ave_3best/test/text"
-    )
-
-    # Read rare words
-    rare_words = [line[0] for line in read_file(rareword_list_path, sp=" ")]
-
-    # Read reference and hypothesis files
-    references = [[line[0], line[1:]] for line in read_file(reference_path, sp=" ")]
-    hypotheses = [
-        [line[0], [word for word in line[1:] if word]]
-        for line in read_file(hypothesis_path, sp=" ")
-    ]
-
-    evaluator = ASREvaluator(rare_words)
-
-    # Process each reference-hypothesis pair
-    for ref, hyp in zip(references, hypotheses):
-        evaluator.process_utterance(ref, hyp)
-
-    # Compute metrics and save results
-    evaluator.compute_metrics()
-    evaluator.save_results()
-
+    return fpr, tpr, roc_auc
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Calculate information retrieval metrics including F1, Recall, Precision, and ROC.")
+    parser.add_argument('--context_list_path', type=str, required=True, help='Path to context list file.')
+    parser.add_argument('--ref_context_path', type=str, required=True, help='Path to reference context file.')
+    parser.add_argument('--hyp_context_path', type=str, required=True, help='Path to hypothesis context file.')
+    parser.add_argument('--hyp_context_prob_path', type=str, required=True, help='Path to hypothesis context probability file.')
+    parser.add_argument('--context_candidate_path', type=str, required=True, help='Path to context candidate file.')
+    parser.add_argument('--k', type=int, default=5, help='Value of K for metrics.')
+    args = parser.parse_args()
+    k = args.k
+
+    context_list_datas     = [d[0] for d in read_file(args.context_list_path, sp=' ')]
+    ref_context_datas      = [d[1:] for d in read_file(args.ref_context_path, sp=' ')]
+    hyp_context_datas      = [filter_space(d[1:]) for d in read_file(args.hyp_context_path, sp=' ')]
+    hyp_context_prob_datas = [list(map(float, filter_space(d[1:]))) for d in read_file(args.hyp_context_prob_path, sp=' ')]
+    context_candidate_datas = [filter_space(d[1:]) for d in read_file(args.context_candidate_path, sp=' ')]
+
+    # Sort the predicted contexts based on probabilities
+    sorted_hyp_context_datas = []
+    sorted_hyp_context_prob_datas = []
+    for hyp_contexts, hyp_probs in zip(hyp_context_datas, hyp_context_prob_datas):
+        hyp_contexts_probs = sorted(zip(hyp_contexts, hyp_probs), key=lambda x: x[1], reverse=True)
+        sorted_hyp_contexts = [ctx for ctx, prob in hyp_contexts_probs]
+        sorted_hyp_probs = [prob for ctx, prob in hyp_contexts_probs]
+        sorted_hyp_context_datas.append(sorted_hyp_contexts)
+        sorted_hyp_context_prob_datas.append(sorted_hyp_probs)
+
+    # Calculate evaluation metrics
+    map_score = mean_average_precision(ref_context_datas, sorted_hyp_context_datas, k)
+    mrr_score = mean_reciprocal_rank(ref_context_datas, sorted_hyp_context_datas)
+    ndcg_score = mean_ndcg(ref_context_datas, sorted_hyp_context_datas, k)
+    precision_k = mean_precision_at_k(ref_context_datas, sorted_hyp_context_datas, k)
+    mean_precision, mean_recall, mean_f1 = mean_precision_recall_f1(ref_context_datas, sorted_hyp_context_datas)
+
+    print(f'Mean Average Precision at {k}: {map_score:.4f}')
+    print(f'Mean Reciprocal Rank: {mrr_score:.4f}')
+    print(f'Mean NDCG at {k}: {ndcg_score:.4f}')
+    print(f'Mean Precision at {k}: {precision_k:.4f}')
+    print(f'Mean Precision: {mean_precision:.4f}')
+    print(f'Mean Recall: {mean_recall:.4f}')
+    print(f'Mean F1 Score: {mean_f1:.4f}')
+
+    # Compute ROC Curve and AUC
+    # Prepare true labels and scores for ROC computation
+    y_true_list = []
+    y_score_list = []
+    all_context_words = set()
+    for candidates in context_candidate_datas:
+        all_context_words.update(candidates)
+
+    all_context_words = list(all_context_words)
+
+    for relevant_items, hyp_contexts, hyp_probs in zip(ref_context_datas, hyp_context_datas, hyp_context_prob_datas):
+        y_true = []
+        y_scores = []
+        # Create a dictionary for quick lookup
+        hyp_context_prob_dict = dict(zip(hyp_contexts, hyp_probs))
+        for word in all_context_words:
+            y_true.append(1 if word in relevant_items else 0)
+            y_scores.append(hyp_context_prob_dict.get(word, 0.0))  # If not predicted, probability is 0.0
+        y_true_list.append(y_true)
+        y_score_list.append(y_scores)
+
+    fpr, tpr, roc_auc = compute_roc_auc(y_true_list, y_score_list)
+    print(f'ROC AUC Score: {roc_auc:.4f}')
+
+    # Optionally, you can plot the ROC Curve
+    # import matplotlib.pyplot as plt
+    # plt.figure()
+    # plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (area = {roc_auc:.2f})')
+    # plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+    # plt.xlim([0.0, 1.0])
+    # plt.ylim([0.0, 1.05])
+    # plt.xlabel('False Positive Rate')
+    # plt.ylabel('True Positive Rate')
+    # plt.title('Receiver Operating Characteristic')
+    # plt.legend(loc="lower right")
+    # plt.show()

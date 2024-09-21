@@ -11,8 +11,8 @@ contextual_conf:
   contextual_type: rareword
   contextual_type: context_sampler
   # metadata for context list
-  context_list_path: ./local/contextual/rarewords/rareword_f10_test.txt
-  context_phone_embedding_path: ./local/contextual/ssl_features/rareword_f10_test.xphone.seq.pt
+  context_list_path: ./local/contextual/rarewords/esun.entity.txt
+  context_phone_embedding_path: ./local/contextual/ssl_features/esun.entity.xphone.seq.pt
   context_list_occurrence_path: null
   # context settings
   use_no_context_token: true
