@@ -435,8 +435,6 @@ class LateInteractionXPhoneContextualRetriever(LateInteractionContextualRetrieve
             context_phone, 
             context_phone_ilens
         )
-        logging.info(f'context_phone: {context_phone.shape}')
-        logging.info(f'context_phone_ilens: {context_phone_ilens.shape}')
 
         context_mean_pho = torch.sum(context_phone, dim=1) / context_phone_ilens.unsqueeze(1)
         if return_mean:

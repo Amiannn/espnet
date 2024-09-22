@@ -15,7 +15,6 @@ def retrieve_ctc_decode(
 ):
     ys_hat  = probs.argmax(dim=-1).cpu()
     ys_prob = probs.max(dim=-1).values.cpu()
-    print(f'ys_prob: {ys_prob}')
     last_idx = ""
     for b in range(ys_hat.shape[0]):
         # y_hat = [x[0] for x in groupby(y)]

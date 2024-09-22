@@ -30,7 +30,7 @@ from espnet2.text.contextual.structure.trie               import TrieProcessor
 from espnet2.text.abs_tokenizer              import AbsTokenizer
 from espnet2.text.whisper_token_id_converter import OpenAIWhisperTokenIDConverter
 
-seed=2024
+seed=2022
 random.seed(seed)
 torch.manual_seed(seed)
 np.random.seed(seed)
@@ -437,6 +437,8 @@ class ContextSampler():
     ):
         speechs        = batch_data['speech']
         speech_lengths = batch_data['speech_lengths']
+        choices = random.choices([1, 2, 3, 4, 5], k=5)
+        logging.info(f'choices: {choices}')
 
         (
             utterance_wise_sub_context_idxs_lists, 
@@ -480,7 +482,7 @@ class ContextSampler():
             context_list=[self.context_list[c] for c in batch_wise_sub_context_idxs_list],
             context_list_idxs=batch_wise_sub_context_ints_lists,
         )
-
+        logging.info(f'outputs context_list: {outputs.context_list}')
         # build phone embeddings
         if self.context_phone_embeddings is not None:
             batch_wise_sub_context_embedding_phone_element_idx = [

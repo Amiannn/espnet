@@ -1018,6 +1018,9 @@ def inference(
 
     # 7 .Start for-loop
     # FIXME(kamo): The output format should be discussed about
+
+    # reset the random seed
+    set_all_random_seed(seed)
     with DatadirWriter(output_dir) as writer:
         for keys, batch in loader:
             contexts = None

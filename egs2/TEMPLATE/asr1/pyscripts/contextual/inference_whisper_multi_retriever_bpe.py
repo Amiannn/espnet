@@ -25,12 +25,6 @@ from espnet2.asr.contextualizer import (
 
 from espnet2.asr.contextualizer.func.contextual_retriever_func import topk_decode, retrieve_ctc_decode
 
-# Seed setting for reproducibility
-seed = 12
-random.seed(seed)
-torch.manual_seed(seed)
-np.random.seed(seed)
-
 # ---- Utility Functions ---- #
 
 def median_filter_tensor(input_tensor, kernel_size):
@@ -99,7 +93,7 @@ if __name__ == "__main__":
     spm_path = "./data/token_list/bpe_unigram5000suffix/bpe.model"
     token_path = "./data/token_list/bpe_unigram5000suffix/tokens.txt"
     model_conf = "./conf/contextual/whisper/train_asr_whisper_medium_multilateinteraction_contextual_retriever.yaml"
-    model_path = "./exp/asr_whisper/run_medium_multilateinteraction_contextual_retriever_suffix/valid.loss.ave_10best.pth"
+    model_path = "./exp/asr_whisper/run_medium_multilateinteraction_contextual_retriever_balanced_alpha0.8_suffix/valid.loss.ave_10best.pth"
     stats_path = "./exp/asr_stats_raw_bpe5000_sp_suffix/train/feats_lengths_stats.npz"
     rareword_path = "./local/contextual/rarewords/esun.entity.txt"
     speech_scp_path = "./dump/raw/test/wav.scp"
@@ -146,7 +140,7 @@ if __name__ == "__main__":
     results = {}
     count = 0
     for data in loader:
-        if count >= 20:
+        if count >= 1:
             break
         count += 1
 
@@ -161,6 +155,7 @@ if __name__ == "__main__":
 
         _biasing_list = [tokenizer.tokens2text([token_list[word] for word in rareword if word != -1]) for rareword in biasing_list]
         biasing_list = _biasing_list
+        print(f'biasing_list:\n{biasing_list}')
 
         tokens = torch.tensor(preprocessor._text_process({'text': text})['text']).long().unsqueeze(0)
 

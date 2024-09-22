@@ -2,7 +2,7 @@ import os
 import math
 import json
 import time as time_
-
+import numpy as np
 import torch
 import random
 
@@ -14,10 +14,6 @@ try:
     import faiss
 except:
     logging.info(f'Warning: Cannot import faiss!')
-
-# seed = 2024
-# random.seed(seed)
-# np.random.seed(seed)
 
 class HardNegativeSampler():
     def __init__(
