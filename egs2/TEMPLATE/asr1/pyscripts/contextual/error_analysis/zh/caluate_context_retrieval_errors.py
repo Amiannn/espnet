@@ -1,11 +1,17 @@
 import os
 import argparse
-from collections import defaultdict
 import numpy as np
-from sklearn.metrics import precision_recall_curve, roc_curve, auc, f1_score
+from sklearn.metrics import (
+    precision_recall_curve,
+    roc_auc_score,
+    f1_score,
+    roc_curve,
+    precision_score,
+    recall_score
+)
 
 def filter_space(data):
-    return [d for d in data if d != '']
+    return [d for d in data if d != '' and d != '⁇']
 
 def read_file(file_path, sp=' '):
     with open(file_path, 'r', encoding='utf-8') as f:
@@ -84,60 +90,64 @@ def mean_ndcg(relevant_list, retrieved_list, k):
     return np.mean(ndcg_scores)
 
 def precision_at_k(relevant_items, retrieved_items, k):
-    """計算單一查詢的 Precision at K"""
+    """Compute Precision at K for a single query"""
     relevant_set = set(relevant_items)
     retrieved_set = set(retrieved_items[:k])
     return len(relevant_set & retrieved_set) / k
 
 def mean_precision_at_k(relevant_list, retrieved_list, k):
-    """計算整個資料集的 Mean Precision at K"""
+    """Compute Mean Precision at K over all queries"""
     precisions = []
     for relevant_items, retrieved_items in zip(relevant_list, retrieved_list):
         prec = precision_at_k(relevant_items, retrieved_items, k)
         precisions.append(prec)
     return np.mean(precisions)
 
-def precision_recall_f1(relevant_items, retrieved_items):
+def precision_recall_f1_per_query(relevant_items, retrieved_items):
     """Compute Precision, Recall, and F1 for a single query"""
     relevant_set = set(relevant_items)
     retrieved_set = set(retrieved_items)
+    # print(f'relevant_set: {relevant_set}')
+    # print(f'retrieved_set: {retrieved_set}')
+    # print(f'_' * 30)
     tp = len(relevant_set & retrieved_set)
     fp = len(retrieved_set - relevant_set)
     fn = len(relevant_set - retrieved_set)
 
-    precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
-    recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
-    f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0.0
+    precision = tp / (tp + fp) if (tp + fp) > 0 else 1.0
+    recall = tp / (tp + fn) if (tp + fn) > 0 else 1.0
+    f1 = 2 * precision * recall / (precision + recall + 1e-8)
 
     return precision, recall, f1
 
-def mean_precision_recall_f1(relevant_list, retrieved_list):
-    """Compute mean Precision, Recall, and F1 over all queries"""
+def macro_precision_recall_f1_at_threshold(ref_context_datas, hyp_context_datas, hyp_context_prob_datas, all_context_words, threshold):
+    """Compute Macro-Averaged Precision, Recall, and F1 at a given threshold"""
     precisions = []
     recalls = []
     f1_scores = []
-    for relevant_items, retrieved_items in zip(relevant_list, retrieved_list):
-        precision, recall, f1 = precision_recall_f1(relevant_items, retrieved_items)
+
+    for i, (relevant_items, hyp_contexts, hyp_probs) in enumerate(zip(ref_context_datas, hyp_context_datas, hyp_context_prob_datas)):
+        # Create a dictionary for quick lookup
+        hyp_context_prob_dict = dict(zip(hyp_contexts, hyp_probs))
+
+        # Determine which words are predicted positive at this threshold
+        retrieved_items = [word for word in all_context_words if hyp_context_prob_dict.get(word, 0.0) >= threshold]
+
+        # Compute Precision, Recall, F1 for this query
+        precision, recall, f1 = precision_recall_f1_per_query(relevant_items, retrieved_items)
         precisions.append(precision)
         recalls.append(recall)
         f1_scores.append(f1)
+
+    # Compute macro-averaged scores
     mean_precision = np.mean(precisions)
     mean_recall = np.mean(recalls)
     mean_f1 = np.mean(f1_scores)
+
     return mean_precision, mean_recall, mean_f1
 
-def compute_roc_auc(y_true_list, y_score_list):
-    """Compute ROC Curve and AUC"""
-    y_true = np.concatenate(y_true_list)
-    y_scores = np.concatenate(y_score_list)
-
-    fpr, tpr, thresholds = roc_curve(y_true, y_scores)
-    roc_auc = auc(fpr, tpr)
-
-    return fpr, tpr, roc_auc
-
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Calculate information retrieval metrics including F1, Recall, Precision, and ROC.")
+    parser = argparse.ArgumentParser(description="Calculate information retrieval metrics including Macro-Averaged Precision, Recall, and F1 at different thresholds.")
     parser.add_argument('--context_list_path', type=str, required=True, help='Path to context list file.')
     parser.add_argument('--ref_context_path', type=str, required=True, help='Path to reference context file.')
     parser.add_argument('--hyp_context_path', type=str, required=True, help='Path to hypothesis context file.')
@@ -148,10 +158,12 @@ if __name__ == "__main__":
     k = args.k
 
     context_list_datas     = [d[0] for d in read_file(args.context_list_path, sp=' ')]
-    ref_context_datas      = [d[1:] for d in read_file(args.ref_context_path, sp=' ')]
+    ref_context_datas      = [list(map(int, filter_space(d[1:]))) for d in read_file(args.ref_context_path, sp=' ')]
     hyp_context_datas      = [filter_space(d[1:]) for d in read_file(args.hyp_context_path, sp=' ')]
     hyp_context_prob_datas = [list(map(float, filter_space(d[1:]))) for d in read_file(args.hyp_context_prob_path, sp=' ')]
     context_candidate_datas = [filter_space(d[1:]) for d in read_file(args.context_candidate_path, sp=' ')]
+
+    ref_context_datas      = [list(map(lambda x: context_list_datas[x], d)) for d in ref_context_datas]
 
     # Sort the predicted contexts based on probabilities
     sorted_hyp_context_datas = []
@@ -163,54 +175,71 @@ if __name__ == "__main__":
         sorted_hyp_context_datas.append(sorted_hyp_contexts)
         sorted_hyp_context_prob_datas.append(sorted_hyp_probs)
 
+    # Prepare data for overall ROC AUC computation
+    # Collect all unique keywords
+    all_context_words = set()
+    for candidates in context_candidate_datas:
+        all_context_words.update(candidates)
+    all_context_words = list(all_context_words)
+
     # Calculate evaluation metrics
     map_score = mean_average_precision(ref_context_datas, sorted_hyp_context_datas, k)
     mrr_score = mean_reciprocal_rank(ref_context_datas, sorted_hyp_context_datas)
     ndcg_score = mean_ndcg(ref_context_datas, sorted_hyp_context_datas, k)
     precision_k = mean_precision_at_k(ref_context_datas, sorted_hyp_context_datas, k)
-    mean_precision, mean_recall, mean_f1 = mean_precision_recall_f1(ref_context_datas, sorted_hyp_context_datas)
+    mean_precision, mean_recall, mean_f1 = macro_precision_recall_f1_at_threshold(
+        ref_context_datas,
+        sorted_hyp_context_datas,
+        sorted_hyp_context_prob_datas,
+        all_context_words,
+        threshold=0.5  # Default threshold for initial metrics
+    )
 
     print(f'Mean Average Precision at {k}: {map_score:.4f}')
     print(f'Mean Reciprocal Rank: {mrr_score:.4f}')
     print(f'Mean NDCG at {k}: {ndcg_score:.4f}')
     print(f'Mean Precision at {k}: {precision_k:.4f}')
-    print(f'Mean Precision: {mean_precision:.4f}')
-    print(f'Mean Recall: {mean_recall:.4f}')
-    print(f'Mean F1 Score: {mean_f1:.4f}')
+    print(f'Macro-Averaged Precision at threshold 0.5: {mean_precision:.4f}')
+    print(f'Macro-Averaged Recall at threshold 0.5: {mean_recall:.4f}')
+    print(f'Macro-Averaged F1 Score at threshold 0.5: {mean_f1:.4f}')
 
-    # Compute ROC Curve and AUC
-    # Prepare true labels and scores for ROC computation
-    y_true_list = []
-    y_score_list = []
-    all_context_words = set()
-    for candidates in context_candidate_datas:
-        all_context_words.update(candidates)
+    # Initialize lists to hold global y_true and y_scores
+    global_y_true = []
+    global_y_scores = []
 
-    all_context_words = list(all_context_words)
-
-    for relevant_items, hyp_contexts, hyp_probs in zip(ref_context_datas, hyp_context_datas, hyp_context_prob_datas):
-        y_true = []
-        y_scores = []
+    for i, (relevant_items, hyp_contexts, hyp_probs) in enumerate(zip(ref_context_datas, hyp_context_datas, hyp_context_prob_datas)):
         # Create a dictionary for quick lookup
         hyp_context_prob_dict = dict(zip(hyp_contexts, hyp_probs))
+        # For each keyword
         for word in all_context_words:
-            y_true.append(1 if word in relevant_items else 0)
-            y_scores.append(hyp_context_prob_dict.get(word, 0.0))  # If not predicted, probability is 0.0
-        y_true_list.append(y_true)
-        y_score_list.append(y_scores)
+            # y_true: 1 if word in relevant_items else 0
+            y_true = 1 if word in relevant_items else 0
+            # y_score: hyp_context_prob_dict.get(word, 0.0)
+            y_score = hyp_context_prob_dict.get(word, 0.0)
+            global_y_true.append(y_true)
+            global_y_scores.append(y_score)
 
-    fpr, tpr, roc_auc = compute_roc_auc(y_true_list, y_score_list)
-    print(f'ROC AUC Score: {roc_auc:.4f}')
+    # Convert lists to numpy arrays
+    global_y_true = np.array(global_y_true)
+    global_y_scores = np.array(global_y_scores)
 
-    # Optionally, you can plot the ROC Curve
-    # import matplotlib.pyplot as plt
-    # plt.figure()
-    # plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (area = {roc_auc:.2f})')
-    # plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
-    # plt.xlim([0.0, 1.0])
-    # plt.ylim([0.0, 1.05])
-    # plt.xlabel('False Positive Rate')
-    # plt.ylabel('True Positive Rate')
-    # plt.title('Receiver Operating Characteristic')
-    # plt.legend(loc="lower right")
-    # plt.show()
+    # Step 1: Compute ROC AUC
+    if len(np.unique(global_y_true)) > 1:
+        roc_auc = roc_auc_score(global_y_true, global_y_scores)
+        print(f"Overall ROC AUC: {roc_auc:.4f}")
+    else:
+        print("Cannot compute ROC AUC because only one class is present in y_true.")
+
+    # Define thresholds from 0 to 1 in steps of 0.1
+    thresholds = np.arange(0.0, 1.01, 0.1)
+
+    # print("\nThreshold\tMacro Precision\tMacro Recall\tMacro F1 Score")
+    # for thresh in thresholds:
+    #     mean_precision, mean_recall, mean_f1 = macro_precision_recall_f1_at_threshold(
+    #         ref_context_datas,
+    #         sorted_hyp_context_datas,
+    #         sorted_hyp_context_prob_datas,
+    #         all_context_words,
+    #         threshold=thresh
+    #     )
+    #     print(f"{thresh:.1f}\t\t{mean_precision:.4f}\t\t{mean_recall:.4f}\t\t{mean_f1:.4f}")
