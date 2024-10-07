@@ -31,7 +31,7 @@ def add_sos_eos(ys_pad, sos, eos, ignore_id):
     return pad_list(ys_in, eos), pad_list(ys_out, ignore_id)
 
 def add_sop_sos_eos(ys_pad, prompts, sop, sos, eos, ignore_id):
-    """Add <sos> and <eos> labels.
+    """Add <sop>, <sos> and <eos> labels.
 
     :param torch.Tensor ys_pad: batch of padded target sequences (B, Lmax)
     :param int sos: index of <sos>

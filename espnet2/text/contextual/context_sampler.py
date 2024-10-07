@@ -77,6 +77,10 @@ class ContextSampler():
         token_id_converter: object,
         text_cleaner      : object,
         pad_token_value   : int,
+        # prompt tokenization settings
+        prompt_tokenizer         : AbsTokenizer,
+        prompt_token_id_converter: object,
+        prompt_text_cleaner      : object,
         # ASR model
         asr_model: object,
         # metadata for context list
@@ -116,6 +120,16 @@ class ContextSampler():
             self.token_id_converter_fn = self.token_id_converter.tokens2ids_withoutprompt
         else:
             self.token_id_converter_fn = self.token_id_converter.tokens2ids
+
+        # prompt tokenization settings
+        self.prompt_tokenizer          = prompt_tokenizer
+        self.prompt_token_id_converter = prompt_token_id_converter
+        self.prompt_text_cleaner       = prompt_text_cleaner
+
+        if isinstance(self.prompt_token_id_converter, OpenAIWhisperTokenIDConverter):
+            self.prompt_token_id_converter_fn = self.prompt_token_id_converter.tokens2ids_withoutprompt
+        else:
+            self.prompt_token_id_converter_fn = self.prompt_token_id_converter.tokens2ids
 
         # ASR model settings
         self.asr_model = asr_model
@@ -211,6 +225,13 @@ class ContextSampler():
             text = self.text_cleaner(text)
         tokens    = self.tokenizer.text2tokens(text)
         text_ints = self.token_id_converter_fn(tokens)
+        return text_ints
+
+    def prompt_text2int(self, text, text_clean=True):
+        if text_clean:
+            text = self.prompt_text_cleaner(text)
+        tokens    = self.prompt_tokenizer.text2tokens(text)
+        text_ints = self.prompt_token_id_converter_fn(tokens)
         return text_ints
 
     def load_context_list(self, path):
@@ -322,31 +343,46 @@ class ContextSampler():
     def construct_prompt_labels(
         self,
         utterance_wise_sub_context_lists,
-        outputs: ContextSampleOutput,
+        outputs: ContextSampleOutput=None,
+        has_confidence: bool=False
     ):
         context_prompts        = []
         context_prompt_tensors = []
         for i in range(len(utterance_wise_sub_context_lists)):
-            elements = [{
-                "idx"       : idx,
-                "confidence": 0.0,
-                "position"  : [0.0, 0.0], 
-            } for idx in utterance_wise_sub_context_lists[i]]
+            if not has_confidence:
+                elements = [{
+                    "idx"       : idx,
+                    "confidence": None,
+                    "position"  : None, 
+                } for idx in utterance_wise_sub_context_lists[i]]
+            else:
+                elements = [{
+                    "idx"       : idx,
+                    "confidence": score,
+                    "position"  : pos, 
+                } for idx, pos, score in utterance_wise_sub_context_lists[i]]
 
             context_prompt        = self.prompter.build_training_prompt(elements)
-            context_prompt_tensor = torch.tensor(self.text2int(context_prompt, text_clean=False)).to(torch.int64)
+            context_prompt_tensor = torch.tensor(self.prompt_text2int(context_prompt, text_clean=False)).to(torch.int64)
             context_prompts.append(context_prompt)
             context_prompt_tensors.append(context_prompt_tensor)
 
         context_prompt_template, no_context_prompt_template = self.prompter.build_inference_prompt()
-        context_prompt_template_tensor    = torch.tensor(self.text2int(context_prompt_template, text_clean=False)).to(torch.int64)
-        no_context_prompt_template_tensor = torch.tensor(self.text2int(no_context_prompt_template, text_clean=False)).to(torch.int64)
+        context_prompt_template_tensor    = torch.tensor(self.prompt_text2int(context_prompt_template, text_clean=False)).to(torch.int64)
+        no_context_prompt_template_tensor = torch.tensor(self.prompt_text2int(no_context_prompt_template, text_clean=False)).to(torch.int64)
         
-        outputs.nlp_prompt                     = context_prompts
-        outputs.nlp_prompt_tensor              = context_prompt_tensors
-        outputs.nlp_prompt_context_template    = context_prompt_template_tensor
-        outputs.nlp_prompt_no_context_template = no_context_prompt_template_tensor
-
+        if outputs is not None:
+            outputs.nlp_prompt                     = context_prompts
+            outputs.nlp_prompt_tensor              = context_prompt_tensors
+            outputs.nlp_prompt_context_template    = context_prompt_template_tensor
+            outputs.nlp_prompt_no_context_template = no_context_prompt_template_tensor
+        return (
+            context_prompts,
+            context_prompt_tensors,
+            context_prompt_template_tensor,
+            no_context_prompt_template_tensor,
+        )
+    
     def context_sampling(
         self, 
         utterance_wise_gold_contexts, 
@@ -437,8 +473,6 @@ class ContextSampler():
     ):
         speechs        = batch_data['speech']
         speech_lengths = batch_data['speech_lengths']
-        choices = random.choices([1, 2, 3, 4, 5], k=5)
-        logging.info(f'choices: {choices}')
 
         (
             utterance_wise_sub_context_idxs_lists, 
@@ -480,9 +514,8 @@ class ContextSampler():
             blist_idxs=batch_wise_sub_context_idxs_list,
             ilens=batch_wise_sub_context_ints_tensor_lens,
             context_list=[self.context_list[c] for c in batch_wise_sub_context_idxs_list],
-            context_list_idxs=batch_wise_sub_context_ints_lists,
+            context_list_idxs=batch_wise_sub_context_idxs_list,
         )
-        logging.info(f'outputs context_list: {outputs.context_list}')
         # build phone embeddings
         if self.context_phone_embeddings is not None:
             batch_wise_sub_context_embedding_phone_element_idx = [

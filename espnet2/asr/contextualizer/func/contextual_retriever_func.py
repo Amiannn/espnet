@@ -55,8 +55,19 @@ def topk_decode(
 
     indexis = torch.argsort(target, descending=True)[:top_k]
     indexis = [i for i in indexis if target[i] >= threshold]
-    result  = [[i.item(), token_list[i], target[i].item()] for i in indexis]
-    return result
+    result     = [[i.item(), token_list[i], target[i].item()] for i in indexis]
+    result_idx = {d[0]: d for d in result}
+
+    # keep the position
+    result_inplace = []
+    trace    = []
+    ys_hat   = probs[0].argmax(dim=-1).cpu()
+    for t in range(ys_hat.shape[0]):
+        idx = int(ys_hat[t])
+        if (idx != idx_blank) and (idx not in trace) and (idx in result_idx):
+            result_inplace.append(result_idx[idx])
+            trace.append(idx)
+    return result_inplace
 
 def create_prompt(pred_tokens, sep_tokens, end_tokens):
     hyp = []

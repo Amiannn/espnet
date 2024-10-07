@@ -172,6 +172,10 @@ uttblist_idx_train=
 uttblist_idx_valid=
 uttblist_idx_test=
 
+context_bpemodel=
+context_token_type=
+context_token_list=
+
 help_message=$(cat << EOF
 Usage: $0 --train-set "<train_set_name>" --valid-set "<valid_set_name>" --test_sets "<test_set_names>"
 
@@ -450,6 +454,26 @@ else
     lm_token_type="${token_type}"
 fi
 
+if [ -z "$context_bpemodel" ]; then
+  context_bpemodel="$bpemodel"
+  echo "context_bpemodel is empty, setting to: $context_bpemodel"
+else
+  echo "context_bpemodel is already set to: $context_bpemodel"
+fi
+
+if [ -z "$context_token_type" ]; then
+  context_token_type="$token_type"
+  echo "context_token_type is empty, setting to: $context_token_type"
+else
+  echo "context_token_type is already set to: $context_token_type"
+fi
+
+if [ -z "$context_token_list" ]; then
+  context_token_list="$token_list"
+  echo "context_token_list is empty, setting to: $context_token_list"
+else
+  echo "context_token_list is already set to: $context_token_list"
+fi
 
 # Set tag for naming of model directory
 if [ -z "${asr_tag}" ]; then
@@ -1307,6 +1331,10 @@ if [ ${stage} -le 10 ] && [ ${stop_stage} -ge 10 ] && ! [[ " ${skip_stages} " =~
             --train_shape_file "${_logdir}/train.JOB.scp" \
             --valid_shape_file "${_logdir}/valid.JOB.scp" \
             --output_dir "${_logdir}/stats.JOB" \
+            --context_bpemodel "${context_bpemodel}" \
+            --context_token_type "${context_token_type}" \
+            --context_token_list "${context_token_list}" \
+            --cleaner "${cleaner}" \
             ${_opts} ${asr_args} || { cat $(grep -l -i error "${_logdir}"/stats.*.log) ; exit 1; }
 
     # 4. Aggregate shape files
@@ -1473,6 +1501,9 @@ if [ ${stage} -le 11 ] && [ ${stop_stage} -ge 11 ] && ! [[ " ${skip_stages} " =~
             --non_linguistic_symbols "${nlsyms_txt}" \
             --cleaner "${cleaner}" \
             --g2p "${g2p}" \
+            --context_bpemodel "${context_bpemodel}" \
+            --context_token_type "${context_token_type}" \
+            --context_token_list "${context_token_list}" \
             --valid_data_path_and_name_and_type "${_asr_valid_dir}/${_scp},speech,${_type}" \
             --valid_shape_file "${asr_stats_dir}/valid/speech_shape" \
             --resume true \
