@@ -421,7 +421,7 @@ class ContextSampler():
                 batch_wise_sub_context_list + rand_distractors
             )
 
-        # remove repeat contexts
+        # remove repeated contexts
         utterance_wise_sub_context_lists = [
             list(OrderedSet(context)) for context in utterance_wise_sub_context_lists
         ]
@@ -482,7 +482,7 @@ class ContextSampler():
             context_list=[self.context_list[c] for c in batch_wise_sub_context_idxs_list],
             context_list_idxs=batch_wise_sub_context_ints_lists,
         )
-        logging.info(f'outputs context_list: {outputs.context_list}')
+
         # build phone embeddings
         if self.context_phone_embeddings is not None:
             batch_wise_sub_context_embedding_phone_element_idx = [

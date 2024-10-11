@@ -27,13 +27,42 @@ from espnet2.asr.contextualizer.func.contextual_retriever_func import topk_decod
 
 # ---- Utility Functions ---- #
 
-def median_filter_tensor(input_tensor, kernel_size):
-    """Applies a median filter over a tensor"""
-    B, T, C = input_tensor.shape
-    pad = kernel_size // 2
-    input_tensor_padded = F.pad(input_tensor, (0, 0, pad, pad), mode='reflect')
-    unfolded = input_tensor_padded.unfold(1, kernel_size, 1)
-    return torch.median(unfolded, dim=2).values
+import torch
+import torch.nn.functional as F
+
+def median_filter_over_time(attention_maps, window_size):
+    """
+    Applies a median filter over the time dimension of attention maps.
+
+    Parameters:
+    - attention_maps (Tensor): Input tensor of shape [Batch, Time_length, Keywords].
+    - window_size (int): The size of the median filter window (must be an odd integer).
+
+    Returns:
+    - Tensor: The filtered attention maps with the same shape as the input.
+    """
+    assert window_size % 2 == 1, "Window size must be odd."
+    pad_size = (window_size - 1) // 2
+    # Permute the tensor to bring the time dimension to the last
+    attention_maps_permuted = attention_maps.permute(0, 2, 1)  # Shape: [Batch, Keywords, Time_length]
+    # Pad the time dimension (now the last dimension)
+    padded_attention_maps = F.pad(
+        attention_maps_permuted,
+        pad=(pad_size, pad_size),  # Pad the last dimension (Time_length)
+        mode='reflect'             # Options: 'reflect', 'replicate', 'constant'
+    )
+    # Unfold the time dimension to create sliding windows
+    # The resulting shape will be [Batch, Keywords, Time_length, window_size]
+    windows = padded_attention_maps.unfold(
+        dimension=2,        # The time dimension (now the last dimension)
+        size=window_size,   # Window size
+        step=1              # Move one time step at a time
+    )
+    # Compute the median over the window dimension
+    medians = windows.median(dim=3).values  # Shape: [Batch, Keywords, Time_length]
+    # Permute back to the original shape
+    medians = medians.permute(0, 2, 1)  # Shape: [Batch, Time_length, Keywords]
+    return medians
 
 def get_token_list(token_id_converter):
     """Retrieve token list from the token ID converter"""
@@ -69,8 +98,12 @@ def forward(model, speech, speech_length, context_data, tokens, text, token_list
         
         # context_prob_sw = torch.softmax(model.contextualizer.retriever.sw_score, dim=-1)
         # context_prob_pho = torch.softmax(model.contextualizer.retriever.ph_score, dim=-1)
-
-        prediction = topk_decode(context_probabilities, biasing_list, idx_blank=0, top_k=5, threshold=0.9)
+        # context_probabilities = torch.softmax(model.contextualizer.retriever.subword_scores, dim=-1)
+        context_probabilities = torch.softmax(median_filter_over_time(
+            model.contextualizer.retriever.subword_scores + model.contextualizer.retriever.phoneme_scores, 
+            7
+        ), dim=-1)
+        prediction = topk_decode(context_probabilities, biasing_list, idx_blank=0, top_k=5, threshold=0.5)
     
     ctc_prediction = None
     if model.ctc is not None:
@@ -92,7 +125,7 @@ if __name__ == "__main__":
     # File paths
     spm_path = "./data/token_list/bpe_unigram5000suffix/bpe.model"
     token_path = "./data/token_list/bpe_unigram5000suffix/tokens.txt"
-    model_conf = "./conf/contextual/whisper/train_asr_whisper_medium_multilateinteraction_contextual_retriever.yaml"
+    model_conf = "./conf/contextual/whisper/train_asr_whisper_medium_multilateinteraction_contextual_retriever_balanced_alpha0.8.yaml"
     model_path = "./exp/asr_whisper/run_medium_multilateinteraction_contextual_retriever_balanced_alpha0.8_suffix/valid.loss.ave_10best.pth"
     stats_path = "./exp/asr_stats_raw_bpe5000_sp_suffix/train/feats_lengths_stats.npz"
     rareword_path = "./local/contextual/rarewords/esun.entity.txt"
@@ -116,7 +149,7 @@ if __name__ == "__main__":
         'contextual_type': 'context_sampler',
         'context_list_path': rareword_path,
         'context_phone_embedding_path': biasing_list_xphone_path,
-        'max_batch_disrupt_context': 100,
+        'max_batch_disrupt_context': 50,
         'sub_context_list_dropout': 0.0,
         'warmup_epoch': 0,
         'use_no_context_token': True,
@@ -140,7 +173,7 @@ if __name__ == "__main__":
     results = {}
     count = 0
     for data in loader:
-        if count >= 1:
+        if count >= 20:
             break
         count += 1
 
