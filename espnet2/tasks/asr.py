@@ -280,6 +280,12 @@ class ASRTask(AbsTask):
             help="A text mapping int-id to token",
         )
         group.add_argument(
+            "--context_token_list",
+            type=str_or_none,
+            default=None,
+            help="A text mapping int-id to context token",
+        )
+        group.add_argument(
             "--init",
             type=lambda x: str_or_none(x.lower()),
             default=None,
@@ -349,7 +355,28 @@ class ASRTask(AbsTask):
             help="The text will be tokenized " "in the specified level token",
         )
         group.add_argument(
+            "--context_token_type",
+            type=str,
+            default="bpe",
+            choices=[
+                "bpe",
+                "char",
+                "word",
+                "phn",
+                "hugging_face",
+                "whisper_en",
+                "whisper_multilingual",
+            ],
+            help="The text will be tokenized " "in the specified level token",
+        )
+        group.add_argument(
             "--bpemodel",
+            type=str_or_none,
+            default=None,
+            help="The model file of sentencepiece",
+        )
+        group.add_argument(
+            "--context_bpemodel",
             type=str_or_none,
             default=None,
             help="The model file of sentencepiece",
@@ -361,6 +388,20 @@ class ASRTask(AbsTask):
         )
         group.add_argument(
             "--cleaner",
+            type=str_or_none,
+            choices=[
+                None,
+                "tacotron",
+                "jaconv",
+                "vietnamese",
+                "whisper_en",
+                "whisper_basic",
+            ],
+            default=None,
+            help="Apply text cleaning",
+        )
+        group.add_argument(
+            "--context_cleaner",
             type=str_or_none,
             choices=[
                 None,
@@ -520,6 +561,63 @@ class ASRTask(AbsTask):
         return retval
 
     @classmethod
+    def build_preprocess_for_context_sampler_fn(
+        cls, args: argparse.Namespace, train: bool
+    ) -> Optional[Callable[[str, Dict[str, np.array]], Dict[str, np.ndarray]]]:
+        assert check_argument_types()
+        if args.use_preprocessor:
+            try:
+                _ = getattr(args, "preprocessor")
+            except AttributeError:
+                setattr(args, "preprocessor", "default")
+                setattr(args, "preprocessor_conf", dict())
+            except Exception as e:
+                raise e
+            logging.info(f'args.token_list: {args.context_token_list}')
+            preprocessor_class = preprocessor_choices.get_class(args.preprocessor)
+            retval = preprocessor_class(
+                train=train,
+                token_type=args.context_token_type,
+                token_list=args.context_token_list,
+                bpemodel=args.context_bpemodel,
+                non_linguistic_symbols=args.non_linguistic_symbols,
+                text_cleaner=args.context_cleaner,
+                g2p_type=args.g2p,
+                # NOTE(kamo): Check attribute existence for backward compatibility
+                rir_scp=args.rir_scp if hasattr(args, "rir_scp") else None,
+                rir_apply_prob=args.rir_apply_prob
+                if hasattr(args, "rir_apply_prob")
+                else 1.0,
+                noise_scp=args.noise_scp if hasattr(args, "noise_scp") else None,
+                noise_apply_prob=args.noise_apply_prob
+                if hasattr(args, "noise_apply_prob")
+                else 1.0,
+                noise_db_range=args.noise_db_range
+                if hasattr(args, "noise_db_range")
+                else "13_15",
+                short_noise_thres=args.short_noise_thres
+                if hasattr(args, "short_noise_thres")
+                else 0.5,
+                speech_volume_normalize=args.speech_volume_normalize
+                if hasattr(args, "rir_scp")
+                else None,
+                aux_task_names=args.aux_ctc_tasks
+                if hasattr(args, "aux_ctc_tasks")
+                else None,
+                use_lang_prompt=args.use_lang_prompt
+                if hasattr(args, "use_lang_prompt")
+                else None,
+                **args.preprocessor_conf,
+                use_nlp_prompt=args.use_nlp_prompt
+                if hasattr(args, "use_nlp_prompt")
+                else None,
+            )
+        else:
+            retval = None
+        assert check_return_type(retval)
+        return retval
+
+    @classmethod
     def required_data_names(
         cls, train: bool = True, inference: bool = False
     ) -> Tuple[str, ...]:
@@ -593,21 +691,25 @@ class ASRTask(AbsTask):
             )
         elif contextual_type == "context_sampler":
             preprocessor = cls.build_preprocess_fn(args, train=True)
+            context_preprocessor = cls.build_preprocess_for_context_sampler_fn(args, train=True)
             contextual_processor = contextual_class(
-                tokenizer=preprocessor.tokenizer,
-                token_id_converter=preprocessor.token_id_converter,
-                text_cleaner=preprocessor.text_cleaner,
+                tokenizer=context_preprocessor.tokenizer,
+                token_id_converter=context_preprocessor.token_id_converter,
+                text_cleaner=context_preprocessor.text_cleaner,
+                prompt_tokenizer=preprocessor.tokenizer,
+                prompt_token_id_converter=preprocessor.token_id_converter,
+                prompt_text_cleaner=preprocessor.text_cleaner,
                 pad_token_value=-1,
                 asr_model=model,
-                no_context_token_value=len(args.token_list),
+                no_context_token_value=len(args.context_token_list),
                 **args.contextual_conf,
             )
         return contextual_processor
 
     @classmethod
     def build_model(cls, args: argparse.Namespace) -> ESPnetASRModel:
-        logging.info(f'args: {args}')
         assert check_argument_types()
+        logging.info(f'args.token_list: {args.token_list}')
         if isinstance(args.token_list, str):
             with open(args.token_list, encoding="utf-8") as f:
                 token_list = [line.rstrip() for line in f]
@@ -618,6 +720,15 @@ class ASRTask(AbsTask):
             token_list = list(args.token_list)
         else:
             raise RuntimeError("token_list must be str or list")
+
+        if isinstance(args.context_token_list, str):
+            with open(args.context_token_list, encoding="utf-8") as f:
+                context_token_list = [line.rstrip() for line in f]
+            args.context_token_list = list(context_token_list)
+        elif isinstance(args.context_token_list, (tuple, list)):
+            context_token_list = list(args.context_token_list)
+        else:
+            raise RuntimeError("context_token_list must be str or list")
 
         # If use multi-blank transducer criterion,
         # big blank symbols are added just before the standard blank
@@ -631,6 +742,8 @@ class ASRTask(AbsTask):
 
         vocab_size = len(token_list)
         logging.info(f"Vocabulary size: {vocab_size }")
+        context_vocab_size = len(context_token_list)
+        logging.info(f"Context Vocabulary size: {context_vocab_size }")
 
         # 1. frontend
         if args.input_size is None:
@@ -720,7 +833,7 @@ class ASRTask(AbsTask):
         ctc_lo_fn = None
         contextualizer_conf = getattr(args, "contextualizer_conf", {})
         if contextualizer_conf != {}:
-            contextualizer = cls.build_contextualizer(vocab_size, args)
+            contextualizer = cls.build_contextualizer(context_vocab_size, args)
             if "embed_share_weight_ctc" in contextualizer_conf and contextualizer_conf['embed_share_weight_ctc']:
                 ctc_lo_fn = CustomLinear(
                     embedding=contextualizer.context_encoder.embed,
@@ -769,6 +882,7 @@ class ASRTask(AbsTask):
                 args,
                 model
             )
+            model.context_sampler = cls.contextual_processor
         else:
             cls.contextual_processor = None
 

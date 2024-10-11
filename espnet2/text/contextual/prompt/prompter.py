@@ -30,16 +30,20 @@ class WhisperPrompter():
                 "position": (float, float), -> position of this context element
             }
         """
-        elements     = elements.copy()
+        elements = elements.copy()
         element_idxs = [e['idx'] for e in elements]
-        logging.info(f'element_idxs: {element_idxs}')
         
         if len(element_idxs) == 0:
             nlp_prompt = self.prompt_template_no_context
         else:
-            if self.do_context_shuffle:
-                random.shuffle(element_idxs)
-            contexts   = ",".join([self.id2context[e] for e in element_idxs])
+            if elements[0]['confidence'] is not None:
+                elements_confidence = [e['confidence'] for e in elements]
+                # contexts = ",".join([f'{self.id2context[e]}({int(s*100)})' for e, s in zip(element_idxs, elements_confidence)])
+                contexts = ",".join([f'{self.id2context[e]}' for e, s in zip(element_idxs, elements_confidence)])
+            else:
+                if self.do_context_shuffle:
+                    random.shuffle(element_idxs)
+                contexts   = ",".join([self.id2context[e] for e in element_idxs])
             nlp_prompt = f'{self.prompt_template_context}{contexts}'
         return nlp_prompt
 

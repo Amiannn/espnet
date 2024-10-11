@@ -39,6 +39,12 @@ from espnet2.asr.contextualizer import (
     CONTEXTUAL_ADAPTER_DECODER
 )
 
+from espnet2.asr.contextualizer.func.contextual_retriever_func import (
+    retrieve_ctc_decode, 
+    topk_decode,
+    create_prompt,
+)
+
 if V(torch.__version__) >= V("1.6.0"):
     from torch.cuda.amp import autocast
 else:
@@ -46,14 +52,6 @@ else:
     @contextmanager
     def autocast(enabled=True):
         yield
-
-# print(f'Setting logging config!')
-logging.basicConfig(
-    level=logging.INFO,
-    # level="INFO",
-    format=f"[{os.uname()[1].split('.')[0]}{''}]"
-    f" %(asctime)s (%(module)s:%(lineno)d) %(levelname)s: %(message)s",
-)
 
 try:
     from warprnnt_pytorch import RNNTLoss
@@ -100,6 +98,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         sym_sop: str = "<|startofprev|>",
         extract_feats_in_collect_stats: bool = True,
         lang_token_id: int = -1,
+        context_sampler: object=None,
         **kwargs
     ):
         assert check_argument_types()
@@ -174,6 +173,8 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             self.lp_gamma = self.contextualizer_conf['lp_gamma'] if 'lp_gamma' in contextualizer_conf else 0.99
             self.loss_amp = 10
 
+        self.context_sampler = context_sampler
+
     def forward(
         self,
         speech: torch.Tensor,
@@ -226,13 +227,13 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         # c1. Encoder contextualization
         enc_bias_vec     = None
         gate_prob        = None
-        context_prob     = None
+        contexts_hyp     = None
         context_logit    = None
         encoder_out_proj = None
 
         # c1.1 Contextual Retriever
         if self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_RETRIEVER:
-            context_prob, encoder_out_proj = self.contextualizer(
+            contexts_hyp, encoder_out_proj = self.contextualizer(
                 query=encoder_out,
                 query_ilens=encoder_out_lens,
                 context_subword=contexts['blist'],
@@ -241,7 +242,6 @@ class ESPnetContextualASRModel(ESPnetASRModel):
                 context_phone_ilens=contexts['blist_xphone_ilens'],
                 return_model_proj=True
             )
-
         # c1.2 Contextual Adapter
         if self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_ADAPTER_ENCODER:
             enc_bias_vec, enc_attn = forward_contextual_adapter(
@@ -253,7 +253,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
                 return_atten=True
             )
             # mean across attention heads
-            context_prob = torch.mean(enc_attn, dim=1)
+            contexts_hyp = torch.mean(enc_attn, dim=1)
             if (self.epoch >= self.warmup_epoch) and (not self.use_transducer_decoder):
                 if encoder_out.shape[1] == enc_bias_vec.shape[1]:
                     encoder_out = encoder_out + enc_bias_vec
@@ -270,7 +270,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
                 blank_id=self.blank_id,
             )
             
-            enc_bias_vec, context_logit, context_prob = self.contextualizer(
+            enc_bias_vec, context_logit, contexts_hyp = self.contextualizer(
                 model_embed=encoder_out,
                 context_idxs=contexts['blist'],
                 context_ilens=contexts['ilens'],
@@ -293,7 +293,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
                 losses_contextualizers
             ) = self._calc_contextualizer_loss(
                 contexts,
-                context_prob,
+                contexts_hyp,
                 context_logit,
                 encoder_out,
                 encoder_out_lens,
@@ -400,7 +400,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             # 2b. Attention decoder branch
             if self.ctc_weight != 1.0:
                 loss_att, acc_att, cer_att, wer_att = self._calc_att_loss(
-                    encoder_out, encoder_out_lens, text, text_lengths, contexts
+                    encoder_out, encoder_out_lens, text, text_lengths, contexts, contexts_hyp
                 )
             # 3. CTC-Att loss definition
             if self.ctc_weight == 0.0:
@@ -439,6 +439,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         ys_pad: torch.Tensor,
         ys_pad_lens: torch.Tensor,
         contexts: object,
+        contexts_hyp: object,
     ):
         if hasattr(self, "lang_token_id") and self.lang_token_id is not None:
             ys_pad = torch.cat(
@@ -452,14 +453,51 @@ class ESPnetContextualASRModel(ESPnetASRModel):
 
         # Add text prompt (Whisper style only)
         if "nlp_prompt_tensor" in contexts:
-            # TODO: convert retriever's output into prompts 
-            # for now, we use teacher forcing prompting method
+            # TODO: convert retriever's outputs into prompts 
+            # for now, we use teacher forcing prefix tuning method
             prompts     = contexts['nlp_prompt_tensor']
             prompt_lens = torch.tensor([p.shape[0] for p in prompts]).to(ys_pad.device)
             prompts_nlp = "\n".join(contexts['nlp_prompt'])
             logging.info(f'\n{"_" * 30}\n{prompts_nlp}')
+
+            if contexts_hyp is not None:
+                nlp_prompt, nlp_prompt_tensor = create_prompt(
+                    contexts_hyp, 
+                    contexts, 
+                    self.context_sampler.construct_prompt_labels,
+                    idx_blank=0,
+                    top_k=10,
+                    threshold=0.5,
+                )
+                prompts_nlp = "\n".join(nlp_prompt)
+                logging.info(f'\n{"+" * 30}\n{prompts_nlp}')
+                
+                prompts     = [prompt.to(ys_pad) for prompt in nlp_prompt_tensor]
+                prompt_lens = torch.tensor([p.shape[0] for p in prompts]).to(ys_pad.device)
+
             ys_in_pad, ys_out_pad = add_sop_sos_eos(ys_pad, prompts, self.sop, self.sos, self.eos, self.ignore_id)
             ys_in_lens = ys_pad_lens + prompt_lens + 2
+
+            for ys_in, ys_out in zip(ys_in_pad, ys_out_pad):
+                ys_in  = ys_in.tolist()
+                ys_out = ys_out.tolist()
+                logging.info(f'ys_in: {ys_in}')
+                logging.info(f'ys_out: {ys_out}')
+                ys_in = self.context_sampler.prompt_token_id_converter.ids2tokens(
+                    ys_in, 
+                    skip_special_tokens=False
+                )
+                ys_in = self.context_sampler.prompt_tokenizer.tokens2text(ys_in)
+                logging.info(f'ys_in text: {ys_in}')
+                ys_out = self.context_sampler.prompt_token_id_converter.ids2tokens(
+                    [y if y != -1 else 0 for y in ys_out], 
+                    skip_special_tokens=False
+                )
+                ys_out = self.context_sampler.prompt_tokenizer.tokens2text(ys_out)
+                logging.info(f'ys_out text: {ys_out}')
+
+            # ys_in_pad, ys_out_pad = add_sos_eos(ys_pad, self.sos, self.eos, self.ignore_id)
+            # ys_in_lens = ys_pad_lens + 1
         else:
             ys_in_pad, ys_out_pad = add_sos_eos(ys_pad, self.sos, self.eos, self.ignore_id)
             ys_in_lens = ys_pad_lens + 1
@@ -565,7 +603,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
     def _calc_contextualizer_loss(
         self, 
         contexts,
-        context_prob,
+        contexts_hyp,
         context_logit,
         encoder_out,
         encoder_out_lens,
@@ -574,7 +612,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         # use guilded attention ctc loss
         losses_contextualizers = {}
         if 'loss_contextualizer_ga_ctc' in self.contextualizer_losses:
-            ga_ctc_input  = torch.log(context_prob).transpose(0, 1)
+            ga_ctc_input  = torch.log(contexts_hyp).transpose(0, 1)
             ga_ctc_target = contexts['label_ctc']
             ga_ctc_input_lengths  = encoder_out_lens
             ga_ctc_target_lengths = contexts['label_ctc_ilens']
@@ -592,8 +630,8 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         # monotonic rnnt loss
         if 'loss_contextualizer_ga_monornnt' in self.contextualizer_losses:
             # TODO: fix mono loss problem and format
-            logging.info(f'context_prob: {context_prob.shape}')
-            ga_mrnnt_input  = torch.log(context_prob).transpose(0, 1)
+            logging.info(f'contexts_hyp: {contexts_hyp.shape}')
+            ga_mrnnt_input  = torch.log(contexts_hyp).transpose(0, 1)
             ga_mrnnt_target = contexts['label_ctc'].to(torch.long)
             ga_mrnnt_input_lengths  = encoder_out_lens.to(torch.long)
             ga_mrnnt_target_lengths = contexts['label_ctc_ilens'].to(torch.long)
@@ -631,14 +669,14 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         if 'loss_contextualizer_ga_ctc_lp' in self.contextualizer_losses:
             alpha     = 0.3
             lp_warmup = 1
-            ga_ctc_input  = torch.log(context_prob).transpose(0, 1)
+            ga_ctc_input  = torch.log(contexts_hyp).transpose(0, 1)
             ga_ctc_target = contexts['label_ctc']
             ga_ctc_input_lengths  = encoder_out_lens
             ga_ctc_target_lengths = contexts['label_ctc_ilens']
             
             # warm-up (1 epoch)
             if self.epoch > lp_warmup:
-                label_prior     = torch.mean(context_prob, dim=1)
+                label_prior     = torch.mean(contexts_hyp, dim=1)
                 label_prior_log = alpha * torch.log(label_prior)
                 ga_ctc_input    = ga_ctc_input - label_prior_log
 
@@ -651,7 +689,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             losses_contextualizers['loss_contextualizer_ga_ctc_lp'] = loss_ga_ctc
         # ctc with label prior
         if 'loss_contextualizer_ga_reweight_lp' in self.contextualizer_losses:
-            label_prior     = torch.mean(context_prob, dim=1)
+            label_prior     = torch.mean(contexts_hyp, dim=1)
             label_prior_log = torch.log(label_prior)
 
             label                  = contexts['label_ctc']

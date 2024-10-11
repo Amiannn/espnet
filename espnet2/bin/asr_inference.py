@@ -382,6 +382,7 @@ class Speech2Text:
                         weights=weights,
                         contextualizer=asr_model.contextualizer,
                         contextualizer_conf=asr_model.contextualizer_conf,
+                        context_sampler=asr_model.context_sampler,
                         scorers=scorers,
                         sos=asr_model.sos,
                         eos=asr_model.eos,

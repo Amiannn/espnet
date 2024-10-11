@@ -128,6 +128,9 @@ def macro_precision_recall_f1_at_threshold(ref_context_datas, hyp_context_datas,
         # Determine which words are predicted positive at this threshold
         retrieved_items = [word for word in all_context_words if hyp_context_prob_dict.get(word, 0.0) >= threshold]
 
+        if len(relevant_items) == 0 and len(retrieved_items) == 0:
+            continue
+
         # Compute Precision, Recall, F1 for this query
         precision, recall, f1 = precision_recall_f1_per_query(relevant_items, retrieved_items)
         precisions.append(precision)
