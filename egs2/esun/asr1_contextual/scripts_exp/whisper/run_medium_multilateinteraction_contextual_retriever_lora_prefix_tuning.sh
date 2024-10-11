@@ -14,8 +14,8 @@ uttblist_idx_valid="uttblist_idx_f1000.txt"
 uttblist_idx_test="uttblist_idx"
 
 asr_config=conf/contextual/whisper/train_asr_whisper_medium_multilateinteraction_contextual_retriever_lora_prefix_tuning.yaml
-inference_config=conf/contextual/whisper/decode_asr_whisper_ctc_greedy_c20.yaml
-asr_tag=whisper/run_medium_multilateinteraction_contextual_retriever_lora_prefix_tuning
+inference_config=conf/contextual/whisper/decode_asr_whisper_prefix_tuning_c100.yaml
+asr_tag=whisper/run_medium_multilateinteraction_contextual_retriever_lora_prefix_tuning_test
 
 pretrained_model_encoder_retriever=exp/asr_whisper/run_medium_multilateinteraction_contextual_retriever_balanced_alpha0.8_suffix/valid.loss.ave_10best.pth
 pretrained_model_prefix_tuning_decoder=exp/asr_whisper/run_medium_prefix_tuning_shuffle_test/38epoch.pth
@@ -50,7 +50,7 @@ nbpe=5000
 CUDA_LAUNCH_BLOCKING=1 CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --nj 20 \
     --gpu_inference false \
-    --inference_nj 20 \
+    --inference_nj 1 \
     --lang zh \
     --ngpu 1 \
     --token_type whisper_multilingual \

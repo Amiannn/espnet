@@ -459,37 +459,42 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             prompt_lens = torch.tensor([p.shape[0] for p in prompts]).to(ys_pad.device)
             prompts_nlp = "\n".join(contexts['nlp_prompt'])
             logging.info(f'\n{"_" * 30}\n{prompts_nlp}')
-            
-            contexts_hyps = []
+
             if contexts_hyp is not None:
-                for context_hyp in contexts_hyp:
-                    contexts_hyp = topk_decode(
-                        context_hyp.unsqueeze(0), 
-                        contexts['blist'],
-                        idx_blank=0, 
-                        top_k=10, 
-                        threshold=0.5
-                    )
-                    contexts_hyp = [[
-                        contexts['context_list_idxs'][(idx - 1)], 
-                        pos, 
-                        score
-                    ] for idx, pos, score in contexts_hyp]
-                    contexts_hyps.append(contexts_hyp)
-                (
-                    nlp_prompt,
-                    nlp_prompt_tensor,
-                    _,
-                    _,
-                ) = self.context_sampler.construct_prompt_labels(contexts_hyps, has_confidence=True)
+                nlp_prompt, nlp_prompt_tensor = create_prompt(
+                    contexts_hyp, 
+                    contexts, 
+                    self.context_sampler.construct_prompt_labels,
+                    idx_blank=0,
+                    top_k=10,
+                    threshold=0.5,
+                )
                 prompts_nlp = "\n".join(nlp_prompt)
                 logging.info(f'\n{"+" * 30}\n{prompts_nlp}')
-
+                
                 prompts     = [prompt.to(ys_pad) for prompt in nlp_prompt_tensor]
                 prompt_lens = torch.tensor([p.shape[0] for p in prompts]).to(ys_pad.device)
 
             ys_in_pad, ys_out_pad = add_sop_sos_eos(ys_pad, prompts, self.sop, self.sos, self.eos, self.ignore_id)
             ys_in_lens = ys_pad_lens + prompt_lens + 2
+
+            for ys_in, ys_out in zip(ys_in_pad, ys_out_pad):
+                ys_in  = ys_in.tolist()
+                ys_out = ys_out.tolist()
+                logging.info(f'ys_in: {ys_in}')
+                logging.info(f'ys_out: {ys_out}')
+                ys_in = self.context_sampler.prompt_token_id_converter.ids2tokens(
+                    ys_in, 
+                    skip_special_tokens=False
+                )
+                ys_in = self.context_sampler.prompt_tokenizer.tokens2text(ys_in)
+                logging.info(f'ys_in text: {ys_in}')
+                ys_out = self.context_sampler.prompt_token_id_converter.ids2tokens(
+                    [y if y != -1 else 0 for y in ys_out], 
+                    skip_special_tokens=False
+                )
+                ys_out = self.context_sampler.prompt_tokenizer.tokens2text(ys_out)
+                logging.info(f'ys_out text: {ys_out}')
 
             # ys_in_pad, ys_out_pad = add_sos_eos(ys_pad, self.sos, self.eos, self.ignore_id)
             # ys_in_lens = ys_pad_lens + 1

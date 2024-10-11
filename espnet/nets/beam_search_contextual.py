@@ -64,6 +64,7 @@ class ContextualBeamSearch(BeamSearch):
         weights: Dict[str, float],
         contextualizer: object,
         contextualizer_conf: object,
+        context_sampler: object,
         beam_size: int,
         vocab_size: int,
         sos: int,
@@ -94,6 +95,7 @@ class ContextualBeamSearch(BeamSearch):
         # contextual asr
         self.contextualizer      = contextualizer
         self.contextualizer_conf = contextualizer_conf
+        self.context_sampler     = context_sampler
         
         self.sop = sop
 
@@ -143,8 +145,7 @@ class ContextualBeamSearch(BeamSearch):
     def init_hyp(
             self, 
             x: torch.Tensor, 
-            contexts: object = None, 
-            pred_contexts: object = None
+            contexts: object = None,
         ) -> List[Hypothesis]:
         """Get an initial hypothesis data.
 
@@ -164,7 +165,6 @@ class ContextualBeamSearch(BeamSearch):
         # NOTE (Shih-Lun): added for OpenAI Whisper ASR
         primer = [self.sos] if self.hyp_primer is None else self.hyp_primer
 
-        use_ground_prompt = True
         if ('decoder' in self.scorers) and isinstance(self.scorers['decoder'], OpenAIWhisperDecoder):
             nlp_prompt_context_template    = contexts["nlp_prompt_context_template"].tolist()
             nlp_prompt_no_context_template = contexts["nlp_prompt_no_context_template"].tolist()
@@ -175,12 +175,7 @@ class ContextualBeamSearch(BeamSearch):
             logging.info(f'nlp_prompt_no_context_template: {nlp_prompt_no_context_template}')
             logging.info(f'nlp_prompt_tensor: {nlp_prompt_tensor}')
 
-            if use_ground_prompt:
-                primer = [self.sop] + nlp_prompt_tensor + primer
-            elif pred_contexts != None and len(pred_contexts) > 0:
-                primer = [self.sop] + nlp_prompt_context_template + pred_contexts + primer
-            else:
-                primer = [self.sop] + nlp_prompt_no_context_template + primer
+            primer = [self.sop] + nlp_prompt_tensor + primer
         logging.info(f'primer: {primer}')
 
         return [
@@ -256,7 +251,6 @@ class ContextualBeamSearch(BeamSearch):
         logger.info("min output length: " + str(minlen))
 
         # Encoder contextualization
-        pred_contexts  = None
         context_preds = None
         if self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_RETRIEVER:
             logging.info(f'Encoder contextualize, use retriever!')
@@ -274,14 +268,39 @@ class ContextualBeamSearch(BeamSearch):
             x = encoder_proj.squeeze(0)
 
             # only for whisper model
-            context_preds = topk_decode(
+            # context_preds = topk_decode(
+            #     context_prob, 
+            #     contexts['context_list_ints'],
+            #     idx_blank=0, 
+            #     top_k=100, 
+            #     threshold=0.01
+            # )
+
+            nlp_prompt, nlp_prompt_tensor = create_prompt(
                 context_prob, 
-                contexts['context_list_idxs'],
-                idx_blank=0, 
-                top_k=100, 
-                threshold=0.01
+                contexts, 
+                self.context_sampler.construct_prompt_labels,
+                idx_blank=0,
+                top_k=10,
+                threshold=0.5,
             )
-            # pred_contexts = create_prompt(context_preds, sep_tokens=[11, 220], end_tokens=[13, 220])
+            prompts_nlp = "\n".join(nlp_prompt)
+            logging.info(f'\n{"+" * 30}\n{prompts_nlp}')
+
+            for prompt_tensor in nlp_prompt_tensor:
+                prompt_list = prompt_tensor.tolist()
+                logging.info(f'prompt_list: {prompt_list}')
+                prompt_tokens = self.context_sampler.prompt_token_id_converter.ids2tokens(
+                    prompt_list, 
+                    skip_special_tokens=False
+                )
+                prompt_text = self.context_sampler.prompt_tokenizer.tokens2text(prompt_tokens)
+                logging.info(f'prompt_text: {prompt_text}')
+
+            contexts.update({
+                "nlp_prompt": nlp_prompt,
+                "nlp_prompt_tensor": nlp_prompt_tensor,
+            })
 
         elif self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_ADAPTER_ENCODER:
             logging.info(f'Encoder contextualize!')
@@ -301,7 +320,6 @@ class ContextualBeamSearch(BeamSearch):
         running_hyps = self.init_hyp(
             x if pre_x is None else pre_x,
             contexts=contexts,
-            pred_contexts=(pred_contexts if pred_contexts is not None else None)
         )
         ended_hyps = []
         for i in range(maxlen):

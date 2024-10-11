@@ -1,0 +1,34 @@
+beam_size: 1
+ctc_weight: 0.0
+lm_weight: 0.0
+maxlenratio: 0.3
+minlenratio: 0.0
+penalty: 0.0
+
+# contextual information settings
+contextual_conf:
+    contextual_type: context_sampler
+    # metadata for context list
+    context_list_path: ./local/contextual/rarewords/rareword_f10_test.txt
+    context_phone_embedding_path: ./local/contextual/ssl_features/rareword_f10_test.xphone.seq.pt
+    context_list_occurrence_path: null
+    # context settings
+    use_no_context_token: true
+    # sampling settings
+    gold_context_dropout: 0.0
+    sub_context_list_dropout: 0.0
+    max_utterance_disrupt_context: 0
+    max_batch_disrupt_context: 100
+    shuffle_sub_context_list: False
+    # hard negative context settings
+    hnc_sampler_type: null
+    # hnc_per_gold_context: 1
+    # hnc_dropout: 0.2
+    # hnc_hardness_range: 20
+    # hnc_use_gpu: false
+    # nlp prompt setting
+    use_context_prompt: True
+    context_prompt_has_context_template: "主題為:"
+    context_prompt_no_context_template: "開始吧"
+    # special structure type
+    sub_context_list_structure_type: null

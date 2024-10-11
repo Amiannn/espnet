@@ -64,6 +64,7 @@ class ContextSampleOutput:
     label_occurrence_ilens: Optional[torch.Tensor] = None
     context_list: Optional[List[str]] = None
     context_list_idxs: Optional[List[int]] = None
+    context_list_ints: Optional[List[int]] = None
     nlp_prompt: Optional[str] = None
     nlp_prompt_tensor: Optional[torch.Tensor] = None
     nlp_prompt_context_template: Optional[torch.Tensor] = None
@@ -515,6 +516,7 @@ class ContextSampler():
             ilens=batch_wise_sub_context_ints_tensor_lens,
             context_list=[self.context_list[c] for c in batch_wise_sub_context_idxs_list],
             context_list_idxs=batch_wise_sub_context_idxs_list,
+            context_list_ints=batch_wise_sub_context_ints_tensors
         )
         # build phone embeddings
         if self.context_phone_embeddings is not None:

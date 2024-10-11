@@ -42,8 +42,8 @@ def topk_decode(
     value_tensor = ys_max.values[0]
     index_tensor = ys_max.indices[0]
     
-    target = torch.zeros(len(token_list))
-    count  = torch.zeros(len(token_list))
+    target = torch.zeros(len(token_list) + 1)
+    count  = torch.zeros(len(token_list) + 1)
     
     target.scatter_add_(0, index_tensor, value_tensor)
     count.scatter_add_(0, index_tensor, torch.ones_like(value_tensor))
@@ -54,7 +54,7 @@ def topk_decode(
     target[idx_blank]  = 0
 
     indexis = torch.argsort(target, descending=True)[:top_k]
-    indexis = [i for i in indexis if target[i] >= threshold]
+    indexis = [i - 1 for i in indexis if target[i] >= threshold]
     result     = [[i.item(), token_list[i], target[i].item()] for i in indexis]
     result_idx = {d[0]: d for d in result}
 
@@ -69,13 +69,33 @@ def topk_decode(
             trace.append(idx)
     return result_inplace
 
-def create_prompt(pred_tokens, sep_tokens, end_tokens):
-    hyp = []
-    for i, pred in enumerate(pred_tokens):
-        _, h, _ = pred
-        if i < (len(pred_tokens) - 1):
-            h = h + sep_tokens
-        else:
-            h = h + end_tokens
-        hyp.extend(h)
-    return hyp
+def create_prompt(
+        contexts_hyp, 
+        contexts, 
+        construct_prompt_labels_fn,
+        idx_blank=0,
+        top_k=10,
+        threshold=0.5,
+    ):
+    contexts_hyps = []
+    for context_hyp in contexts_hyp:
+        contexts_hyp = topk_decode(
+            context_hyp.unsqueeze(0), 
+            contexts['context_list_ints'],
+            idx_blank=idx_blank, 
+            top_k=top_k, 
+            threshold=threshold,
+        )
+        contexts_hyp = [[
+            contexts['context_list_idxs'][idx], 
+            pos, 
+            score
+        ] for idx, pos, score in contexts_hyp]
+        contexts_hyps.append(contexts_hyp)
+    (
+        nlp_prompt,
+        nlp_prompt_tensor,
+        _,
+        _,
+    ) = construct_prompt_labels_fn(contexts_hyps, has_confidence=True)
+    return nlp_prompt, nlp_prompt_tensor
