@@ -40,9 +40,9 @@ from espnet2.asr.contextualizer import (
 )
 
 from espnet2.asr.contextualizer.func.contextual_retriever_func import (
-    retrieve_ctc_decode, 
-    topk_decode,
-    create_prompt,
+    decode_ctc_predictions, 
+    decode_topk_tokens,
+    generate_prompt_from_hypotheses,
 )
 
 if V(torch.__version__) >= V("1.6.0"):
@@ -461,11 +461,11 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             logging.info(f'\n{"_" * 30}\n{prompts_nlp}')
 
             if contexts_hyp is not None:
-                nlp_prompt, nlp_prompt_tensor = create_prompt(
-                    contexts_hyp, 
-                    contexts, 
-                    self.context_sampler.construct_prompt_labels,
-                    idx_blank=0,
+                nlp_prompt, nlp_prompt_tensor = generate_prompt_from_hypotheses(
+                    context_hypotheses=contexts_hyp, 
+                    contexts=contexts, 
+                    construct_prompt_labels_fn=self.context_sampler.construct_prompt_labels,
+                    blank_index=0,
                     top_k=10,
                     threshold=0.5,
                 )
@@ -495,9 +495,6 @@ class ESPnetContextualASRModel(ESPnetASRModel):
                 )
                 ys_out = self.context_sampler.prompt_tokenizer.tokens2text(ys_out)
                 logging.info(f'ys_out text: {ys_out}')
-
-            # ys_in_pad, ys_out_pad = add_sos_eos(ys_pad, self.sos, self.eos, self.ignore_id)
-            # ys_in_lens = ys_pad_lens + 1
         else:
             ys_in_pad, ys_out_pad = add_sos_eos(ys_pad, self.sos, self.eos, self.ignore_id)
             ys_in_lens = ys_pad_lens + 1

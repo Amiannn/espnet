@@ -721,14 +721,21 @@ class ASRTask(AbsTask):
         else:
             raise RuntimeError("token_list must be str or list")
 
-        if isinstance(args.context_token_list, str):
-            with open(args.context_token_list, encoding="utf-8") as f:
-                context_token_list = [line.rstrip() for line in f]
-            args.context_token_list = list(context_token_list)
-        elif isinstance(args.context_token_list, (tuple, list)):
-            context_token_list = list(args.context_token_list)
+        if hasattr(args, 'context_token_list'):
+            if isinstance(args.context_token_list, str):
+                with open(args.context_token_list, encoding="utf-8") as f:
+                    context_token_list = [line.rstrip() for line in f]
+                args.context_token_list = list(context_token_list)
+            elif isinstance(args.context_token_list, (tuple, list)):
+                context_token_list = list(args.context_token_list)
+            else:
+                raise RuntimeError("context_token_list must be str or list")
         else:
-            raise RuntimeError("context_token_list must be str or list")
+            args.context_token_list = args.token_list
+            args.context_token_type = args.token_type
+            args.context_bpemodel   = args.bpemodel
+            args.context_cleaner    = args.cleaner
+            context_token_list      = token_list
 
         # If use multi-blank transducer criterion,
         # big blank symbols are added just before the standard blank

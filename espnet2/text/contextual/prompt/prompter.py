@@ -38,8 +38,8 @@ class WhisperPrompter():
         else:
             if elements[0]['confidence'] is not None:
                 elements_confidence = [e['confidence'] for e in elements]
-                # contexts = ",".join([f'{self.id2context[e]}({int(s*100)})' for e, s in zip(element_idxs, elements_confidence)])
-                contexts = ",".join([f'{self.id2context[e]}' for e, s in zip(element_idxs, elements_confidence)])
+                contexts = ",".join([f'{self.id2context[e]}({int(s*100)})' for e, s in zip(element_idxs, elements_confidence)])
+                # contexts = ",".join([f'{self.id2context[e]}' for e, s in zip(element_idxs, elements_confidence)])
             else:
                 if self.do_context_shuffle:
                     random.shuffle(element_idxs)

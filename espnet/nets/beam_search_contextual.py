@@ -22,9 +22,9 @@ from espnet2.asr.contextualizer import (
 )
 
 from espnet2.asr.contextualizer.func.contextual_retriever_func import (
-    retrieve_ctc_decode, 
-    topk_decode,
-    create_prompt,
+    decode_ctc_predictions, 
+    decode_topk_tokens,
+    generate_prompt_from_hypotheses,
 )
 
 logger = logging.getLogger(__name__)
@@ -264,43 +264,45 @@ class ContextualBeamSearch(BeamSearch):
                 context_phone_ilens=contexts['blist_xphone_ilens'],
                 return_model_proj=True
             )
-            # Watch out!
-            x = encoder_proj.squeeze(0)
-
+            logging.info(f"contexts['blist']:\n{contexts['blist']}")
             # only for whisper model
-            # context_preds = topk_decode(
-            #     context_prob, 
-            #     contexts['context_list_ints'],
-            #     idx_blank=0, 
-            #     top_k=100, 
-            #     threshold=0.01
-            # )
-
-            nlp_prompt, nlp_prompt_tensor = create_prompt(
-                context_prob, 
-                contexts, 
-                self.context_sampler.construct_prompt_labels,
-                idx_blank=0,
-                top_k=10,
-                threshold=0.5,
+            context_preds = decode_topk_tokens(
+                token_probs=context_prob,
+                vocabulary=contexts['context_list'],
+                blank_index=0,
+                top_k=100,
+                threshold=0.01
             )
-            prompts_nlp = "\n".join(nlp_prompt)
-            logging.info(f'\n{"+" * 30}\n{prompts_nlp}')
 
-            for prompt_tensor in nlp_prompt_tensor:
-                prompt_list = prompt_tensor.tolist()
-                logging.info(f'prompt_list: {prompt_list}')
-                prompt_tokens = self.context_sampler.prompt_token_id_converter.ids2tokens(
-                    prompt_list, 
-                    skip_special_tokens=False
+            if not self.use_ctc_only_decoding:
+                nlp_prompt, nlp_prompt_tensor = generate_prompt_from_hypotheses(
+                    context_hypotheses=context_prob, 
+                    contexts=contexts, 
+                    construct_prompt_labels_fn=self.context_sampler.construct_prompt_labels,
+                    blank_index=0,
+                    top_k=10,
+                    threshold=0.5,
                 )
-                prompt_text = self.context_sampler.prompt_tokenizer.tokens2text(prompt_tokens)
-                logging.info(f'prompt_text: {prompt_text}')
 
-            contexts.update({
-                "nlp_prompt": nlp_prompt,
-                "nlp_prompt_tensor": nlp_prompt_tensor,
-            })
+                prompts_nlp = "\n".join(nlp_prompt)
+                logging.info(f'\n{"+" * 30}\n{prompts_nlp}')
+
+                for prompt_tensor in nlp_prompt_tensor:
+                    prompt_list = prompt_tensor.tolist()
+                    logging.info(f'prompt_list: {prompt_list}')
+                    prompt_tokens = self.context_sampler.prompt_token_id_converter.ids2tokens(
+                        prompt_list, 
+                        skip_special_tokens=False
+                    )
+                    prompt_text = self.context_sampler.prompt_tokenizer.tokens2text(prompt_tokens)
+                    logging.info(f'prompt_text: {prompt_text}')
+
+                contexts.update({
+                    "nlp_prompt": nlp_prompt,
+                    "nlp_prompt_tensor": nlp_prompt_tensor,
+                })
+            else:
+                x = encoder_proj.squeeze(0)
 
         elif self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_ADAPTER_ENCODER:
             logging.info(f'Encoder contextualize!')
@@ -390,7 +392,8 @@ class ContextualBeamSearch(BeamSearch):
             context_yseq  = []
             context_score = []
             for pred in context_preds:
-                context_yseq.extend(pred[1])
+                pred_ints = self.context_sampler.prompt_text2int(pred[1])
+                context_yseq.extend(pred_ints)
                 context_score.append(pred[2])
             context_yseq  = [1] + context_yseq + [1]
         else:

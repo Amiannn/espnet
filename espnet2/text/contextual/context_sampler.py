@@ -515,9 +515,14 @@ class ContextSampler():
             blist_idxs=batch_wise_sub_context_idxs_list,
             ilens=batch_wise_sub_context_ints_tensor_lens,
             context_list=[self.context_list[c] for c in batch_wise_sub_context_idxs_list],
-            context_list_idxs=batch_wise_sub_context_idxs_list,
-            context_list_ints=batch_wise_sub_context_ints_tensors
         )
+        outputs.context_list_ints=batch_wise_sub_context_ints_lists
+        outputs.context_list_idxs=batch_wise_sub_context_idxs_list
+
+        if self.use_no_context_token:
+            outputs.context_list=['<no-context>'] + outputs.context_list
+            outputs.context_list_idxs=[self.no_context_token_value] + outputs.context_list_idxs
+
         # build phone embeddings
         if self.context_phone_embeddings is not None:
             batch_wise_sub_context_embedding_phone_element_idx = [

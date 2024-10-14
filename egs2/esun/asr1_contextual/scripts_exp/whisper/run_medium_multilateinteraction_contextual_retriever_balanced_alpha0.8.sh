@@ -17,7 +17,7 @@ uttblist_idx_valid="uttblist_idx_f65536.txt"
 uttblist_idx_test="uttblist_idx"
 
 asr_config=conf/contextual/whisper/train_asr_whisper_medium_multilateinteraction_contextual_retriever_balanced_alpha0.8.yaml
-inference_config=conf/contextual/whisper/decode_asr_whisper_ctc_greedy_c100.yaml
+inference_config=conf/contextual/whisper/decode_asr_whisper_ctc_greedy_c20.yaml
 asr_tag=whisper/run_medium_multilateinteraction_contextual_retriever_balanced_alpha0.8
 
 
@@ -47,7 +47,7 @@ nbpe=5000
 CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --nj 20 \
     --gpu_inference false \
-    --inference_nj 20 \
+    --inference_nj 1 \
     --ngpu 1 \
     --stage ${stage} \
     --stop_stage ${stop_stage} \

@@ -456,23 +456,22 @@ fi
 
 if [ -z "$context_bpemodel" ]; then
   context_bpemodel="$bpemodel"
-  echo "context_bpemodel is empty, setting to: $context_bpemodel"
+  log "context_bpemodel is empty, setting to: $context_bpemodel"
 else
-  echo "context_bpemodel is already set to: $context_bpemodel"
+  log "context_bpemodel is already set to: $context_bpemodel"
 fi
 
 if [ -z "$context_token_type" ]; then
   context_token_type="$token_type"
-  echo "context_token_type is empty, setting to: $context_token_type"
+  log "context_token_type is empty, setting to: $context_token_type"
 else
-  echo "context_token_type is already set to: $context_token_type"
+  log "context_token_type is already set to: $context_token_type"
 fi
-
 if [ -z "$context_token_list" ]; then
   context_token_list="$token_list"
-  echo "context_token_list is empty, setting to: $context_token_list"
+  log "context_token_list is empty, setting to: $context_token_list"
 else
-  echo "context_token_list is already set to: $context_token_list"
+  log "context_token_list is already set to: $context_token_list"
 fi
 
 # Set tag for naming of model directory
