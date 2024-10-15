@@ -43,6 +43,7 @@ class ContextualHypothesis(NamedTuple):
     hs: List[torch.Tensor] = []
     # dec hidden state corresponding to yseq, used for searchable hidden ints
     context_hs: List[torch.Tensor] = []
+    context_idxs: List[torch.Tensor] = []
 
     def asdict(self) -> dict:
         """Convert data to JSON-friendly dict."""
@@ -53,6 +54,7 @@ class ContextualHypothesis(NamedTuple):
             context_yseq=self.yseq.tolist(),
             context_score=float(self.score),
             context_scores={k: float(v) for k, v in self.scores.items()},
+            context_idxs=self.context_idxs
         )._asdict()
 
 class ContextualBeamSearch(BeamSearch):
@@ -190,6 +192,7 @@ class ContextualBeamSearch(BeamSearch):
                 context_states=init_states,
                 context_hs=[],
                 context_yseq=torch.tensor(primer, device=x.device),
+                context_idxs=[],
             )
         ]
 
@@ -393,9 +396,11 @@ class ContextualBeamSearch(BeamSearch):
             context_yseq  = self.context_sampler.prompt_text2int(pred_texts)
             context_score = [pred[2] for pred in context_preds]
             context_yseq  = [1] + context_yseq + [1]
+            context_idxs  = [contexts['context_list_idxs'][pred[0]] for pred in context_preds]
         else:
             context_yseq  = [1, 1]
             context_score = []
+            context_idxs  = []
 
         contextual_nbest_hyps = []
         for nbest_hyp in nbest_hyps:
@@ -407,6 +412,7 @@ class ContextualBeamSearch(BeamSearch):
                 yseq=nbest_hyp.yseq,
                 context_score=context_score,
                 context_yseq=context_yseq,
+                context_idxs=context_idxs,
             )
             contextual_nbest_hyps.append(contextual_nbest_hyp)
         return contextual_nbest_hyps

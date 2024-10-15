@@ -831,8 +831,10 @@ class Speech2Text:
             
             context_token_int = hyp.context_yseq[1:last_pos]
             context_token     = self.converter.ids2tokens(context_token_int)
+            context_idxs      = hyp.context_idxs
             logging.info(f'>>> context_token_int: {context_token_int}')
             logging.info(f'>>> context_token: {context_token}')
+            logging.info(f'>>> context_idxs: {context_idxs}')
 
             if self.tokenizer is not None:
                 text = self.tokenizer.tokens2text(token)
@@ -847,7 +849,8 @@ class Speech2Text:
                 hyp,
                 context_text,
                 context_token,
-                context_token_int
+                context_token_int,
+                context_idxs,
             ))
 
         return results
@@ -1085,7 +1088,8 @@ def inference(
                     hyp,                
                     context_text,
                     context_token,
-                    context_token_int
+                    context_token_int,
+                    context_idxs
                 ) in zip(
                     range(1, nbest + 1), results
                 ):
@@ -1101,6 +1105,7 @@ def inference(
                     ibest_writer["context_token_int"][key] = " ".join(map(str, context_token_int))
                     ibest_writer["context_score"][key] = " ".join([str(s) for s in hyp.context_score])
                     ibest_writer["context_candidate"][key] = " ".join(contexts['context_list'])
+                    ibest_writer["context_idx"][key] = " ".join(context_idxs)
                     
                     if text is not None:
                         ibest_writer["text"][key] = text
