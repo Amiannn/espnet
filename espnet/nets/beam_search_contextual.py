@@ -54,7 +54,7 @@ class ContextualHypothesis(NamedTuple):
             context_yseq=self.yseq.tolist(),
             context_score=float(self.score),
             context_scores={k: float(v) for k, v in self.scores.items()},
-            context_idxs=self.context_idxs
+            context_idxs=[str(idx) for idx in self.context_idxs]
         )._asdict()
 
 class ContextualBeamSearch(BeamSearch):
