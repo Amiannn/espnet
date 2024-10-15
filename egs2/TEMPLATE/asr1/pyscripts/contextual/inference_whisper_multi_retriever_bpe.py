@@ -128,10 +128,10 @@ if __name__ == "__main__":
     model_conf = "./conf/contextual/whisper/train_asr_whisper_medium_multilateinteraction_contextual_retriever_balanced_alpha0.8.yaml"
     model_path = "./exp/asr_whisper/run_medium_multilateinteraction_contextual_retriever_balanced_alpha0.8_suffix/valid.loss.ave_10best.pth"
     stats_path = "./exp/asr_stats_raw_bpe5000_sp_suffix/train/feats_lengths_stats.npz"
-    rareword_path = "./local/contextual/rarewords/esun.entity.txt"
+    rareword_path = "./local/contextual/rarewords/esun_earningcall.entity.txt"
     speech_scp_path = "./dump/raw/test/wav.scp"
-    biasing_list_path = "./dump/raw/test/uttblist_idx_entity"
-    biasing_list_xphone_path = "./local/contextual/ssl_features/esun.entity.xphone.seq.pt"
+    biasing_list_path = "./dump/raw/test/uttblist_idx_entity_earningcall"
+    biasing_list_xphone_path = "./local/contextual/ssl_features/esun_earningcall.entity.xphone.seq.pt"
     reference_path = "./data/test/text"
     
     # Debug directory setup

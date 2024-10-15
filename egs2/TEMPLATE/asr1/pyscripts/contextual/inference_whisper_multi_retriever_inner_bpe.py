@@ -77,10 +77,10 @@ def retriever_decode(ys_hat, char_list, blank_index=0):
     sequence_prediction = [int(x[0]) for y in ys_hat for x in groupby(y) if int(x[0]) != -1 and int(x[0]) != blank_index]
     return ", ".join([char_list[int(idx)] for idx in sequence_prediction])
 
-def visualize(logp, attention, ctc_prediction, text, target, biasing_list, speech, blank_id, token_list, debug_path, utterance_id):
+def visualize(logp, attention, ctc_prediction, text, target, context_list, speech, blank_id, token_list, debug_path, utterance_id):
     """Visualize the attention maps and predictions"""
     frame2align = {i: token_list[p] if p != 0 else ' ' for i, p in enumerate(ctc_prediction)} if ctc_prediction is not None else {}
-    plot_attention_map(frame2align, attention, text, biasing_list, debug_path, utterance_id)
+    plot_attention_map(frame2align, attention, text, context_list, debug_path, utterance_id)
 
 @torch.no_grad()
 def forward(model, speech, speech_length, context_data, tokens, text, token_list):
@@ -108,7 +108,7 @@ def forward(model, speech, speech_length, context_data, tokens, text, token_list
         ), dim=-1)
         prediction = decode_topk_tokens(
             token_probs=context_probabilities, 
-            vocabulary=biasing_list, 
+            vocabulary=context_list, 
             blank_index=0, 
             top_k=5, 
             threshold=0.5
@@ -138,12 +138,12 @@ if __name__ == "__main__":
     token_path = "./data/zh_token_list/whisper_multilingual/tokens.txt"
     context_token_path = "./data/token_list/bpe_unigram5000suffix/tokens.txt"
     model_conf = "./conf/contextual/whisper/train_asr_whisper_medium_multilateinteraction_contextual_retriever_lora_prefix_tuning.yaml"
-    model_path = "./exp/asr_whisper/run_medium_multilateinteraction_contextual_retriever_lora_prefix_tuning/1epoch.pth"
+    model_path = "./exp/asr_whisper/run_medium_multilateinteraction_contextual_retriever_lora_prefix_tuning/9epoch.pth"
     stats_path = None
-    rareword_path = "./local/contextual/rarewords/rareword_f10_test.txt"
+    rareword_path = "./local/contextual/rarewords/esun_earningcall.entity.txt"
     speech_scp_path = "./dump/raw/test/wav.scp"
-    biasing_list_path = "./dump/raw/test/uttblist_idx"
-    biasing_list_xphone_path = "./local/contextual/ssl_features/rareword_f10_test.xphone.seq.pt"
+    context_list_path = "./dump/raw/test/uttblist_idx_entity_earningcall"
+    context_list_xphone_path = "./local/contextual/ssl_features/esun_earningcall.entity.xphone.seq.pt"
     reference_path = "./data/test/text"
     
     # Debug directory setup
@@ -156,11 +156,11 @@ if __name__ == "__main__":
     reference_texts = {d[0]: " ".join(d[1:]) for d in read_file(reference_path, sp=' ')}
 
     # Model loading and configuration
-    data_path_and_name_and_type = [(speech_scp_path, 'speech', 'kaldi_ark'), (biasing_list_path, 'uttblist_idx', 'multi_columns_text')]
+    data_path_and_name_and_type = [(speech_scp_path, 'speech', 'kaldi_ark'), (context_list_path, 'uttblist_idx', 'multi_columns_text')]
     contextual_conf = {
         'contextual_type': 'context_sampler',
         'context_list_path': rareword_path,
-        'context_phone_embedding_path': biasing_list_xphone_path,
+        'context_phone_embedding_path': context_list_xphone_path,
         'max_batch_disrupt_context': 20,
         'sub_context_list_dropout': 0.0,
         'warmup_epoch': 0,
@@ -207,12 +207,12 @@ if __name__ == "__main__":
         speech = data['speech']
         speech_length = data['speech_lengths']
         text = reference_texts[uid]
-        biasing_list = context_data['blist']
+        context_list = context_data['blist']
         label_ctc = context_data['label_ctc']
 
-        _biasing_list = [tokenizer.tokens2text([token_list[word] for word in rareword if word != -1]) for rareword in biasing_list]
-        biasing_list = _biasing_list
-        print(f'biasing_list:\n{biasing_list}')
+        _context_list = [tokenizer.tokens2text([token_list[word] for word in rareword if word != -1]) for rareword in context_list]
+        context_list = _context_list
+        print(f'context_list:\n{context_list}')
 
         tokens = torch.tensor(preprocessor._text_process({'text': text})['text']).long().unsqueeze(0)
 
@@ -220,8 +220,8 @@ if __name__ == "__main__":
         results[uid] = prediction
         
         # for attention, tag in zip(attentions, ['combine', 'sw', 'pho']):
-        #     visualize(logp, attention, ctc_prediction, text, target, biasing_list, speech, model.blank_id, token_list, debug_path, f'{uid}_{tag}')
-        visualize(logp, attention, ctc_prediction, text, target, biasing_list, speech, model.blank_id, token_list, debug_path, f'{uid}')
+        #     visualize(logp, attention, ctc_prediction, text, target, context_list, speech, model.blank_id, token_list, debug_path, f'{uid}_{tag}')
+        visualize(logp, attention, ctc_prediction, text, target, context_list, speech, model.blank_id, token_list, debug_path, f'{uid}')
 
     # Save results
     output_path = os.path.join(debug_path, 'predict.json')
