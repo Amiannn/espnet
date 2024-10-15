@@ -237,7 +237,7 @@ class ContextSampler():
 
     def load_context_list(self, path):
         # watch out! lowering every context words may cause some problem!
-        context_list = [context.lower() for context in read_file(path)]
+        context_list = [context.lower().replace('.', ' ') for context in read_file(path)]
         context_idxs_list = [i for i in range(len(context_list))]
         context_ints_list = [self.text2int(context) for context in context_list]
         return context_list, context_idxs_list, context_ints_list 

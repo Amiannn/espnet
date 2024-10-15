@@ -41,7 +41,7 @@ if __name__ == '__main__':
         if not os.path.isfile(os.path.join(path, 'wav.scp')):
             continue
         blist_path = ENTITY_LIST_PATH
-        blist = [b[0] for b in read_file(blist_path, sp=',')]
+        blist = [b[0].lower().replace('.', ' ') for b in read_file(blist_path, sp=',')]
         word2idx = {word: i for i, word in enumerate(blist)}
 
         print(f'processing {path}...')

@@ -1105,7 +1105,7 @@ def inference(
                     ibest_writer["context_token_int"][key] = " ".join(map(str, context_token_int))
                     ibest_writer["context_score"][key] = " ".join([str(s) for s in hyp.context_score])
                     ibest_writer["context_candidate"][key] = " ".join(contexts['context_list'])
-                    ibest_writer["context_idx"][key] = " ".join(context_idxs)
+                    ibest_writer["context_idx"][key] = " ".join([str(idx) for idx in context_idxs])
                     
                     if text is not None:
                         ibest_writer["text"][key] = text
