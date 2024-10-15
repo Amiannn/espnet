@@ -5,7 +5,7 @@ from tqdm import tqdm
 from pyscripts.contextual.utils.dataio import read_file
 from pyscripts.contextual.utils.dataio import write_file
 
-ENTITY_LIST_PATH = f"./local/contextual/rarewords/esun.entity.sep.txt"
+ENTITY_LIST_PATH = f"./local/contextual/rarewords/esun_earningcall.entity.txt"
 
 def is_phrase_in_sentence(segmented_phrase, segmented_sentence):
     phrase_len = len(segmented_phrase)
@@ -62,8 +62,8 @@ if __name__ == '__main__':
                 [uttid] + (uttblist_idx if len(uttblist_idx) > 0 else [''])
             )
 
-        output_path_uttblist = os.path.join(path, f'uttblist_entity')
+        output_path_uttblist = os.path.join(path, f'uttblist_entity_earningcall')
         write_file(output_path_uttblist, rareword_datas)
 
-        output_path_uttblist_idx = os.path.join(path, f'uttblist_idx_entity')
+        output_path_uttblist_idx = os.path.join(path, f'uttblist_idx_entity_earningcall')
         write_file(output_path_uttblist_idx, rareword_idxs)
