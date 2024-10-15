@@ -29,7 +29,7 @@ def isEnglish(s):
         return True
 
 model_tag     = "vinai/xphonebert-base"
-rareword_path = "./local/contextual/rarewords/esun.entity.sep.txt"
+rareword_path = "./local/contextual/rarewords/rareword_f1000_train.txt"
 output_path   = "./local/contextual/ssl_features"
 
 filename  = (rareword_path.split('/')[-1]).replace('.txt', '')

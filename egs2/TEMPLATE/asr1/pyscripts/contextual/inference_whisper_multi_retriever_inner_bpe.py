@@ -23,8 +23,11 @@ from espnet2.asr.contextualizer import (
     CONTEXTUAL_ADAPTER_DECODER
 )
 
-from espnet2.asr.contextualizer.func.contextual_retriever_func import topk_decode, retrieve_ctc_decode
-
+from espnet2.asr.contextualizer.func.contextual_retriever_func import (
+    decode_ctc_predictions, 
+    decode_topk_tokens,
+    generate_prompt_from_hypotheses,
+)
 # ---- Utility Functions ---- #
 
 import torch
@@ -103,16 +106,23 @@ def forward(model, speech, speech_length, context_data, tokens, text, token_list
             model.contextualizer.retriever.subword_scores + model.contextualizer.retriever.phoneme_scores, 
             7
         ), dim=-1)
-        prediction = topk_decode(context_probabilities, biasing_list, idx_blank=0, top_k=5, threshold=0.5)
+        prediction = decode_topk_tokens(
+            token_probs=context_probabilities, 
+            vocabulary=biasing_list, 
+            blank_index=0, 
+            top_k=5, 
+            threshold=0.5
+        )
     
     ctc_prediction = None
+    predicted_hypothesis = None
     if model.ctc is not None:
         x = encoder_projection if encoder_projection is not None else encoder_output
         ctc_prediction = model.ctc.argmax(x).squeeze(0)
     
-    predicted_hypothesis = retrieve_ctc_decode(model.ctc.ctc_lo(x), token_list, idx_blank=0, threshold=0.0)
-    predicted_hypothesis = "".join([d[1] for d in predicted_hypothesis]).replace("▁", ' ')
-    
+        predicted_hypothesis = decode_ctc_predictions(model.ctc.ctc_lo(x), token_list, idx_blank=0, threshold=0.0)
+        predicted_hypothesis = "".join([d[1] for d in predicted_hypothesis]).replace("▁", ' ')
+        
     return None, None, context_probabilities, ctc_prediction, {
         'text': text,
         'hyp': predicted_hypothesis,
@@ -123,15 +133,17 @@ def forward(model, speech, speech_length, context_data, tokens, text, token_list
 
 if __name__ == "__main__":
     # File paths
-    spm_path = "./data/token_list/bpe_unigram5000suffix/bpe.model"
-    token_path = "./data/token_list/bpe_unigram5000suffix/tokens.txt"
-    model_conf = "./conf/contextual/whisper/train_asr_whisper_medium_multilateinteraction_contextual_retriever_balanced_alpha0.8.yaml"
-    model_path = "./exp/asr_whisper/run_medium_multilateinteraction_contextual_retriever_balanced_alpha0.8_suffix/valid.loss.ave_10best.pth"
-    stats_path = "./exp/asr_stats_raw_bpe5000_sp_suffix/train/feats_lengths_stats.npz"
-    rareword_path = "./local/contextual/rarewords/esun.entity.txt"
+    spm_path = "whisper_multilingual"
+    context_spm_path = "./data/token_list/bpe_unigram5000suffix/bpe.model"
+    token_path = "./data/zh_token_list/whisper_multilingual/tokens.txt"
+    context_token_path = "./data/token_list/bpe_unigram5000suffix/tokens.txt"
+    model_conf = "./conf/contextual/whisper/train_asr_whisper_medium_multilateinteraction_contextual_retriever_lora_prefix_tuning.yaml"
+    model_path = "./exp/asr_whisper/run_medium_multilateinteraction_contextual_retriever_lora_prefix_tuning/1epoch.pth"
+    stats_path = None
+    rareword_path = "./local/contextual/rarewords/rareword_f10_test.txt"
     speech_scp_path = "./dump/raw/test/wav.scp"
-    biasing_list_path = "./dump/raw/test/uttblist_idx_entity"
-    biasing_list_xphone_path = "./local/contextual/ssl_features/esun.entity.xphone.seq.pt"
+    biasing_list_path = "./dump/raw/test/uttblist_idx"
+    biasing_list_xphone_path = "./local/contextual/ssl_features/rareword_f10_test.xphone.seq.pt"
     reference_path = "./data/test/text"
     
     # Debug directory setup
@@ -149,7 +161,7 @@ if __name__ == "__main__":
         'contextual_type': 'context_sampler',
         'context_list_path': rareword_path,
         'context_phone_embedding_path': biasing_list_xphone_path,
-        'max_batch_disrupt_context': 50,
+        'max_batch_disrupt_context': 20,
         'sub_context_list_dropout': 0.0,
         'warmup_epoch': 0,
         'use_no_context_token': True,
@@ -158,22 +170,26 @@ if __name__ == "__main__":
     }
 
     model, loader, contextual_processor = load_espnet_model(
-        model_conf, 
-        contextual_conf, 
-        token_path, 
-        'default', 
-        stats_path, 
-        spm_path, 
-        model_path,
-        data_path_and_name_and_type, 
-        use_local_attn_conv=False, 
+        model_conf=model_conf,
+        contextual_conf=contextual_conf,
+        token_path=token_path, 
+        context_token_path=context_token_path, 
+        frontend='default', 
+        stats_path=stats_path, 
+        spm_path=spm_path, 
+        context_spm_path=context_spm_path, 
+        model_path=model_path,
+        data_path_and_name_and_type=data_path_and_name_and_type,
         return_contextual_processor=True,
+        use_local_attn_conv=False,
+        token_type='whisper_multilingual',
+        context_token_type='bpe',
     )
 
     # Prepare tokenizer and token list
     preprocessor = loader.dataset.preprocess
-    tokenizer = preprocessor.tokenizer
-    token_id_converter = preprocessor.token_id_converter
+    tokenizer = model.context_sampler.tokenizer
+    token_id_converter = model.context_sampler.token_id_converter
     token_list = get_token_list(token_id_converter) + ['<no-context>']
 
     # Model evaluation

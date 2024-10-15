@@ -1,5 +1,7 @@
 import torch
 import logging
+import numpy as np
+
 from typing import List, Tuple, Callable, Any, Dict
 from itertools import groupby
 
@@ -42,6 +44,137 @@ def decode_ctc_predictions(
                 prev_index = idx if idx != blank_index else prev_index
         batch_sequences.append(sequence)
     return batch_sequences
+
+def forced_align_batch(
+    ctc_probs: torch.Tensor,
+    transcripts: List[List[str]],
+    vocabulary: List[str],
+    blank_index: int = 0,
+) -> List[List[Tuple[int, int, str, float]]]:
+    """
+    Perform forced alignment of the transcripts to the CTC probabilities,
+    providing start and end times for each token.
+
+    Args:
+        ctc_probs (torch.Tensor): The CTC probability tensor of shape (batch_size, seq_length, num_classes).
+        transcripts (List[List[str]]): List of target transcriptions, each as a list of tokens.
+        vocabulary (List[str]): List of token strings corresponding to class indices.
+        blank_index (int): Index of the blank token in CTC.
+
+    Returns:
+        List[List[Tuple[int, int, str, float]]]: For each batch element, a list of (start_time, end_time, token, average_probability).
+    """
+    batch_size, T, C = ctc_probs.shape
+    log_probs = ctc_probs.log()
+    alignments = []
+
+    for b in range(batch_size):
+        transcript = transcripts[b]
+        # Convert the transcript into indices
+        transcript_indices = [vocabulary.index(token) for token in transcript]
+
+        # Create the extended sequence with blanks
+        extended_sequence = []
+        for idx in transcript_indices:
+            extended_sequence.append(blank_index)
+            extended_sequence.append(idx)
+        extended_sequence.append(blank_index)
+        S = len(extended_sequence)
+
+        # Initialize the cost and backpointer matrices
+        cost = np.full((T, S), -np.inf)
+        backpointer = np.zeros((T, S), dtype=int)
+
+        # Initialize at time t=0
+        cost[0, 0] = log_probs[b, 0, extended_sequence[0]].item()
+        if S > 1:
+            cost[0, 1] = log_probs[b, 0, extended_sequence[1]].item()
+
+        # Dynamic programming
+        for t in range(1, T):
+            for s in range(S):
+                current_label = extended_sequence[s]
+                prob = log_probs[b, t, current_label].item()
+
+                # Candidates for transition
+                candidates = []
+                # Stay at the same label
+                candidates.append((cost[t-1, s] + prob, s))
+
+                # Move from previous label
+                if s > 0:
+                    candidates.append((cost[t-1, s-1] + prob, s-1))
+
+                # Skip blanks or repeated labels
+                if s > 1 and current_label != blank_index and current_label != extended_sequence[s-2]:
+                    candidates.append((cost[t-1, s-2] + prob, s-2))
+
+                # Choose the best candidate
+                best_cost, best_prev_s = max(candidates, key=lambda x: x[0])
+                cost[t, s] = best_cost
+                backpointer[t, s] = best_prev_s
+
+        # Trace back the best path
+        end_s = np.argmax(cost[-1, :])
+        best_path = []
+        t = T - 1
+        s = end_s
+        while t >= 0:
+            best_path.append((t, extended_sequence[s]))
+            prev_s = backpointer[t, s]
+            t -= 1
+            s = prev_s
+
+        best_path.reverse()
+
+        # Remove blanks and duplicates to get the alignment with start and end times
+        alignment = []
+        prev_label = None
+        start_time = None
+        token_probs = []
+        for t, label_idx in best_path:
+            if label_idx != blank_index:
+                if label_idx != prev_label:
+                    # Start of a new token
+                    if prev_label is not None and prev_label != blank_index:
+                        # Finish the previous token
+                        end_time = t - 1
+                        token = vocabulary[prev_label]
+                        avg_prob = np.mean(token_probs)
+                        alignment.append((start_time, end_time, token, avg_prob))
+                    # Start the new token
+                    start_time = t
+                    token_probs = [ctc_probs[b, t, label_idx].item()]
+                else:
+                    # Continuation of the same token
+                    token_probs.append(ctc_probs[b, t, label_idx].item())
+                prev_label = label_idx
+            else:
+                # label_idx == blank_index
+                if prev_label is not None and prev_label != blank_index:
+                    # Finish the previous token
+                    end_time = t - 1
+                    token = vocabulary[prev_label]
+                    avg_prob = np.mean(token_probs)
+                    alignment.append((start_time, end_time, token, avg_prob))
+                    prev_label = None
+                    start_time = None
+                    token_probs = []
+                else:
+                    prev_label = None
+                    start_time = None
+                    token_probs = []
+
+        # Handle the last token if it goes till the end
+        if prev_label is not None and prev_label != blank_index:
+            end_time = T - 1
+            token = vocabulary[prev_label]
+            avg_prob = np.mean(token_probs)
+            alignment.append((start_time, end_time, token, avg_prob))
+
+        alignments.append(alignment)
+
+    return alignments
 
 def decode_topk_tokens(
     token_probs: torch.Tensor,
@@ -92,19 +225,19 @@ def decode_topk_tokens(
         score = average_probs[idx].item()
         topk_tokens.append([idx_int, token, score])
     # Keep the position
-    # ordered_topk_tokens = []
-    # seen_indices = set()
-    # predicted_indices = token_probs[0].argmax(dim=-1).cpu()
-    # for t in range(predicted_indices.shape[0]):
-    #     idx = int(predicted_indices[t])
-    #     if idx != blank_index and idx not in seen_indices:
-    #         for token_info in topk_tokens:
-    #             if token_info[0] == idx:
-    #                 ordered_topk_tokens.append(token_info)
-    #                 seen_indices.add(idx)
-    #                 break
-    # return ordered_topk_tokens
-    return topk_tokens
+    ordered_topk_tokens = []
+    seen_indices = set()
+    predicted_indices = token_probs[0].argmax(dim=-1).cpu()
+    for t in range(predicted_indices.shape[0]):
+        idx = int(predicted_indices[t])
+        if idx != blank_index and idx not in seen_indices:
+            for token_info in topk_tokens:
+                if token_info[0] == idx:
+                    ordered_topk_tokens.append(token_info)
+                    seen_indices.add(idx)
+                    break
+    return ordered_topk_tokens
+    # return topk_tokens
 
 def generate_prompt_from_hypotheses(
     context_hypotheses: List[torch.Tensor],
@@ -158,7 +291,15 @@ if __name__ == "__main__":
         [
             [0.1, 0.7, 0.2, 0.0, 0.0],  # t=0, predicts 'a'
             [0.1, 0.0, 0.8, 0.1, 0.0],  # t=1, predicts 'b'
-            [0.1, 0.0, 0.0, 0.6, 0.3],  # t=2, predicts 'c'
+            [0.1, 0.0, 0.8, 0.1, 0.0],  # t=1, predicts 'b'
+            [0.1, 0.0, 0.8, 0.1, 0.0],  # t=1, predicts 'b'
+            [0.1, 0.0, 0.8, 0.1, 0.0],  # t=1, predicts 'b'
+            [0.1, 0.0, 0.8, 0.1, 0.0],  # t=1, predicts 'b'
+            [0.1, 0.0, 0.8, 0.1, 0.0],  # t=1, predicts 'b'
+            [0.1, 0.0, 0.8, 0.1, 0.0],  # t=2, predicts 'b'
+            [0.1, 0.0, 0.0, 0.0, 0.9],  # t=3, predicts 'd'
+            [0.1, 0.0, 0.0, 0.0, 0.9],  # t=3, predicts 'd'
+            [0.1, 0.0, 0.0, 0.0, 0.9],  # t=3, predicts 'd'
             [0.1, 0.0, 0.0, 0.0, 0.9],  # t=3, predicts 'd'
             [0.9, 0.0, 0.0, 0.0, 0.0],  # t=4, predicts '<blank>'
         ]
@@ -173,10 +314,15 @@ if __name__ == "__main__":
     )
 
     print("Decoded sequences from decode_ctc_predictions:")
+    transcripts = []
     for batch_idx, sequence in enumerate(decoded_sequences):
         print(f"Batch {batch_idx}:")
+        transcript = []
         for t, token, prob in sequence:
+            transcript.append(token)
             print(f"  Time {t}: Token '{token}', Probability {prob}")
+        transcripts.append(transcript)
+    print(f'transcripts: {transcripts}')
 
     # Test decode_topk_tokens function
     topk_tokens = decode_topk_tokens(
@@ -236,3 +382,16 @@ if __name__ == "__main__":
     print(nlp_prompt)
     print("NLP Prompt Tensor:")
     print(nlp_prompt_tensor)
+
+    # Run forced alignment
+    alignments = forced_align_batch(
+        ctc_probs, 
+        transcripts, 
+        vocabulary, 
+        blank_index
+    )
+
+    # Print the results
+    for alignment in alignments:
+        for start_time, end_time, token, avg_prob in alignment:
+            print(f"Token: {token}, Start Time: {start_time}, End Time: {end_time}, Avg Probability: {avg_prob}")

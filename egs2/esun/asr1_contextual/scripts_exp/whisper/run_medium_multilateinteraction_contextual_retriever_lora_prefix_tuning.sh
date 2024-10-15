@@ -18,7 +18,7 @@ inference_config=conf/contextual/whisper/decode_asr_whisper_prefix_tuning_c20.ya
 asr_tag=whisper/run_medium_multilateinteraction_contextual_retriever_lora_prefix_tuning
 
 pretrained_model_encoder_retriever=exp/asr_whisper/run_medium_multilateinteraction_contextual_retriever_balanced_alpha0.8_suffix/valid.loss.ave_10best.pth
-pretrained_model_prefix_tuning_decoder=exp/asr_whisper/run_medium_prefix_tuning_shuffle_test/38epoch.pth
+# pretrained_model_prefix_tuning_decoder=exp/asr_whisper/run_medium_prefix_tuning_shuffle_test/38epoch.pth
 
 context_bpemodel=data/token_list/bpe_unigram5000suffix/bpe.model
 context_token_type=bpe
@@ -77,7 +77,7 @@ CUDA_LAUNCH_BLOCKING=1 CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --context_bpemodel "${context_bpemodel}" \
     --context_token_type "${context_token_type}" \
     --context_token_list "${context_token_list}" \
-    --pretrained_model "${pretrained_model_encoder_retriever},${pretrained_model_prefix_tuning_decoder}:decoder" \
+    --pretrained_model "${pretrained_model_encoder_retriever}" \
     --ignore_init_mismatch true \
     "$@"
 

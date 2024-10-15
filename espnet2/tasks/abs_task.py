@@ -1258,15 +1258,23 @@ class AbsTask(ABC):
                         logging.info(f"Setting {k}.requires_grad = False")
                         p.requires_grad = False
 
+            # Use LoRA to finetune the large pre-trained foundation models, like Whisper
+            if getattr(args, "use_lora", False):
+                create_lora_adapter(model, **args.lora_conf)
+
             for t in args.unfreeze_param:
                 for k, p in model.named_parameters():
                     if k.startswith(t + ".") or k == t:
                         logging.info(f"Setting {k}.requires_grad = True")
                         p.requires_grad = True
 
-            # Use LoRA to finetune the large pre-trained foundation models, like Whisper
             if getattr(args, "use_lora", False):
-                create_lora_adapter(model, **args.lora_conf)
+                for t in args.freeze_param:
+                    if t not in args.lora_conf['target_prefixs']:
+                        for k, p in model.named_parameters():
+                            if k.startswith(t + ".") or k == t:
+                                logging.info(f"Setting {k}.requires_grad = False (After LoRa)")
+                                p.requires_grad = False
 
             # 3. Build optimizer
             optimizers = cls.build_optimizers(args, model=model)
@@ -2170,6 +2178,8 @@ class AbsTask(ABC):
                 #   in PyTorch<=1.4
                 device = f"cuda:{torch.cuda.current_device()}"
             try:
+                state_dict = torch.load(model_file, map_location=device)
+                logging.info(f'state_dict\n:{state_dict.keys()}')
                 model.load_state_dict(
                     torch.load(model_file, map_location=device),
                     strict=not use_lora,

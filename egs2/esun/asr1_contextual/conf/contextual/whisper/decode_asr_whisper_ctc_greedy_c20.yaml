@@ -8,7 +8,6 @@ penalty: 0.0
 # nlp_prompt_token: "THE TOPIC OF TODAY'S SPEECH IS TEST. OKAY THEN I'LL CONTINUE."
 # contextual information settings
 contextual_conf:
-  contextual_type: rareword
   contextual_type: context_sampler
   # metadata for context list
   context_list_path: ./local/contextual/rarewords/rareword_f10_test.txt

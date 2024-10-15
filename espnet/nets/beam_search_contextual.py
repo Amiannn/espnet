@@ -389,12 +389,9 @@ class ContextualBeamSearch(BeamSearch):
             )
        
         if context_preds is not None:
-            context_yseq  = []
-            context_score = []
-            for pred in context_preds:
-                pred_ints = self.context_sampler.prompt_text2int(pred[1])
-                context_yseq.extend(pred_ints)
-                context_score.append(pred[2])
+            pred_texts    = " ".join([pred[1] for pred in context_preds])
+            context_yseq  = self.context_sampler.prompt_text2int(pred_texts)
+            context_score = [pred[2] for pred in context_preds]
             context_yseq  = [1] + context_yseq + [1]
         else:
             context_yseq  = [1, 1]

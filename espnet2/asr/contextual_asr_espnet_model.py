@@ -478,23 +478,23 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             ys_in_pad, ys_out_pad = add_sop_sos_eos(ys_pad, prompts, self.sop, self.sos, self.eos, self.ignore_id)
             ys_in_lens = ys_pad_lens + prompt_lens + 2
 
-            for ys_in, ys_out in zip(ys_in_pad, ys_out_pad):
-                ys_in  = ys_in.tolist()
-                ys_out = ys_out.tolist()
-                logging.info(f'ys_in: {ys_in}')
-                logging.info(f'ys_out: {ys_out}')
-                ys_in = self.context_sampler.prompt_token_id_converter.ids2tokens(
-                    ys_in, 
-                    skip_special_tokens=False
-                )
-                ys_in = self.context_sampler.prompt_tokenizer.tokens2text(ys_in)
-                logging.info(f'ys_in text: {ys_in}')
-                ys_out = self.context_sampler.prompt_token_id_converter.ids2tokens(
-                    [y if y != -1 else 0 for y in ys_out], 
-                    skip_special_tokens=False
-                )
-                ys_out = self.context_sampler.prompt_tokenizer.tokens2text(ys_out)
-                logging.info(f'ys_out text: {ys_out}')
+            # for ys_in, ys_out in zip(ys_in_pad, ys_out_pad):
+            #     ys_in  = ys_in.tolist()
+            #     ys_out = ys_out.tolist()
+            #     logging.info(f'ys_in: {ys_in}')
+            #     logging.info(f'ys_out: {ys_out}')
+            #     ys_in = self.context_sampler.prompt_token_id_converter.ids2tokens(
+            #         ys_in, 
+            #         skip_special_tokens=False
+            #     )
+            #     ys_in = self.context_sampler.prompt_tokenizer.tokens2text(ys_in)
+            #     logging.info(f'ys_in text: {ys_in}')
+            #     ys_out = self.context_sampler.prompt_token_id_converter.ids2tokens(
+            #         [y if y != -1 else 0 for y in ys_out], 
+            #         skip_special_tokens=False
+            #     )
+            #     ys_out = self.context_sampler.prompt_tokenizer.tokens2text(ys_out)
+            #     logging.info(f'ys_out text: {ys_out}')
         else:
             ys_in_pad, ys_out_pad = add_sos_eos(ys_pad, self.sos, self.eos, self.ignore_id)
             ys_in_lens = ys_pad_lens + 1

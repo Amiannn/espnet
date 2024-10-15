@@ -47,9 +47,9 @@ sort_batch: descending          # how to sort created batches
 batch_type: numel
 # batch_bins: 12000000            # good for single GPU w/ 40G mem
 # batch_bins: 96000000            # good for single GPU w/ 40G mem
-batch_bins: 64000000            # good for single GPU w/ 40G mem
-accum_grad: 4
-max_epoch: 40
+batch_bins: 32000000            # good for single GPU w/ 40G mem
+accum_grad: 8
+max_epoch: 50
 patience: none
 init: none
 # best_model_criterion:
@@ -94,7 +94,7 @@ contextual_conf:
     # metadata for context list
     context_list_path: ./local/contextual/rarewords/rareword_f1000_train.txt
     context_phone_embedding_path: ./local/contextual/ssl_features/rareword_f1000_train.xphone.seq.pt
-    context_list_occurrence_path: null
+    context_list_occurrence_path: ./local/contextual/rarewords/rareword_f65536_train_occurrence.txt
     # context settings
     use_no_context_token: true
     # sampling settings
@@ -128,8 +128,13 @@ contextualizer_conf:
     pad_token_value: -1
     # contextualizer loss settings
     warmup_epoch: 0
-    embed_share_weight_ctc: true
+    # embed_share_weight_ctc: true
     contextualizer_weight: 0.0
+    # contextualizer_weight: 0.5
+    # contextualizer_losses:
+    #     loss_contextualizer_ga_ctc: 0.5
+    #     loss_contextualizer_ga_reweight_lp: 0.5
+    # lp_gamma: 0.8
 
 use_lora: true
 lora_conf:
@@ -138,3 +143,11 @@ lora_conf:
     dropout_rate: 0.05
     target_prefixs: ["decoder"]
     target_modules: ["query", "key", "value", "attn.out"]
+
+save_lora_only: false
+
+# freeze_param: [
+#     "contextualizer.context_encoder.embed",
+#     "contextualizer.context_encoder.pad_embed",
+# ]
+# unfreeze_param: ["contextualizer"]
