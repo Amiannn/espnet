@@ -28,6 +28,7 @@ class WhisperPrompter():
                 "idx": (int), -> index of the context element
                 "confidence": (float), -> confidence of this context element
                 "position": (float, float), -> position of this context element
+                "tag": (str)
             }
         """
         elements = elements.copy()
@@ -38,7 +39,7 @@ class WhisperPrompter():
         else:
             if elements[0]['confidence'] is not None:
                 elements_confidence = [e['confidence'] for e in elements]
-                contexts = ",".join([f'{self.id2context[e]}({int(s*100)})' for e, s in zip(element_idxs, elements_confidence)])
+                contexts = ",".join([f'<{tag_start}>{self.id2context[e]}({int(s*100)})<{tag_end}>' for e, s in zip(element_idxs, elements_confidence)])
                 # contexts = ",".join([f'{self.id2context[e]}' for e, s in zip(element_idxs, elements_confidence)])
             else:
                 if self.do_context_shuffle:

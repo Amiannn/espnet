@@ -231,7 +231,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         context_logit    = None
         encoder_out_proj = None
 
-        # c1.1 Contextual Retriever
+        # c1.1 Contextual Retriever (KWS)
         if self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_RETRIEVER:
             contexts_hyp, encoder_out_proj = self.contextualizer(
                 query=encoder_out,

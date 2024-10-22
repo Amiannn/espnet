@@ -28,7 +28,7 @@ ref_path       = './data/test/text'
 # hyp_path = "/home/ubuntu/espnet/egs2/esun/asr1_contextual/exp/asr_whisper/run_medium_prefix_tuning/decode_asr_whisper_prefix_tuning_asr_model_3epoch/test/text"
 # hyp_path = "/home/ubuntu/espnet/egs2/esun/asr1/exp/asr_whisper_medium_lora_decoder/decode_asr_whisper_noctc_greedy_asr_model_1epoch/test/text"
 
-hyp_path = "./exp/asr_whisper/run_medium_multilateinteraction_contextual_retriever_lora_prefix_tuning/decode_asr_whisper_prefix_tuning_c100_asr_model_valid.loss.ave_10best/test/text"
+hyp_path = "./exp/asr_whisper/run_medium_multilateinteraction_contextual_retriever_lora_prefix_tuning/decode_asr_whisper_prefix_tuning_c20_asr_model_valid.loss.ave_10best/test/text"
 
 def filter_prompt(datas):
     _datas = []

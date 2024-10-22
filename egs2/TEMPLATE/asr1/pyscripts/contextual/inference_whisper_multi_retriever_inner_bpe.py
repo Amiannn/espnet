@@ -102,10 +102,10 @@ def forward(model, speech, speech_length, context_data, tokens, text, token_list
         # context_prob_sw = torch.softmax(model.contextualizer.retriever.sw_score, dim=-1)
         # context_prob_pho = torch.softmax(model.contextualizer.retriever.ph_score, dim=-1)
         # context_probabilities = torch.softmax(model.contextualizer.retriever.subword_scores, dim=-1)
-        context_probabilities = torch.softmax(median_filter_over_time(
-            model.contextualizer.retriever.subword_scores + model.contextualizer.retriever.phoneme_scores, 
-            7
-        ), dim=-1)
+        # context_probabilities = torch.softmax(median_filter_over_time(
+        #     model.contextualizer.retriever.subword_scores + model.contextualizer.retriever.phoneme_scores, 
+        #     7
+        # ), dim=-1)
         prediction = decode_topk_tokens(
             token_probs=context_probabilities, 
             vocabulary=context_list, 
@@ -121,6 +121,7 @@ def forward(model, speech, speech_length, context_data, tokens, text, token_list
         ctc_prediction = model.ctc.argmax(x).squeeze(0)
     
         predicted_hypothesis = decode_ctc_predictions(model.ctc.ctc_lo(x), token_list, idx_blank=0, threshold=0.0)
+        predicted_hypothesis = [p[1] for p in predicted_hypothesis]
         predicted_hypothesis = "".join([d[1] for d in predicted_hypothesis]).replace("▁", ' ')
         
     return None, None, context_probabilities, ctc_prediction, {
@@ -133,17 +134,19 @@ def forward(model, speech, speech_length, context_data, tokens, text, token_list
 
 if __name__ == "__main__":
     # File paths
-    spm_path = "whisper_multilingual"
+    # spm_path = "whisper_multilingual"
+    spm_path = "./data/token_list/bpe_unigram5000suffix/bpe.model"
     context_spm_path = "./data/token_list/bpe_unigram5000suffix/bpe.model"
-    token_path = "./data/zh_token_list/whisper_multilingual/tokens.txt"
+    # token_path = "./data/zh_token_list/whisper_multilingual/tokens.txt"
+    token_path = "./data/token_list/bpe_unigram5000suffix/tokens.txt"
     context_token_path = "./data/token_list/bpe_unigram5000suffix/tokens.txt"
-    model_conf = "./conf/contextual/whisper/train_asr_whisper_medium_multilateinteraction_contextual_retriever_lora_prefix_tuning.yaml"
-    model_path = "./exp/asr_whisper/run_medium_multilateinteraction_contextual_retriever_lora_prefix_tuning/9epoch.pth"
+    model_conf = "./conf/contextual/whisper/train_asr_whisper_medium_xlateinteraction_contextual_retriever_balanced_alpha0.8.yaml"
+    model_path = "./exp/asr_whisper/run_medium_xlateinteraction_contextual_retriever_balanced_alpha0.8_suffix/valid.loss.ave_10best.pth"
     stats_path = None
-    rareword_path = "./local/contextual/rarewords/esun_earningcall.entity.txt"
+    rareword_path = "./local/contextual/rarewords/esun.entity.txt"
     speech_scp_path = "./dump/raw/test/wav.scp"
-    context_list_path = "./dump/raw/test/uttblist_idx_entity_earningcall"
-    context_list_xphone_path = "./local/contextual/ssl_features/esun_earningcall.entity.xphone.seq.pt"
+    context_list_path = "./dump/raw/test/uttblist_idx_entity"
+    context_list_xphone_path = "./local/contextual/ssl_features/esun.entity.xphone.seq.pt"
     reference_path = "./data/test/text"
     
     # Debug directory setup
@@ -182,7 +185,8 @@ if __name__ == "__main__":
         data_path_and_name_and_type=data_path_and_name_and_type,
         return_contextual_processor=True,
         use_local_attn_conv=False,
-        token_type='whisper_multilingual',
+        # token_type='whisper_multilingual',
+        token_type='bpe',
         context_token_type='bpe',
     )
 

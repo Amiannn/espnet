@@ -369,7 +369,7 @@ class LateInteractionContextualRetriever(ContextualRetriever):
         scores = self.retriever(query, context)
         return scores
 
-class LateInteractionXPhoneContextualRetriever(LateInteractionContextualRetriever):
+class MultiLateInteractionContextualRetriever(LateInteractionContextualRetriever):
     def __init__(
         self,
         vocab_size          : int,
@@ -517,3 +517,91 @@ class LateInteractionXPhoneContextualRetriever(LateInteractionContextualRetrieve
         if return_model_proj:
             return probs, query
         return probs 
+    
+class xLateInteractionContextualRetriever(ContextualRetriever):
+    def __init__(
+        self,
+        vocab_size          : int,
+        query_input_dim     : int,
+        context_input_dim   : int,
+        proj_dim            : int,
+        interaction_proj_dim: int,
+        dropout             : float = 0.1,
+        pad_token_value     : int = -1,
+        **kwargs
+    ):
+        super().__init__()
+
+        self.query_encoder = build_conformer_block(
+            proj_hidden_size=query_input_dim,
+            drop_out=dropout
+        )
+        self.context_encoder = ContextEncoderXPhone(
+            vocab_size=vocab_size,
+            hidden_size=context_input_dim,
+            output_size=proj_dim,
+            num_blocks=2,
+            drop_out=dropout,
+            padding_idx=pad_token_value,
+        )
+        self.retriever = MaxSimInteractor(
+            input_dim=proj_dim,
+            proj_dim=interaction_proj_dim,
+            dropout=dropout,
+            **kwargs
+        )
+
+    def forward_query_encoder(
+        self, 
+        query: torch.Tensor, 
+        ilens: torch.Tensor, 
+        **kwargs
+    ):
+        query_hat, mask = self.query_encoder(query, mask=None)
+        return (query + query_hat), ilens
+    
+    def forward_context_encoder(
+        self, 
+        context_subword      : torch.Tensor, 
+        context_subword_ilens: torch.Tensor,
+        context_phone        : torch.Tensor, 
+        context_phone_ilens  : torch.Tensor,
+        return_mean          : bool=False,
+        **kwargs
+    ):
+        # TODO: move mean operation out of the context encoder
+        context, ilens = self.context_encoder(
+            context_phone, 
+            context_phone_ilens
+        )
+        context_mean = torch.sum(context_phone, dim=1) / context_phone_ilens.unsqueeze(1)
+        if return_mean:
+            context_mean, ilens
+        return context, ilens
+    
+    def forward_hnc_encoder(
+        self, 
+        context_subword      : torch.Tensor, 
+        context_subword_ilens: torch.Tensor,
+        context_phone        : torch.Tensor, 
+        context_phone_ilens  : torch.Tensor,
+        **kwargs
+    ):
+        return self.forward_context_encoder(
+            context_subword, 
+            context_subword_ilens,
+            context_phone,
+            context_phone_ilens,
+            return_mean=True,
+        )
+    
+    def forward_retriever(
+        self,
+        query        : torch.Tensor,
+        query_ilens  : torch.Tensor,
+        context      : torch.Tensor, 
+        context_ilens: torch.Tensor,
+        **kwargs
+    ):
+        scores = self.retriever(query, context)
+        return scores
