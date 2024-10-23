@@ -457,6 +457,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             # for now, we use teacher forcing prefix tuning method
             prompts     = contexts['nlp_prompt_tensor']
             prompt_lens = torch.tensor([p.shape[0] for p in prompts]).to(ys_pad.device)
+            logging.info(f'\n{"_" * 30} (Teacher Forcing)\n{prompts_nlp}')
             prompts_nlp = "\n".join(contexts['nlp_prompt'])
             logging.info(f'\n{"_" * 30}\n{prompts_nlp}')
 
@@ -470,31 +471,13 @@ class ESPnetContextualASRModel(ESPnetASRModel):
                     threshold=0.5,
                 )
                 prompts_nlp = "\n".join(nlp_prompt)
-                logging.info(f'\n{"+" * 30}\n{prompts_nlp}')
+                logging.info(f'\n{"+" * 30} (KWS)\n{prompts_nlp}')
                 
                 prompts     = [prompt.to(ys_pad) for prompt in nlp_prompt_tensor]
                 prompt_lens = torch.tensor([p.shape[0] for p in prompts]).to(ys_pad.device)
 
             ys_in_pad, ys_out_pad = add_sop_sos_eos(ys_pad, prompts, self.sop, self.sos, self.eos, self.ignore_id)
             ys_in_lens = ys_pad_lens + prompt_lens + 2
-
-            # for ys_in, ys_out in zip(ys_in_pad, ys_out_pad):
-            #     ys_in  = ys_in.tolist()
-            #     ys_out = ys_out.tolist()
-            #     logging.info(f'ys_in: {ys_in}')
-            #     logging.info(f'ys_out: {ys_out}')
-            #     ys_in = self.context_sampler.prompt_token_id_converter.ids2tokens(
-            #         ys_in, 
-            #         skip_special_tokens=False
-            #     )
-            #     ys_in = self.context_sampler.prompt_tokenizer.tokens2text(ys_in)
-            #     logging.info(f'ys_in text: {ys_in}')
-            #     ys_out = self.context_sampler.prompt_token_id_converter.ids2tokens(
-            #         [y if y != -1 else 0 for y in ys_out], 
-            #         skip_special_tokens=False
-            #     )
-            #     ys_out = self.context_sampler.prompt_tokenizer.tokens2text(ys_out)
-            #     logging.info(f'ys_out text: {ys_out}')
         else:
             ys_in_pad, ys_out_pad = add_sos_eos(ys_pad, self.sos, self.eos, self.ignore_id)
             ys_in_lens = ys_pad_lens + 1
@@ -503,6 +486,19 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         decoder_out, _ = self.decoder(
             encoder_out, encoder_out_lens, ys_in_pad, ys_in_lens
         )
+
+        if self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_ADAPTER_DECODER:
+            dec_bias_vec, dec_attn = self.contextualizer(
+                query=encoder_out,
+                query_ilens=encoder_out_lens,
+                context_subword=contexts['blist'],
+                context_subword_ilens=contexts['ilens'],
+                context_phone=contexts['blist_xphone'],
+                context_phone_ilens=contexts['blist_xphone_ilens'],
+                return_model_proj=True
+            )
+            logging.info(f'dec_bias_vec: {dec_bias_vec.shape}')
+            logging.info(f'decoder_out: {decoder_out.shape}')
 
         # 2. Compute attention loss
         loss_att = self.criterion_att(decoder_out, ys_out_pad)
@@ -573,9 +569,6 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             bias_vec = enc_bias_vec.unsqueeze(2)
         elif dec_bias_vec is not None:
             bias_vec = dec_bias_vec.unsqueeze(1)
-        # logging.info(f'encoder_out: {encoder_out.shape}')
-        # logging.info(f'decoder_out: {decoder_out.shape}')
-        # logging.info(f'bias_vec: {bias_vec.shape}')
         joint_out = self.joint_network(
             encoder_out.unsqueeze(2), 
             decoder_out.unsqueeze(1),
@@ -613,10 +606,6 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             ga_ctc_target = contexts['label_ctc']
             ga_ctc_input_lengths  = encoder_out_lens
             ga_ctc_target_lengths = contexts['label_ctc_ilens']
-            # logging.info(f'ga_ctc_target:\n{ga_ctc_target}')
-            # logging.info(f'ga_ctc_target shape:\n{ga_ctc_target.shape}')
-            # logging.info(f'ga_ctc_target_lengths:\n{ga_ctc_target_lengths}')
-            # logging.info(f'ga_ctc_target_lengths shape:\n{ga_ctc_target_lengths.shape}')
             loss_ga_ctc = self.contextualizer_ctc_ga_loss(
                 ga_ctc_input, 
                 ga_ctc_target, 
@@ -627,15 +616,10 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         # monotonic rnnt loss
         if 'loss_contextualizer_ga_monornnt' in self.contextualizer_losses:
             # TODO: fix mono loss problem and format
-            logging.info(f'contexts_hyp: {contexts_hyp.shape}')
             ga_mrnnt_input  = torch.log(contexts_hyp).transpose(0, 1)
             ga_mrnnt_target = contexts['label_ctc'].to(torch.long)
             ga_mrnnt_input_lengths  = encoder_out_lens.to(torch.long)
             ga_mrnnt_target_lengths = contexts['label_ctc_ilens'].to(torch.long)
-            logging.info(f'ga_mrnnt_target:\n{ga_mrnnt_target}')
-            logging.info(f'ga_mrnnt_target shape:\n{ga_mrnnt_target.shape}')
-            logging.info(f'ga_mrnnt_target_lengths:\n{ga_mrnnt_target_lengths}')
-            logging.info(f'ga_mrnnt_target_lengths shape:\n{ga_mrnnt_target_lengths.shape}')
             loss_ga_monornnt = optimized_transducer.transducer_loss(
                 logits=ga_mrnnt_input,
                 targets=ga_mrnnt_target,
