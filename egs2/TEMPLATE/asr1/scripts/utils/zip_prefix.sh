@@ -19,18 +19,18 @@ fi
 # Navigate to the specified directory
 cd "$DIRECTORY" || exit
 
-# Find files and folders starting with the prefix
-FILES=$(find . -maxdepth 1 -name "${PREFIX}*" -printf "%P\n")
+# Find directories starting with the prefix
+DIRS=$(find . -type d -name "${PREFIX}*")
 
-# Check if any files or folders are found
-if [ -z "$FILES" ]; then
-    echo "No files or folders with prefix '$PREFIX' found in '$DIRECTORY'."
+# Check if any directories are found
+if [ -z "$DIRS" ]; then
+    echo "No directories with prefix '$PREFIX' found in '$DIRECTORY'."
     exit 1
 fi
 
-# Create a zip archive containing the found files and folders
-ZIPFILE="${PREFIX}_files.zip"
-zip -r "$ZIPFILE" $FILES
+# Create a zip archive containing the found directories
+ZIPFILE="${PREFIX}_folders.zip"
+zip -r "$ZIPFILE" $DIRS
 
-echo "Created zip file '$ZIPFILE' containing:"
-echo "$FILES"
+echo "Created zip file '$ZIPFILE' containing directories:"
+echo "$DIRS"
