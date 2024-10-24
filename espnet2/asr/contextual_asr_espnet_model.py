@@ -45,6 +45,8 @@ from espnet2.asr.contextualizer.func.contextual_retriever_func import (
     generate_prompt_from_hypotheses,
 )
 
+from espnet2.asr.decoder.whisper_decoder import OpenAIWhisperDecoder
+
 if V(torch.__version__) >= V("1.6.0"):
     from torch.cuda.amp import autocast
 else:
@@ -452,7 +454,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             ys_pad_lens += 1
 
         # Add text prompt (Whisper style only)
-        if "nlp_prompt_tensor" in contexts:
+        if "nlp_prompt_tensor" in contexts and contexts['nlp_prompt_tensor'] is not None:
             # TODO: convert retriever's outputs into prompts 
             # for now, we use teacher forcing prefix tuning method
             prompts     = contexts['nlp_prompt_tensor']
@@ -483,22 +485,27 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             ys_in_lens = ys_pad_lens + 1
         
         # 1. Forward decoder
-        decoder_out, _ = self.decoder(
-            encoder_out, encoder_out_lens, ys_in_pad, ys_in_lens
-        )
+        if isinstance(self.decoder, OpenAIWhisperDecoder):    
+            (decoder_out, dec_hidden_vec), _ = self.decoder(
+                encoder_out, encoder_out_lens, ys_in_pad, ys_in_lens, return_hs=True
+            )
+        else:
+            decoder_out, _ = self.decoder(
+                encoder_out, encoder_out_lens, ys_in_pad, ys_in_lens
+            )
 
         if self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_ADAPTER_DECODER:
             dec_bias_vec, dec_attn = self.contextualizer(
-                query=encoder_out,
-                query_ilens=encoder_out_lens,
-                context_subword=contexts['blist'],
-                context_subword_ilens=contexts['ilens'],
-                context_phone=contexts['blist_xphone'],
-                context_phone_ilens=contexts['blist_xphone_ilens'],
-                return_model_proj=True
+                model_embed=dec_hidden_vec,
+                context_embed=contexts['blist'],
+                ilens=contexts['ilens'],
+                return_atten=True
             )
-            logging.info(f'dec_bias_vec: {dec_bias_vec.shape}')
-            logging.info(f'decoder_out: {decoder_out.shape}')
+
+        if isinstance(self.decoder, OpenAIWhisperDecoder):
+            dec_bias_vec = self.decoder.output_layer(dec_bias_vec)
+            decoder_out = decoder_out + dec_bias_vec
+
 
         # 2. Compute attention loss
         loss_att = self.criterion_att(decoder_out, ys_out_pad)

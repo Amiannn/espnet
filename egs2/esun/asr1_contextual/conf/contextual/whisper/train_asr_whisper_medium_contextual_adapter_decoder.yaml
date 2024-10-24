@@ -92,14 +92,15 @@ contextual_conf:
     contextual_type: context_sampler
     # metadata for context list
     context_list_path: ./local/contextual/rarewords/rareword_f1000_train.txt
+    context_phone_embedding_path: null
     context_list_occurrence_path: null
     # context settings
     use_no_context_token: true
     # sampling settings
-    gold_context_dropout: 0.3
-    sub_context_list_dropout: 0.5
+    gold_context_dropout: 0.0
+    sub_context_list_dropout: 0.0
     max_utterance_disrupt_context: 10
-    max_batch_disrupt_context: 200
+    max_batch_disrupt_context: 1000
     shuffle_sub_context_list: True
     # hard negative context settings
     hnc_sampler_type: null
@@ -126,7 +127,6 @@ contextualizer_conf:
     linear_units: 1024
     context_attention_heads: 1
     adapter_attention_heads: 1
-    padding_idx: -1
     atten_temperature: 1.0
     use_local_attn_conv: False
     # contextualizer loss settings
@@ -134,17 +134,17 @@ contextualizer_conf:
     embed_share_weight_ctc: false
     contextualizer_weight: 0.0
 
-use_lora: true
-lora_conf:
-    rank: 8
-    alpha: 16
-    dropout_rate: 0.05
-    target_prefixs: ["decoder"]
-    target_modules: ["query", "key", "value", "attn.out"]
+# use_lora: true
+# lora_conf:
+#     rank: 8
+#     alpha: 16
+#     dropout_rate: 0.05
+#     target_prefixs: ["decoder"]
+#     target_modules: ["query", "key", "value", "attn.out"]
 
-save_lora_only: false
-freeze_param: [
-    "contextualizer.context_encoder.embed",
-    "contextualizer.context_encoder.pad_embed",
-]
-unfreeze_param: ["contextualizer"]
+# save_lora_only: false
+# freeze_param: [
+#     "contextualizer.context_encoder.embed",
+#     "contextualizer.context_encoder.pad_embed",
+# ]
+freeze_param: ["encoder", "decoder", "contextualizer.encoder.embed", "contextualizer.encoder.pad_embed"]

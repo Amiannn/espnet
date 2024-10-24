@@ -95,6 +95,7 @@ class ContextualAdapterPrototype(torch.nn.Module):
             context_embed, 
             ilens
         )
+        logging.info(f'context_embed_mean: {context_embed_mean.shape}')
         output = self.forward_adapter(
             model_embed=model_embed,
             context_embed=context_embed_mean,
@@ -107,6 +108,7 @@ class ContextualAdapterPrototype(torch.nn.Module):
 class ContextualAdapterTransformer(ContextualAdapterPrototype):
     def __init__(
         self,
+        vocab_size: int,
         context_embed_size: int,
         context_hidden_size: int,
         model_hidden_size: int,
@@ -123,6 +125,7 @@ class ContextualAdapterTransformer(ContextualAdapterPrototype):
         **kwargs
     ):
         super().__init__(
+            vocab_size=vocab_size,
             context_embed_size=context_embed_size,
             context_hidden_size=context_hidden_size,
             model_hidden_size=model_hidden_size,
@@ -134,6 +137,7 @@ class ContextualAdapterTransformer(ContextualAdapterPrototype):
             use_local_attn_conv=use_local_attn_conv,
         )
         self.encoder = ContextEncoderTransformer(
+            vocab_size=vocab_size,
             hidden_size=context_embed_size,
             output_size=context_hidden_size,
             attention_heads=context_attention_heads,

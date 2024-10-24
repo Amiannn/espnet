@@ -647,10 +647,10 @@ class ASRTask(AbsTask):
         contextualizer_type  = args.contextualizer_conf.get("contextualizer_type", None)
         contextualizer_class = contextualizer_choices.get_class(contextualizer_type)
         contextualizer       = contextualizer_class(
-            **args.contextualizer_conf, 
             vocab_size=vocab_size,
             padding_idx=-1,
             use_oov=args.contextual_conf.get("use_oov", True),
+            **args.contextualizer_conf, 
         )
         return contextualizer
 

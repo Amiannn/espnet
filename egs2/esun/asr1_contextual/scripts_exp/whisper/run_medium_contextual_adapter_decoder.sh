@@ -17,6 +17,8 @@ asr_config=conf/contextual/whisper/train_asr_whisper_medium_contextual_adapter_d
 inference_config=conf/contextual/whisper/decode_asr_whisper_prefix_tuning_c20.yaml
 asr_tag=whisper/run_medium_multilateinteraction_contextual_adapter_decoder
 
+pretrained_model=../asr1/exp/asr_whisper_medium_lora_decoder/3epoch.pth
+
 lm_config=conf/exp/train_lm_transformer.yaml
 use_lm=false
 use_wordlm=false
@@ -67,7 +69,7 @@ CUDA_LAUNCH_BLOCKING=1 CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --asr_text_fold_length 150 \
     --contextualization true \
     --lm_fold_length 150 \
-    --pretrained_model "${pretrained_model_encoder_retriever}" \
+    --pretrained_model "${pretrained_model},${pretrained_model}:decoder.decoders.token_embedding:contextualizer.encoder.embed" \
     --ignore_init_mismatch true \
     "$@"
 

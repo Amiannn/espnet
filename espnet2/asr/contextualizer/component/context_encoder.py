@@ -74,6 +74,7 @@ class ContextEncoderBiLSTM(torch.nn.Module):
 class ContextEncoderTransformer(ContextEncoderBiLSTM):
     def __init__(
         self,
+        vocab_size: int,
         hidden_size : int,
         output_size : int,
         drop_out   : float = 0.1,
