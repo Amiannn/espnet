@@ -1,0 +1,290 @@
+import os
+import random
+import numpy as np
+import torch
+import torch.nn.functional as F
+from tqdm import tqdm
+from itertools import groupby
+import argparse
+
+# Utility functions for file I/O
+from pyscripts.utils.fileio import read_file, read_json, read_pickle, write_file, write_json, write_pickle
+
+# ESPnet-related imports
+from pyscripts.contextual.utils.model import load_espnet_model
+from pyscripts.contextual.utils.rnnt_decode import infernece
+from pyscripts.contextual.utils.rnnt_alignment import forward_backward as force_alignment
+from pyscripts.contextual.utils.visualize import plot_attention_map, plot_tsne, plot_gate
+
+from espnet2.asr_transducer.utils import get_transducer_task_io
+from espnet.nets.pytorch_backend.transformer.add_sos_eos import add_sos_eos
+from espnet2.asr.contextualizer import (
+    CONTEXTUAL_RETRIEVER,
+    CONTEXTUAL_ADAPTER_ENCODER,
+    CONTEXTUAL_ADAPTER_DECODER
+)
+
+from espnet2.asr.contextualizer.func.contextual_retriever_func import (
+    decode_ctc_predictions, 
+    decode_topk_tokens,
+    generate_prompt_from_hypotheses,
+)
+# ---- Utility Functions ---- #
+
+import torch
+import torch.nn.functional as F
+
+from espnet2.asr.decoder.whisper_decoder import OpenAIWhisperDecoder
+
+def median_filter_over_time(attention_maps, window_size):
+    """
+    Applies a median filter over the time dimension of attention maps.
+
+    Parameters:
+    - attention_maps (Tensor): Input tensor of shape [Batch, Time_length, Keywords].
+    - window_size (int): The size of the median filter window (must be an odd integer).
+
+    Returns:
+    - Tensor: The filtered attention maps with the same shape as the input.
+    """
+    assert window_size % 2 == 1, "Window size must be odd."
+    pad_size = (window_size - 1) // 2
+    # Permute the tensor to bring the time dimension to the last
+    attention_maps_permuted = attention_maps.permute(0, 2, 1)  # Shape: [Batch, Keywords, Time_length]
+    # Pad the time dimension (now the last dimension)
+    padded_attention_maps = F.pad(
+        attention_maps_permuted,
+        pad=(pad_size, pad_size),  # Pad the last dimension (Time_length)
+        mode='reflect'             # Options: 'reflect', 'replicate', 'constant'
+    )
+    # Unfold the time dimension to create sliding windows
+    # The resulting shape will be [Batch, Keywords, Time_length, window_size]
+    windows = padded_attention_maps.unfold(
+        dimension=2,        # The time dimension (now the last dimension)
+        size=window_size,   # Window size
+        step=1              # Move one time step at a time
+    )
+    # Compute the median over the window dimension
+    medians = windows.median(dim=3).values  # Shape: [Batch, Keywords, Time_length]
+    # Permute back to the original shape
+    medians = medians.permute(0, 2, 1)  # Shape: [Batch, Time_length, Keywords]
+    return medians
+
+def get_token_list(token_id_converter):
+    """Retrieve token list from the token ID converter"""
+    vocab_size = token_id_converter.get_num_vocabulary_size()
+    return [token_id_converter.ids2tokens([i])[0] if len(token_id_converter.ids2tokens([i])) > 0 else '' for i in range(vocab_size)]
+
+def retriever_decode(ys_hat, char_list, blank_index=0):
+    """Decode the output sequences"""
+    sequence_prediction = [int(x[0]) for y in ys_hat for x in groupby(y) if int(x[0]) != -1 and int(x[0]) != blank_index]
+    return ", ".join([char_list[int(idx)] for idx in sequence_prediction])
+
+def visualize(logp, attention, ctc_prediction, text, target, context_list, speech, blank_id, token_list, debug_dir, utterance_id):
+    """Visualize the attention maps and predictions"""
+    frame2align = {i: token_list[p] if p != 0 else ' ' for i, p in enumerate(ctc_prediction)} if ctc_prediction is not None else {}
+    plot_attention_map(frame2align, attention, text, context_list, debug_dir, utterance_id)
+
+@torch.no_grad()
+def forward(model, speech, speech_length, context_data, tokens, text, token_list):
+    """Forward pass through the model and contextualization"""
+    encoder_output, encoder_output_lengths = model.encode(speech, speech_length)
+    
+    prediction            = None
+    encoder_projection    = None
+    context_probabilities = None
+    if model.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_RETRIEVER:
+        context_probabilities, encoder_projection = model.contextualizer(
+            query=encoder_output,
+            query_ilens=encoder_output_lengths,
+            context_subword=context_data['blist'],
+            context_subword_ilens=context_data['ilens'],
+            context_phone=context_data['blist_xphone'],
+            context_phone_ilens=context_data['blist_xphone_ilens'],
+            return_model_proj=True
+        )
+        
+        # context_prob_sw = torch.softmax(model.contextualizer.retriever.sw_score, dim=-1)
+        # context_prob_pho = torch.softmax(model.contextualizer.retriever.ph_score, dim=-1)
+        # context_probabilities = torch.softmax(model.contextualizer.retriever.subword_scores, dim=-1)
+        # context_probabilities = torch.softmax(median_filter_over_time(
+        #     model.contextualizer.retriever.subword_scores + model.contextualizer.retriever.phoneme_scores, 
+        #     7
+        # ), dim=-1)
+        prediction = decode_topk_tokens(
+            token_probs=context_probabilities, 
+            vocabulary=context_list, 
+            blank_index=0, 
+            top_k=5, 
+            threshold=0.5
+        )
+
+    ctc_prediction = None
+    predicted_hypothesis = None
+    if model.ctc is not None:
+        x = encoder_projection if encoder_projection is not None else encoder_output
+        ctc_prediction = model.ctc.argmax(x).squeeze(0)
+    
+        predicted_hypothesis = decode_ctc_predictions(model.ctc.ctc_lo(x), token_list, idx_blank=0, threshold=0.0)
+        predicted_hypothesis = [p[1] for p in predicted_hypothesis]
+        predicted_hypothesis = "".join([d[1] for d in predicted_hypothesis]).replace("▁", ' ')
+    
+
+        # 1. Forward decoder
+    if isinstance(model.decoder, OpenAIWhisperDecoder):
+        ys_in_pad, _ = add_sos_eos(tokens, model.sos, model.eos, model.ignore_id)
+        ys_pad_lens  = torch.tensor([tokens.shape[-1]])
+        ys_in_lens   = ys_pad_lens + 1
+
+        (decoder_out, dec_hidden_vec), _ = model.decoder(
+            encoder_output, 
+            encoder_output_lengths, 
+            ys_in_pad, 
+            ys_in_lens, 
+            return_hs=True
+        )
+ 
+        if model.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_ADAPTER_DECODER:
+            dec_bias_vec, context_probabilities = model.contextualizer(
+                model_embed=dec_hidden_vec,
+                context_embed=context_data['blist'],
+                ilens=context_data['ilens'],
+                return_atten=True
+            )
+            context_probabilities = torch.mean(context_probabilities, dim=1)
+            ctc_prediction        = tokens[0]
+            print(f'context_probabilities: {context_probabilities.shape}')
+        dec_bias_vec = model.decoder.output_layer(dec_bias_vec)
+        decoder_out = decoder_out + dec_bias_vec
+
+
+    return None, None, context_probabilities, ctc_prediction, {
+        'text': text,
+        'hyp': predicted_hypothesis,
+        'result': prediction,
+    }
+
+# ---- Main Functionality ---- #
+
+if __name__ == "__main__":
+    # Argument parsing
+    parser = argparse.ArgumentParser(description='ESPnet Model Inference Script')
+    parser.add_argument('--spm_path', default="./data/token_list/bpe_unigram5000suffix/bpe.model", help='Path to spm model')
+    parser.add_argument('--context_spm_path', default="./data/token_list/bpe_unigram5000suffix/bpe.model", help='Path to context spm model')
+    parser.add_argument('--token_path', default="./data/token_list/bpe_unigram5000suffix/tokens.txt", help='Path to tokens.txt')
+    parser.add_argument('--context_token_path', default="./data/token_list/bpe_unigram5000suffix/tokens.txt", help='Path to context tokens.txt')
+    parser.add_argument('--model_conf', default="./conf/contextual/whisper/train_asr_whisper_medium_xlateinteraction_contextual_retriever_balanced_alpha0.8.yaml", help='Path to model config yaml')
+    parser.add_argument('--model_path', default="./exp/asr_whisper/run_medium_xlateinteraction_contextual_retriever_balanced_alpha0.8_suffix/valid.loss.ave_10best.pth", help='Path to model checkpoint')
+    parser.add_argument('--stats_path', default=None, help='Path to stats file')
+    parser.add_argument('--rareword_path', default="./local/contextual/rarewords/esun.entity.txt", help='Path to rarewords file')
+    parser.add_argument('--speech_scp_path', default="./dump/raw/test/wav.scp", help='Path to speech scp file')
+    parser.add_argument('--context_list_path', default="./dump/raw/test/uttblist_idx_entity", help='Path to context list file')
+    parser.add_argument('--context_list_xphone_path', default="./local/contextual/ssl_features/esun.entity.xphone.seq.pt", help='Path to context list xphone file')
+    parser.add_argument('--reference_path', default="./data/test/text", help='Path to reference text')
+    parser.add_argument('--token_type', default='bpe', help='Token type')
+    parser.add_argument('--context_token_type', default='bpe', help='Context token type')
+    parser.add_argument('--use_local_attn_conv', action='store_true', help='Use local attention convolution')
+    parser.add_argument('--max_count', type=int, default=20, help='Maximum number of iterations')
+    parser.add_argument('--debug_dir', default=None, help='Debug directory')
+    args = parser.parse_args()
+
+    # File paths
+    spm_path = args.spm_path
+    context_spm_path = args.context_spm_path
+    token_path = args.token_path
+    context_token_path = args.context_token_path
+    model_conf = args.model_conf
+    model_path = args.model_path
+    stats_path = args.stats_path
+    rareword_path = args.rareword_path
+    speech_scp_path = args.speech_scp_path
+    context_list_path = args.context_list_path
+    context_list_xphone_path = args.context_list_xphone_path
+    reference_path = args.reference_path
+    token_type = args.token_type
+    context_token_type = args.context_token_type
+    use_local_attn_conv = args.use_local_attn_conv
+    max_count = args.max_count
+    debug_dir = args.debug_dir
+
+    # Debug directory setup
+    if debug_dir is None:
+        folder_name = model_path.split('/')[-1].split('.')[0]
+        debug_dir = os.path.join("/".join(model_path.split('/')[:-1]), 'debug', folder_name)
+    if not os.path.isdir(debug_dir):
+        os.makedirs(debug_dir)
+
+    # Load reference texts
+    reference_texts = {d[0]: " ".join(d[1:]) for d in read_file(reference_path, sp=' ')}
+
+    # Model loading and configuration
+    data_path_and_name_and_type = [(speech_scp_path, 'speech', 'kaldi_ark'), (context_list_path, 'uttblist_idx', 'multi_columns_text')]
+    contextual_conf = {
+        'contextual_type': 'context_sampler',
+        'context_list_path': rareword_path,
+        'context_phone_embedding_path': context_list_xphone_path,
+        'max_batch_disrupt_context': 20,
+        'sub_context_list_dropout': 0.0,
+        'warmup_epoch': 0,
+        'use_no_context_token': True,
+        'context_prompt_has_context_template': '主題為:',
+        'context_prompt_no_context_template': '開始吧',
+    }
+
+    model, loader, contextual_processor = load_espnet_model(
+        model_conf=model_conf,
+        contextual_conf=contextual_conf,
+        token_path=token_path, 
+        context_token_path=context_token_path, 
+        frontend='default', 
+        stats_path=stats_path, 
+        spm_path=spm_path, 
+        context_spm_path=context_spm_path, 
+        model_path=model_path,
+        data_path_and_name_and_type=data_path_and_name_and_type,
+        return_contextual_processor=True,
+        use_local_attn_conv=use_local_attn_conv,
+        token_type=token_type,
+        context_token_type=context_token_type,
+    )
+
+    # Prepare tokenizer and token list
+    preprocessor = loader.dataset.preprocess
+    tokenizer = model.context_sampler.tokenizer
+    token_id_converter = model.context_sampler.token_id_converter
+    token_list = get_token_list(token_id_converter) + ['<no-context>']
+
+    # Model evaluation
+    model.eval()
+    results = {}
+    count = 0
+    for data in loader:
+        if count >= max_count:
+            break
+        count += 1
+
+        uid = data[0][0]
+        data = data[1]
+        context_data = data['contexts']
+        speech = data['speech']
+        speech_length = data['speech_lengths']
+        text = reference_texts[uid]
+        context_list = context_data['blist']
+        label_ctc = context_data['label_ctc']
+
+        _context_list = [tokenizer.tokens2text([token_list[word] for word in rareword if word != -1]) for rareword in context_list]
+        context_list = _context_list
+        print(f'context_list:\n{context_list}')
+
+        tokens = torch.tensor(preprocessor._text_process({'text': text})['text']).long().unsqueeze(0)
+
+        logp, target, attention, ctc_prediction, prediction = forward(model, speech, speech_length, context_data, tokens, text, token_list)
+        results[uid] = prediction
+        
+        # for attention, tag in zip(attentions, ['combine', 'sw', 'pho']):
+        #     visualize(logp, attention, ctc_prediction, text, target, context_list, speech, model.blank_id, token_list, debug_dir, f'{uid}_{tag}')
+        visualize(logp, attention, ctc_prediction, text, target, context_list, speech, model.blank_id, token_list, debug_dir, f'{uid}')
+
+    # Save results
+    output_path = os.path.join(debug_dir, 'predict.json')
+    write_json(output_path, results)
