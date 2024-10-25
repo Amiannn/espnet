@@ -36,6 +36,22 @@ import torch.nn.functional as F
 
 from espnet2.asr.decoder.whisper_decoder import OpenAIWhisperDecoder
 
+def map_tokens_to_words(token_ids, tokenizer):
+    tokens    = tokenizer.convert_ids_to_tokens(token_ids)
+    text      = tokenizer.decode(token_ids)
+
+    last_text  = ""
+    token_text = ""
+    mapping    = []
+    for idx in range(len(tokens)):
+        # Get the token string
+        token_str = tokenizer.convert_tokens_to_string(tokens[:idx + 1])
+        if text.find(token_str) != -1:
+            token_text = token_str[len(last_text):]
+            last_text  = token_str
+        mapping.append([token_ids[idx], token_text])
+    return mapping
+
 def median_filter_over_time(attention_maps, window_size):
     """
     Applies a median filter over the time dimension of attention maps.
@@ -82,7 +98,11 @@ def retriever_decode(ys_hat, char_list, blank_index=0):
 
 def visualize(logp, attention, ctc_prediction, text, target, context_list, speech, blank_id, token_list, debug_dir, utterance_id):
     """Visualize the attention maps and predictions"""
-    frame2align = {i: token_list[p] if p != 0 else ' ' for i, p in enumerate(ctc_prediction)} if ctc_prediction is not None else {}
+    if model.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_ADAPTER_DECODER:
+        mapping = map_tokens_to_words(ctc_prediction, tokenizer)
+        frame2align = {i: m[1] for i, m in enumerate(mapping)}
+    else:
+        frame2align = {i: token_list[p] if p != 0 else ' ' for i, p in enumerate(ctc_prediction)} if ctc_prediction is not None else {}
     plot_attention_map(frame2align, attention, text, context_list, debug_dir, utterance_id)
 
 @torch.no_grad()
