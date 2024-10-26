@@ -37,13 +37,14 @@ import torch.nn.functional as F
 from espnet2.asr.decoder.whisper_decoder import OpenAIWhisperDecoder
 
 def map_tokens_to_words(token_ids, tokenizer, idconverter):
-    print(f'tokenizer: {tokenizer}')
-    tokens = idconverter.ids2tokens(token_ids)
-    text   = tokenizer.tokens2text(token_ids)
-
+    token_ids = token_ids.tolist()
+    tokens    = idconverter.ids2tokens(token_ids, skip_special_tokens=False)
+    text      = tokenizer.tokens2text(tokens)
+    
     last_text  = ""
     token_text = ""
     mapping    = []
+
     for idx in range(len(tokens)):
         # Get the token string
         token_str = tokenizer.tokens2text(tokens[:idx + 1])
@@ -173,7 +174,7 @@ def forward(model, speech, speech_length, context_data, tokens, text, token_list
                 return_atten=True
             )
             context_probabilities = torch.mean(context_probabilities, dim=1)
-            ctc_prediction        = tokens[0]
+            ctc_prediction        = ys_in_pad[0]
             print(f'context_probabilities: {context_probabilities.shape}')
         dec_bias_vec = model.decoder.output_layer(dec_bias_vec)
         decoder_out = decoder_out + dec_bias_vec
@@ -267,6 +268,7 @@ if __name__ == "__main__":
         use_local_attn_conv=use_local_attn_conv,
         token_type=token_type,
         context_token_type=context_token_type,
+        preprocessor_conf={'whisper_language': 'zh'},
     )
 
     # Prepare tokenizer and token list

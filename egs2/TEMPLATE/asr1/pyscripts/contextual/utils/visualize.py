@@ -24,8 +24,8 @@ def plot_attention_map(
     ]
 
     labels = [f'{labels[len(labels) - i - 1]}' for i in range(len(labels))]
-    # plt.rcParams.update({'font.size': 24})
-    plt.rcParams.update({'font.size': 12})
+    plt.rcParams.update({'font.size': 24})
+    # plt.rcParams.update({'font.size': 12})
 
     # draw attention map
     # fig, axes = plt.subplots(1, 1, figsize=(20, 5))

@@ -132,19 +132,27 @@ contextualizer_conf:
     # contextualizer loss settings
     warmup_epoch: 0
     embed_share_weight_ctc: false
-    contextualizer_weight: 0.0
+    contextualizer_weight: 0.5
+    contextualizer_losses:
+        loss_contextualizer_ga_ctc: 1
 
-# use_lora: true
-# lora_conf:
-#     rank: 8
-#     alpha: 16
-#     dropout_rate: 0.05
-#     target_prefixs: ["decoder"]
-#     target_modules: ["query", "key", "value", "attn.out"]
+use_lora: true
+lora_conf:
+    rank: 8
+    alpha: 16
+    dropout_rate: 0.05
+    target_prefixs: ["decoder"]
+    target_modules: ["query", "key", "value", "attn.out"]
 
-# save_lora_only: false
+save_lora_only: false
 # freeze_param: [
 #     "contextualizer.context_encoder.embed",
 #     "contextualizer.context_encoder.pad_embed",
 # ]
-freeze_param: ["encoder", "decoder", "contextualizer.encoder.embed", "contextualizer.encoder.pad_embed"]
+# freeze_param: ["encoder", "decoder", "contextualizer.encoder.embed", "contextualizer.encoder.pad_embed"]
+
+freeze_param: [
+    "contextualizer.encoder.embed",
+    "contextualizer.encoder.pad_embed",
+]
+unfreeze_param: ["contextualizer"]

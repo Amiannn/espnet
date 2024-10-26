@@ -289,7 +289,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             stats["contextualizer_warmup"] = (self.epoch >= self.warmup_epoch)
 
         # c1.4 Contextualizer Loss
-        if len(self.contextualizer_losses) > 0:
+        if len(self.contextualizer_losses) > 0 and contexts_hyp is not None:
             (
                 loss_contextualizer, 
                 losses_contextualizers
@@ -401,7 +401,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         else:
             # 2b. Attention decoder branch
             if self.ctc_weight != 1.0:
-                loss_att, acc_att, cer_att, wer_att = self._calc_att_loss(
+                loss_att, acc_att, cer_att, wer_att, contextual_stats = self._calc_att_loss(
                     encoder_out, encoder_out_lens, text, text_lengths, contexts, contexts_hyp
                 )
             # 3. CTC-Att loss definition
@@ -427,6 +427,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             stats["cer"] = cer_att
             stats["wer"] = wer_att
 
+        stats.update(contextual_stats)
         # Collect total loss stats
         stats["loss"] = loss.detach()
 
@@ -494,6 +495,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
                 encoder_out, encoder_out_lens, ys_in_pad, ys_in_lens
             )
 
+        contextual_stats = {}
         if self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_ADAPTER_DECODER:
             dec_bias_vec, dec_attn = self.contextualizer(
                 model_embed=dec_hidden_vec,
@@ -502,10 +504,34 @@ class ESPnetContextualASRModel(ESPnetASRModel):
                 return_atten=True
             )
 
+            # mean across attention heads
+            contexts_hyp = torch.mean(dec_attn, dim=1)
+
+            # c1.4 Contextualizer Loss
+            if len(self.contextualizer_losses) > 0 and contexts_hyp is not None:
+                (
+                    loss_contextualizer, 
+                    losses_contextualizers
+                ) = self._calc_contextualizer_loss(
+                    contexts,
+                    contexts_hyp,
+                    None,
+                    decoder_out,
+                    ys_in_lens,
+                    None,
+                )
+                for loss_name in losses_contextualizers:
+                    name = f'{loss_name}_decoder'
+                    contextual_stats[name] = losses_contextualizers[loss_name].detach()
+
+            # Collect total adapter aux losses
+            contextual_stats["loss_contextualizer_decoder"] = (
+                loss_contextualizer.detach() if loss_contextualizer is not None else None
+            )
+
         if isinstance(self.decoder, OpenAIWhisperDecoder):
             dec_bias_vec = self.decoder.output_layer(dec_bias_vec)
             decoder_out = decoder_out + dec_bias_vec
-
 
         # 2. Compute attention loss
         loss_att = self.criterion_att(decoder_out, ys_out_pad)
@@ -522,7 +548,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             ys_hat = decoder_out.argmax(dim=-1)
             cer_att, wer_att = self.error_calculator(ys_hat.cpu(), ys_pad.cpu())
 
-        return loss_att, acc_att, cer_att, wer_att
+        return loss_att, acc_att, cer_att, wer_att, contextual_stats
 
     def _calc_transducer_loss(
         self,

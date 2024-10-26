@@ -29,6 +29,7 @@ def load_espnet_model(
     use_local_attn_conv=False,
     token_type=None,
     context_token_type=None,
+    preprocessor_conf={},
 ):
     conf = read_yml(model_conf)
     conf['token_list']         = token_path
@@ -53,7 +54,7 @@ def load_espnet_model(
     conf['collate_fn_type']    = 'contextual' if 'collate_fn_type' not in conf else conf['collate_fn_type']
 
     conf['preprocessor']           = 'contextual' if 'preprocessor' not in conf else conf['preprocessor']
-    conf['preprocessor_conf']      = {}
+    conf['preprocessor_conf']      = preprocessor_conf
     conf['non_linguistic_symbols'] = None if 'non_linguistic_symbols' not in conf else conf['non_linguistic_symbols']
 
     conf['contextual_conf'].update(contextual_conf)
