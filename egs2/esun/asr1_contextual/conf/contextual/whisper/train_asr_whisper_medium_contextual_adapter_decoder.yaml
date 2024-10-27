@@ -134,7 +134,7 @@ contextualizer_conf:
     embed_share_weight_ctc: false
     contextualizer_weight: 0.5
     contextualizer_losses:
-        loss_contextualizer_ga_ctc: 1
+        loss_contextualizer_ga_ce: 1
 
 use_lora: true
 lora_conf:

@@ -721,6 +721,13 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             weighted_label[label_mask] = 0.0
             loss_ga_rewieght = -1 * self.loss_amp * ((weighted_label * pred_log).sum(dim=-1)).mean()
             losses_contextualizers['loss_contextualizer_ga_reweight_lp'] = loss_ga_rewieght
+        # cross-entropy loss
+        if 'loss_contextualizer_ga_ce' in self.contextualizer_losses:
+            ga_ce_input  = contexts_hyp
+            logging.info(f'ga_ce_input: {ga_ce_input.shape}')
+            # ga_ce_target = contexts['label_ctc']
+            loss_ce = -1 * torch.log(ga_ce_input[:, :, -1])
+            losses_contextualizers['loss_contextualizer_ga_ce'] = loss_ce
         # combine the adapter aux loss
         loss_contextualizer = 0.0
         assert sum(list(self.contextualizer_losses.values())) == 1.0
