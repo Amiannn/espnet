@@ -529,9 +529,9 @@ class ESPnetContextualASRModel(ESPnetASRModel):
                 loss_contextualizer.detach() if loss_contextualizer is not None else None
             )
 
-        if isinstance(self.decoder, OpenAIWhisperDecoder):
-            dec_bias_vec = self.decoder.output_layer(dec_bias_vec)
-            decoder_out = decoder_out + dec_bias_vec
+        # if isinstance(self.decoder, OpenAIWhisperDecoder):
+        #     dec_bias_vec = self.decoder.output_layer(dec_bias_vec)
+            # decoder_out = decoder_out + dec_bias_vec
 
         # 2. Compute attention loss
         loss_att = self.criterion_att(decoder_out, ys_out_pad)
