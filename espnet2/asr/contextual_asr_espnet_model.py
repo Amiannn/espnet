@@ -404,6 +404,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
                 loss_att, acc_att, cer_att, wer_att, contextual_stats = self._calc_att_loss(
                     encoder_out, encoder_out_lens, text, text_lengths, contexts, contexts_hyp
                 )
+                stats.update(contextual_stats)
             # 3. CTC-Att loss definition
             if self.ctc_weight == 0.0:
                 if loss_contextualizer is not None:
@@ -427,7 +428,6 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             stats["cer"] = cer_att
             stats["wer"] = wer_att
 
-        stats.update(contextual_stats)
         # Collect total loss stats
         stats["loss"] = loss.detach()
 

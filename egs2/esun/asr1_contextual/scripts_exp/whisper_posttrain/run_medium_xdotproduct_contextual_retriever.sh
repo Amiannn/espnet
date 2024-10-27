@@ -12,14 +12,15 @@ train_set="train"
 valid_set="dev"
 test_sets="test"
 
-uttblist_idx_train="uttblist_idx_f65536"
-uttblist_idx_valid="uttblist_idx_f65536"
-uttblist_idx_test="uttblist_idx_f10"
+uttblist_idx_train="uttblist_idx_f65536.txt"
+uttblist_idx_valid="uttblist_idx_f65536.txt"
+uttblist_idx_test="uttblist_idx"
 
-asr_config=conf/contextual/whisper/train_asr_whisper_medium_dotproduct_contextual_retriever.yaml
+asr_config=conf/contextual/whisper/train_asr_whisper_medium_xdotproduct_contextual_retriever.yaml
 inference_config=conf/contextual/whisper/decode_asr_whisper_ctc_greedy_c100.yaml
-asr_tag=whisper/run_medium_dotproduct_contextual_retriever
+asr_tag=whisper_posttrained/run_medium_xdotproduct_contextual_retriever
 
+pretrained_model=exp/asr_whisper/run_medium_dotproduct_contextual_retriever_pretrain_suffix/valid.loss.ave_10best.pth
 
 lm_config=conf/exp/train_lm_transformer.yaml
 use_lm=false
@@ -43,7 +44,7 @@ CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --asr_tag "${asr_tag}" \
     --asr_config "${asr_config}" \
     --inference_config "${inference_config}" \
-    --inference_asr_model 129epoch.pth \
+    --inference_asr_model valid.loss.ave_10best.pth \
     --train_set "${train_set}" \
     --valid_set "${valid_set}" \
     --test_sets "${test_sets}" \
@@ -56,7 +57,7 @@ CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --contextualization true \
     --lm_train_text "data/${train_set}/text" \
     --bpe_train_text "data/${train_set}/corpus.txt" \
+    --pretrained_model "${pretrained_model}" \
     --score_opts "-e utf-8 -c NOASCII" \
     "$@"
 
-    # --pretrained_model "${pretrained_model},${pretrained_model}:ctc.ctc_lo.weights:contextualizer.encoder.embed" \
