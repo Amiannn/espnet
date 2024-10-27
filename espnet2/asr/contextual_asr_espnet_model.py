@@ -726,7 +726,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             ga_ce_input  = contexts_hyp
             logging.info(f'ga_ce_input: {ga_ce_input.shape}')
             # ga_ce_target = contexts['label_ctc']
-            loss_ce = -1 * torch.log(ga_ce_input[:, :, -1])
+            loss_ce = -1 * torch.mean(torch.log(ga_ce_input[:, :, 0]))
             losses_contextualizers['loss_contextualizer_ga_ce'] = loss_ce
         # combine the adapter aux loss
         loss_contextualizer = 0.0
