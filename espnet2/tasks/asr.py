@@ -97,7 +97,8 @@ from espnet2.utils.types import float_or_none, int_or_none, str2bool, str_or_non
 
 from espnet2.text.contextual.rareword_processor import RarewordProcessor
 from espnet2.text.contextual.context_sampler    import ContextSampler
-from espnet2.asr.contextual_asr_espnet_model import ESPnetContextualASRModel
+# from espnet2.asr.contextual_asr_espnet_model import ESPnetContextualASRModel
+from espnet2.asr.contextualized_espnet_model import ESPnetContextualASRModel
 
 from espnet2.asr.contextualizer import CONTEXTUALIZERS
 from espnet2.asr.contextualizer.component.utils import CustomLinear

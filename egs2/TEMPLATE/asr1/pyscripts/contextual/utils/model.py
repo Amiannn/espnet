@@ -24,6 +24,7 @@ def load_espnet_model(
     spm_path=None, 
     context_spm_path=None, 
     model_path='',
+    model_lora_path=None,
     data_path_and_name_and_type=None,
     return_contextual_processor=False,
     use_local_attn_conv=False,
@@ -57,6 +58,11 @@ def load_espnet_model(
     conf['preprocessor_conf']      = preprocessor_conf
     conf['non_linguistic_symbols'] = None if 'non_linguistic_symbols' not in conf else conf['non_linguistic_symbols']
 
+    if 'contextual_conf' not in conf:
+        conf['contextual_conf'] = {}
+    if 'contextualizer_conf' not in conf:
+        conf['contextualizer_conf'] = {}
+            
     conf['contextual_conf'].update(contextual_conf)
     conf['contextualizer_conf'].update({'use_local_attn_conv': use_local_attn_conv})
 
@@ -64,6 +70,11 @@ def load_espnet_model(
     # print(f'conf:\n{json.dumps(conf, indent=4)}')
     # build model
     model = ASRTask.build_model(args)
+    if model_lora_path is not None and model_lora_path != "None":
+        model.load_state_dict(
+            torch.load(model_lora_path, map_location=torch.device('cpu')), 
+            strict=False, 
+        )
     model.load_state_dict(
         torch.load(model_path, map_location=torch.device('cpu')), 
         strict=False, 

@@ -197,6 +197,7 @@ if __name__ == "__main__":
     parser.add_argument('--context_token_path', default="./data/token_list/bpe_unigram5000suffix/tokens.txt", help='Path to context tokens.txt')
     parser.add_argument('--model_conf', default="./conf/contextual/whisper/train_asr_whisper_medium_xlateinteraction_contextual_retriever_balanced_alpha0.8.yaml", help='Path to model config yaml')
     parser.add_argument('--model_path', default="./exp/asr_whisper/run_medium_xlateinteraction_contextual_retriever_balanced_alpha0.8_suffix/valid.loss.ave_10best.pth", help='Path to model checkpoint')
+    parser.add_argument('--model_lora_path', default="None", help='Path to model checkpoint')
     parser.add_argument('--stats_path', default=None, help='Path to stats file')
     parser.add_argument('--rareword_path', default="./local/contextual/rarewords/esun.entity.txt", help='Path to rarewords file')
     parser.add_argument('--speech_scp_path', default="./dump/raw/test/wav.scp", help='Path to speech scp file')
@@ -217,6 +218,7 @@ if __name__ == "__main__":
     context_token_path = args.context_token_path
     model_conf = args.model_conf
     model_path = args.model_path
+    model_lora_path = args.model_lora_path
     stats_path = args.stats_path
     rareword_path = args.rareword_path
     speech_scp_path = args.speech_scp_path
@@ -245,7 +247,7 @@ if __name__ == "__main__":
         'contextual_type': 'context_sampler',
         'context_list_path': rareword_path,
         'context_phone_embedding_path': context_list_xphone_path,
-        'max_batch_disrupt_context': 20,
+        'max_batch_disrupt_context': 50,
         'sub_context_list_dropout': 0.0,
         'warmup_epoch': 0,
         'use_no_context_token': True,
@@ -263,6 +265,7 @@ if __name__ == "__main__":
         spm_path=spm_path, 
         context_spm_path=context_spm_path, 
         model_path=model_path,
+        model_lora_path=model_lora_path,
         data_path_and_name_and_type=data_path_and_name_and_type,
         return_contextual_processor=True,
         use_local_attn_conv=use_local_attn_conv,

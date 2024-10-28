@@ -10,10 +10,12 @@ References:
 from typing import List
 
 import torch
+import logging
 from typeguard import check_argument_types
 
 try:
     import loralib as lora
+    from loralib.layers import LoRALayer
 except Exception:
     lora = None
 
@@ -26,6 +28,7 @@ def create_lora_adapter(
     target_prefixs: List[str] = ["encoder", "decoder"],
     target_modules: List[str] = ["query"],
     bias_type: str = "none",
+    train_lora: bool=True,
 ):
     """Create LoRA adapter for the base model.
 
@@ -77,8 +80,36 @@ def create_lora_adapter(
             f"Target modules {target_modules} not found in the base model."
         )
 
-    lora.mark_only_lora_as_trainable(model, bias_type)
+    logging.info(f'Mark only lora s trainable has been close! Please, manually freeze the parms')
+    # lora.mark_only_lora_as_trainable(model, bias_type)
+    if train_lora:
+        mark_lora_as_trainable(model, bias_type)
+    else:
+        mark_lora_as_not_trainable(model)
 
+def mark_lora_as_trainable(model, bias: str = 'none') -> None:
+    for n, p in model.named_parameters():
+        if 'lora_' in n:
+            p.requires_grad = True
+    if bias == 'none':
+        return
+    elif bias == 'all':
+        for n, p in model.named_parameters():
+            if 'bias' in n:
+                p.requires_grad = True
+    elif bias == 'lora_only':
+        for m in model.modules():
+            if isinstance(m, LoRALayer) and \
+                hasattr(m, 'bias') and \
+                m.bias is not None:
+                    m.bias.requires_grad = True
+    else:
+        raise NotImplementedError
+    
+def mark_lora_as_not_trainable(model) -> None:
+    for n, p in model.named_parameters():
+        if 'lora_' in n:
+            p.requires_grad = False
 
 def check_target_module_exists(key: str, target_prefixs: List[str], target_modules: List[str]):
     """Check if the target_modules matchs the given key."""

@@ -174,7 +174,9 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         if 'loss_contextualizer_ga_reweight_lp' in self.contextualizer_losses:
             self.lp_gamma = self.contextualizer_conf['lp_gamma'] if 'lp_gamma' in contextualizer_conf else 0.99
             self.loss_amp = 10
-
+        
+        if 'loss_contextualizer_ga_ce' in self.contextualizer_losses:
+            self.contextualizer_ga_nll = torch.nn.NLLLoss(reduction='sum')
         self.context_sampler = context_sampler
 
     def forward(
@@ -496,6 +498,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             )
 
         contextual_stats = {}
+        loss_contextualizer = None
         if self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_ADAPTER_DECODER:
             dec_bias_vec, dec_attn = self.contextualizer(
                 model_embed=dec_hidden_vec,
@@ -521,8 +524,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
                     None,
                 )
                 for loss_name in losses_contextualizers:
-                    name = f'{loss_name}_decoder'
-                    contextual_stats[name] = losses_contextualizers[loss_name].detach()
+                    contextual_stats[loss_name] = losses_contextualizers[loss_name].detach()
 
             # Collect total adapter aux losses
             contextual_stats["loss_contextualizer_decoder"] = (
@@ -547,6 +549,9 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         else:
             ys_hat = decoder_out.argmax(dim=-1)
             cer_att, wer_att = self.error_calculator(ys_hat.cpu(), ys_pad.cpu())
+
+        if loss_contextualizer is not None:
+            loss_att = self.contextualizer_weight * loss_contextualizer + (1 - self.contextualizer_weight) * loss_att
 
         return loss_att, acc_att, cer_att, wer_att, contextual_stats
 
@@ -723,10 +728,18 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             losses_contextualizers['loss_contextualizer_ga_reweight_lp'] = loss_ga_rewieght
         # cross-entropy loss
         if 'loss_contextualizer_ga_ce' in self.contextualizer_losses:
-            ga_ce_input  = contexts_hyp
-            logging.info(f'ga_ce_input: {ga_ce_input.shape}')
-            # ga_ce_target = contexts['label_ctc']
-            loss_ce = -1 * torch.mean(torch.log(ga_ce_input[:, :, 0]))
+            ga_log_probs = torch.log(contexts_hyp)  # Shape: (batch_size, seq_len, num_classes)
+
+            # Step 2: Prepare the target tensor
+            batch_size, seq_len, num_classes = ga_log_probs.shape
+            ga_ce_target = torch.zeros(batch_size, seq_len, dtype=torch.long, device=ga_log_probs.device)
+
+            # Step 3: Reshape inputs and targets
+            input_flat = ga_log_probs.view(-1, num_classes)
+            target_flat = ga_ce_target.view(-1)
+
+            loss_ce = self.contextualizer_ga_nll(input_flat, target_flat)
+            # Logging and storing the loss
             losses_contextualizers['loss_contextualizer_ga_ce'] = loss_ce
         # combine the adapter aux loss
         loss_contextualizer = 0.0

@@ -134,14 +134,16 @@ def forward(model, speech, speech_length, context_data, tokens, text, token_list
 
 if __name__ == "__main__":
     # File paths
-    # spm_path = "whisper_multilingual"
-    spm_path = "./data/token_list/bpe_unigram5000suffix/bpe.model"
-    context_spm_path = "./data/token_list/bpe_unigram5000suffix/bpe.model"
-    # token_path = "./data/zh_token_list/whisper_multilingual/tokens.txt"
-    token_path = "./data/token_list/bpe_unigram5000suffix/tokens.txt"
-    context_token_path = "./data/token_list/bpe_unigram5000suffix/tokens.txt"
-    model_conf = "./conf/contextual/whisper/train_asr_whisper_medium_xlateinteraction_contextual_retriever_balanced_alpha0.8.yaml"
-    model_path = "./exp/asr_whisper/run_medium_xlateinteraction_contextual_retriever_balanced_alpha0.8_suffix/valid.loss.ave_10best.pth"
+    spm_path = "whisper_multilingual"
+    # spm_path = "./data/token_list/bpe_unigram5000suffix/bpe.model"
+    # context_spm_path = "./data/token_list/bpe_unigram5000suffix/bpe.model"
+    context_spm_path = spm_path
+    token_path = "./data/zh_token_list/whisper_multilingual/tokens.txt"
+    # token_path = "./data/token_list/bpe_unigram5000suffix/tokens.txt"
+    # context_token_path = "./data/token_list/bpe_unigram5000suffix/tokens.txt"
+    context_token_path = token_path
+    model_conf = "../asr1/conf/whisper/train_asr_whisper_lora_decoder.yaml"
+    model_path = "../asr1/exp/asr_whisper_medium_lora_decoder/3epoch.pth"
     stats_path = None
     rareword_path = "./local/contextual/rarewords/esun.entity.txt"
     speech_scp_path = "./dump/raw/test/wav.scp"
@@ -185,9 +187,9 @@ if __name__ == "__main__":
         data_path_and_name_and_type=data_path_and_name_and_type,
         return_contextual_processor=True,
         use_local_attn_conv=False,
-        # token_type='whisper_multilingual',
-        token_type='bpe',
-        context_token_type='bpe',
+        token_type='whisper_multilingual',
+        # token_type='bpe',
+        context_token_type='whisper_multilingual',
     )
 
     # Prepare tokenizer and token list
