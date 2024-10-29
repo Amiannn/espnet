@@ -564,8 +564,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
 
         # for debugging, now we skip the biasing part
         if False and decoder_bias_vector is not None:
-            if isinstance(self.decoder, OpenAIWhisperDecoder):
-                decoder_bias_vector = self.decoder.output_layer(decoder_bias_vector)
+            decoder_bias_vector = self.decoder.output_layer(decoder_bias_vector)
             decoder_output = decoder_output + decoder_bias_vector
 
         # 5. Compute attention loss

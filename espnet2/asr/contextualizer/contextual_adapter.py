@@ -95,7 +95,6 @@ class ContextualAdapterPrototype(torch.nn.Module):
             context_embed, 
             ilens
         )
-        logging.info(f'context_embed_mean: {context_embed_mean.shape}')
         output = self.forward_adapter(
             model_embed=model_embed,
             context_embed=context_embed_mean,

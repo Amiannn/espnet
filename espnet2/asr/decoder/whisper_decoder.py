@@ -178,9 +178,9 @@ class OpenAIWhisperDecoder(AbsDecoder, BatchScorerInterface):
         tgt: torch.Tensor,
         tgt_mask: torch.Tensor,
         memory: torch.Tensor,
-        cache: List[torch.Tensor] = None,
+        *,
         return_hs: bool = False,
-        return_all_hs: bool = False,
+        cache: List[torch.Tensor] = None,
     ) -> Tuple[torch.Tensor, List[torch.Tensor]]:
         """Forward one step.
 
@@ -198,11 +198,6 @@ class OpenAIWhisperDecoder(AbsDecoder, BatchScorerInterface):
             cache implementation is ignored for now
             for simplicity & correctness
         """
-        # logging.info(f'self.decoders.positional_embedding.shape: {self.decoders.positional_embedding.shape}')
-        # logging.info(f'tgt.size(1): {tgt.size(1)}')
-        # logging.info(f'self.decoders.token_embedding(tgt): {self.decoders.token_embedding(tgt).shape}')
-        # logging.info(f'self.decoders.positional_embedding[: tgt.size(1)]: {self.decoders.positional_embedding[: tgt.size(1)].shape}')
-        # logging.info(f'-' * 10)
         x = (
             self.decoders.token_embedding(tgt)
             + self.decoders.positional_embedding[: tgt.size(1)]
@@ -220,43 +215,23 @@ class OpenAIWhisperDecoder(AbsDecoder, BatchScorerInterface):
         if return_hs:
             hidden = y
         y = self.output_layer(y)
-        # y = self.output_layer_ori(y)
         y = torch.log_softmax(y, dim=-1)
-        # y = torch.softmax(y, dim=-1)
-
-        # U, _ = y.shape
-        # D_hat, _ = self.decoders.token_embedding.add_emb.weight.shape
-
-        # zero_out = torch.zeros(U, D_hat).to(y.device)
-        # y = torch.cat([y, zero_out], dim=-1)
-        # y = torch.log(y)
 
         if return_hs:
             return (y, hidden), None
+
         return y, None
 
-    def score(self, 
-        ys, 
-        state, 
-        x, 
-        return_hs: bool = False,
-        return_all_hs: bool = False,
-        ):
+    def score(self, ys, state, x, return_hs=False):
         """Score."""
-        out = self.forward_one_step(
-            ys.unsqueeze(0), 
-            torch.empty(0), 
-            x.unsqueeze(0), 
-            cache=state, 
-            return_hs=return_hs,
-            return_all_hs=return_all_hs,
-            # dummy mask
+        output, state = self.forward_one_step(
+            ys.unsqueeze(0), torch.empty(0), x.unsqueeze(0), return_hs=return_hs, cache=state  # dummy mask
         )
-        if return_hs or return_all_hs:
-            (logp, hidden), state = out
+        if return_hs:
+            logp, hidden = output
             return logp.squeeze(0), hidden, state
         else:
-            logp, state = out
+            logp = output
         return logp.squeeze(0), state
 
     def batch_score(

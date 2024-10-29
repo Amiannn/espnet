@@ -46,8 +46,11 @@ from espnet.nets.beam_search                  import Hypothesis
 from espnet.nets.beam_search                  import BeamSearch
 from espnet.nets.beam_search_timesync         import BeamSearchTimeSync
 
-from espnet.nets.beam_search_contextual       import ContextualHypothesis
-from espnet.nets.beam_search_contextual       import ContextualBeamSearch
+# from espnet.nets.beam_search_contextual       import ContextualHypothesis
+# from espnet.nets.beam_search_contextual       import ContextualBeamSearch
+
+from espnet.nets.beam_search_contextual_refactor import ContextualHypothesis
+from espnet.nets.beam_search_contextual_refactor import ContextualBeamSearch
 
 from espnet.nets.pytorch_backend.transformer.add_sos_eos import add_sos_eos
 from espnet.nets.pytorch_backend.transformer.subsampling import TooShortUttError
@@ -378,20 +381,20 @@ class Speech2Text:
                     )
                 else:
                     beam_search = ContextualBeamSearch(
-                        beam_size=beam_size,
+                        scorers=scorers,
                         weights=weights,
                         contextualizer=asr_model.contextualizer,
-                        contextualizer_conf=asr_model.contextualizer_conf,
+                        contextualizer_config=asr_model.contextualizer_conf,
                         context_sampler=asr_model.context_sampler,
-                        scorers=scorers,
+                        beam_size=beam_size,
+                        vocab_size=len(token_list),
                         sos=asr_model.sos,
                         eos=asr_model.eos,
                         sop=asr_model.sop,
-                        vocab_size=len(token_list),
                         token_list=token_list,
                         pre_beam_score_key=None if ctc_weight == 1.0 else "full",
+                        return_hidden_states=False,
                         normalize_length=normalize_length,
-                        return_hs=False
                     )
 
                 # TODO(karita): make all scorers batchfied
@@ -802,7 +805,7 @@ class Speech2Text:
                         if hasattr(module, "setup_step"):
                             module.setup_step()
             nbest_hyps = self.beam_search(
-                x=enc, maxlenratio=self.maxlenratio, minlenratio=self.minlenratio, contexts=contexts
+                encoder_output=enc, maxlenratio=self.maxlenratio, minlenratio=self.minlenratio, context_data=contexts
             )
 
         nbest_hyps = nbest_hyps[: self.nbest]

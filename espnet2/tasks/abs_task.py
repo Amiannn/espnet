@@ -2171,7 +2171,6 @@ class AbsTask(ABC):
                 device = f"cuda:{torch.cuda.current_device()}"
             try:
                 state_dict = torch.load(model_file, map_location=device)
-                logging.info(f'state_dict\n:{state_dict.keys()}')
                 model.load_state_dict(
                     torch.load(model_file, map_location=device),
                     strict=not use_lora,

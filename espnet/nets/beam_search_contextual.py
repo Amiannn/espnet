@@ -65,7 +65,7 @@ class ContextualBeamSearch(BeamSearch):
         scorers: Dict[str, ScorerInterface],
         weights: Dict[str, float],
         contextualizer: object,
-        contextualizer_conf: object,
+        contextualizer_config: object,
         context_sampler: object,
         beam_size: int,
         vocab_size: int,
@@ -75,7 +75,7 @@ class ContextualBeamSearch(BeamSearch):
         token_list: List[str] = None,
         pre_beam_ratio: float = 1.5,
         pre_beam_score_key: str = None,
-        return_hs: bool = False,
+        return_hidden_states: bool = False,
         hyp_primer: List[int] = None,
         normalize_length: bool = False,
     ):
@@ -89,14 +89,14 @@ class ContextualBeamSearch(BeamSearch):
             token_list=token_list,
             pre_beam_ratio=pre_beam_ratio,
             pre_beam_score_key=pre_beam_score_key,
-            return_hs=return_hs,
+            return_hs=return_hidden_states,
             hyp_primer=hyp_primer,
             normalize_length=normalize_length,
         )
 
         # contextual asr
         self.contextualizer      = contextualizer
-        self.contextualizer_conf = contextualizer_conf
+        self.contextualizer_conf = contextualizer_config
         self.context_sampler     = context_sampler
         
         self.sop = sop
@@ -167,7 +167,7 @@ class ContextualBeamSearch(BeamSearch):
         # NOTE (Shih-Lun): added for OpenAI Whisper ASR
         primer = [self.sos] if self.hyp_primer is None else self.hyp_primer
 
-        if ('decoder' in self.scorers) and isinstance(self.scorers['decoder'], OpenAIWhisperDecoder):
+        if ('decoder' in self.scorers) and isinstance(self.scorers['decoder'], OpenAIWhisperDecoder) and contexts['nlp_prompt_context_template'] is not None:
             nlp_prompt_context_template    = contexts["nlp_prompt_context_template"].tolist()
             nlp_prompt_no_context_template = contexts["nlp_prompt_no_context_template"].tolist()
             nlp_prompt_tensor              = contexts["nlp_prompt_tensor"][0].tolist()
@@ -198,11 +198,11 @@ class ContextualBeamSearch(BeamSearch):
 
     def forward(
         self,
-        x: torch.Tensor,
-        contexts: object,
+        encoder_output: torch.Tensor,
+        context_data: object,
         maxlenratio: float = 0.0,
         minlenratio: float = 0.0,
-        pre_x: torch.Tensor = None,
+        pre_encoder_output: torch.Tensor = None,
     ) -> List[Hypothesis]:
         """Perform beam search.
 
@@ -225,6 +225,9 @@ class ContextualBeamSearch(BeamSearch):
 
         """
         logging.info(f'In contextual AED beam search')
+        x = encoder_output
+        pre_x = pre_encoder_output
+        contexts = context_data
         # set length bounds
         if pre_x is not None:
             inp = pre_x
