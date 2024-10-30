@@ -181,19 +181,32 @@ This module constructs and manages trie structures to facilitate token matching 
 4. **Integration with Transducer Models:**
    - Adds optional transducer-compatible `<blank>` tokens to the search.
 
-### Beam Search Refactoring
+### Contextualized Beam Search for ASR
 
 **File:** `espnet/nets/beam_search_contextual_refactor.py`
 
-This module refactors the beam search algorithm to integrate with the trie processor for efficient contextual ASR matching.
+This module extends the beam search algorithm by integrating contextual biasing mechanisms.
 
-#### Key Features:
+- **Contextual Hypotheses Tracking:**
+  - Maintains contextual predictions alongside standard ASR hypotheses.
 
-1. **Trie-Based Beam Search:**
-   - Incorporates trie structures into the beam search to guide decoding with context.
+- **Contextualized Decoder Scorer:**
+  - Wraps the decoder with contextual scoring logic using `ContextualizedDecoderScorer`.
 
-2. **Context-Aware Decoding:**
-   - Adjusts beam scoring based on context matches to improve recognition accuracy.
+- **Encoder and Decoder Contextualization:**
+  - Applies contextualization at both the encoder and decoder stages.
 
-3. **Performance Optimization:**
-   - Enhances decoding speed and efficiency through optimized search strategies.
+- **Handling Whisper and NLP Prompts:**
+  - Integrates with OpenAI Whisper decoder and manages NLP prompts for initializing context-aware decoding.
+
+- **Flexible Beam Search Loop:**
+  - Modifies the beam search loop to accommodate contextual information.
+
+- **Support for Multiple Contextualization Strategies:**
+  - Adapts to various contextual mechanisms, including retriever and adapter models.
+
+- **Prompt Generation and Contextual Predictions:**
+  - Generates NLP-based prompts from retrieved hypotheses.
+
+- **Integration with Hard Negative Mining:**
+  - Incorporates hard negatives into the retrieval-based contextual scoring.y through optimized search strategies.
