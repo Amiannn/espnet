@@ -42,7 +42,7 @@ Fill in examples.
 
 ### Contextual ASR Model
 
-**File:** `espnet2/asr/contextualized_espnet_model.py`
+**File:** [`espnet2/asr/contextualized_espnet_model.py`](espnet2/asr/contextualized_espnet_model.py)
 
 A custom ASR model built upon the ESPnet architecture with added contextual biasing. It integrates contextual retrievers, adapters, and prompt generation mechanisms to improve recognition of rare and domain-specific terms.
 
@@ -74,7 +74,7 @@ A custom ASR model built upon the ESPnet architecture with added contextual bias
 
 ### Contextual Adapters
 
-**File:** `espnet2/asr/contextualizer/contextual_adapter.py`
+**File:** [`espnet2/asr/contextualizer/contextual_adapter.py`](espnet2/asr/contextualizer/contextual_adapter.py)
 
 This module provides multiple contextual adapters to improve ASR performance through advanced contextual embedding and attention-based mechanisms. It integrates adapters with phoneme-aware components to bias recognition towards relevant context.
 
@@ -94,7 +94,7 @@ This module provides multiple contextual adapters to improve ASR performance thr
 
 ### Contextual Retrievers
 
-**File:** `espnet2/asr/contextualizer/contextual_retriever.py`
+**File:** [`espnet2/asr/contextualizer/contextual_retriever.py`](espnet2/asr/contextualizer/contextual_retriever.py)
 
 This module provides multiple retriever models that enhance ASR systems with context-aware embeddings. It integrates various retrieval strategies to bias recognition towards relevant subword and phoneme contexts.
 
@@ -114,7 +114,7 @@ This module provides multiple retriever models that enhance ASR systems with con
 
 ### Context Sampler
 
-**File:** `espnet2/text/contextual/context_sampler.py`
+**File:** [`espnet2/text/contextual/context_sampler.py`](espnet2/text/contextual/context_sampler.py)
 
 The `ContextSampler` class enhances ASR models by incorporating contextual information during training and inference. It facilitates the sampling and management of context data, including gold contexts, hard negative distractors, and context prompts.
 
@@ -140,7 +140,7 @@ The `ContextSampler` class enhances ASR models by incorporating contextual infor
 
 ### Hard Negative Mining
 
-**File:** `espnet2/text/contextual/sampler/hard_negative_mining.py`
+**File:** [`espnet2/text/contextual/sampler/hard_negative_mining.py`](espnet2/text/contextual/sampler/hard_negative_mining.py)
 
 This module implements hard negative sampling to enhance ASR systems by introducing challenging distractors during training and inference. It supports various sampling strategies to improve model robustness for rare word recognition.
 
@@ -160,7 +160,7 @@ This module implements hard negative sampling to enhance ASR systems by introduc
 
 ### Whisper Prompter
 
-**File:** `espnet2/text/contextual/prompt/prompter.py`
+**File:** [`espnet2/text/contextual/prompt/prompter.py`](espnet2/text/contextual/prompt/prompter.py)
 
 This module generates dynamic prompts for contextualized ASR tasks using Whisper token converters. It builds both training and inference prompts based on context elements and templates.
 
@@ -177,7 +177,7 @@ This module generates dynamic prompts for contextualized ASR tasks using Whisper
 
 ### Trie Processor
 
-**File:** `espnet2/text/contextual/structure/trie.py`
+**File:** [`espnet2/text/contextual/structure/trie.py`](espnet2/text/contextual/structure/trie.py)
 
 This module constructs and manages trie structures to facilitate token matching for contextual ASR systems. It supports batch and sequence-wise searches with features for efficient caching and context-based mask generation.
 
@@ -197,7 +197,7 @@ This module constructs and manages trie structures to facilitate token matching 
 
 ### Contextualized Beam Search for ASR
 
-**File:** `espnet/nets/beam_search_contextual_refactor.py`
+**File:** [`espnet/nets/beam_search_contextual_refactor.py`](espnet/nets/beam_search_contextual_refactor.py)
 
 This module extends the beam search algorithm by integrating contextual biasing mechanisms.
 
