@@ -81,23 +81,15 @@ class ContextualizedDecoderScorer(ScorerInterface):
         # Force return_hs=True to get the hidden state
         score, hidden_state, state = self.decoder_scorer.score(yseq, state, x, return_hs=True, *args, **kwargs)
 
-        # Apply decoder contextualization if enabled
-        if self.contextualizer_config["contextualizer_type"] in CONTEXTUAL_ADAPTER_DECODER:
-            if hidden_state is None:
-                # If hidden_state is not provided, we cannot apply contextualization
-                logger.warning("Hidden state not available for contextualization.")
-                return score, state
+        if hidden_state is None:
+            # If hidden_state is not provided, we cannot apply contextualization
+            logger.warning("Hidden state not available for contextualization.")
+            return score, state
 
-            decoder_embedding = hidden_state.reshape(1, 1, -1)  # Shape: (1, 1, D,)
-            # Apply decoder contextualizer
-            decoder_bias_vector, context_hypotheses = self.contextualizer(
-                model_embed=decoder_embedding,
-                context_embed=self.context_data["blist"],
-                ilens=self.context_data["ilens"],
-                return_atten=True,
-            )
-            # Mean across attention heads
-            context_hypotheses = torch.mean(context_hypotheses, dim=1)
+        # Apply decoder contextualization if enabled
+        score, context_hypotheses = self._apply_contextualizer_decoder(hidden_state, self.context_data)
+
+        if context_hypotheses is not None:
             context_prediction = decode_topk_tokens(
                 token_probs=context_hypotheses,
                 vocabulary=self.context_data["context_list"],
@@ -107,15 +99,33 @@ class ContextualizedDecoderScorer(ScorerInterface):
             )
             context_predictions.extend(context_prediction)
 
+        return score, state
+
+    def _apply_contextualizer_decoder(
+        self, decoder_output: torch.Tensor, context_data: Dict[str, Any]
+    ) -> Tuple[torch.Tensor, Optional[List[Tuple[int, str, float]]]]:
+        """Apply contextualizer to the decoder output."""
+        
+        context_hypotheses = None
+        # Apply decoder contextualization if enabled
+        if self.contextualizer_config["contextualizer_type"] in CONTEXTUAL_ADAPTER_DECODER:
+            decoder_embedding = decoder_output.reshape(1, 1, -1)  # Shape: (1, 1, D,)
+            # Apply decoder contextualizer
+            decoder_bias_vector, context_hypotheses = self.contextualizer(
+                model_embed=decoder_embedding,
+                context_embed=context_data["blist"],
+                ilens=context_data["ilens"],
+                return_atten=True,
+            )
+            # Mean across attention heads
+            context_hypotheses = torch.mean(context_hypotheses, dim=1)
             # Bias the hidden state
-            hidden_state = hidden_state + decoder_bias_vector
-            
+            decoder_output = decoder_output + decoder_bias_vector
             # Adjust the score
-            adjusted_score = torch.log_softmax(self.decoder_scorer.output_layer(hidden_state), dim=-1)
-            adjusted_score = adjusted_score.reshape(-1)
-            return adjusted_score, state
-        else:
-            return score, state
+            decoder_output = torch.log_softmax(self.decoder_scorer.output_layer(decoder_output), dim=-1)
+            decoder_output = decoder_output.reshape(-1)
+
+        return decoder_output, context_hypotheses
 
 class ContextualBeamSearch(BeamSearch):
     """Beam search implementation with contextualization."""
