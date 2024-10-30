@@ -1,17 +1,18 @@
 # Define the array of experiment folder names
 exp_folder=(
   # "run_medium_dotproduct_contextual_retriever_balanced_alpha0.8_suffix"
-  "run_medium_dotproduct_contextual_retriever_suffix"
+  # "run_medium_dotproduct_contextual_retriever_suffix"
   # "run_medium_xdotproduct_contextual_retriever_balanced_alpha0.8_suffix"
   # "run_medium_xdotproduct_contextual_retriever_suffix"
   # "run_medium_lateinteraction_contextual_retriever_balanced_alpha0.8_suffix"
   # "run_medium_lateinteraction_contextual_retriever_suffix"
   # "run_medium_multilateinteraction_contextual_retriever_balanced_alpha0.8_suffix"
   # "run_medium_multilateinteraction_contextual_retriever_suffix"
+  "run_medium_contextual_adapter_decoder"
 )
 
 # Distractor length
-distractor_len=100
+distractor_len=20
 top_k=10
 threshold=0.5
 # Create CSV header
@@ -22,7 +23,8 @@ for folder in "${exp_folder[@]}"; do
     echo "Processing $folder"
 
     # Update the exp_path with the current folder
-    exp_path="./exp/asr_whisper_posttrained/${folder}/decode_asr_whisper_ctc_greedy_c${distractor_len}_asr_model_valid.loss.ave_10best/test"
+    exp_path="./exp/asr_whisper/${folder}/decode_asr_whisper_contextual_adapter_decoder_c${distractor_len}_asr_model_valid.loss.ave_10best_fixed/test"
+    # exp_path="./exp/asr_whisper/${folder}/decode_asr_whisper_ctc_greedy_c${distractor_len}_asr_model_valid.loss.ave_10best/test"
 
     output=$(python3 -m pyscripts.contextual.error_analysis.zh.caluate_context_retrieval_errors \
       --context_list_path "./local/contextual/rarewords/rareword_f10_test.txt" \

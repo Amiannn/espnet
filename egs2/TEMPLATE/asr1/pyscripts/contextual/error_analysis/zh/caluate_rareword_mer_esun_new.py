@@ -264,8 +264,7 @@ def main():
     rareword_list_path = "./local/contextual/rarewords/rareword_f10_test.txt"
     reference_path = "./data/test/text"
     hypothesis_path = (
-        "../asr1/exp/asr_whisper_medium_finetune_lr1e-5_adamw_wd1e-2_3epochs/"
-        "decode_asr_whisper_noctc_greedy_asr_model_valid.acc.ave_3best/test/text"
+        "/mnt/storage1/experiments/espnet/egs2/esun/asr1_contextual/exp/asr_whisper/run_medium_contextual_adapter_decoder/decode_asr_whisper_contextual_adapter_decoder_c20_asr_model_valid.loss.ave_10best_fixed/test/text"
     )
 
     # Read rare words
