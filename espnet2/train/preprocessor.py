@@ -499,7 +499,21 @@ class CommonPreprocessor(AbsPreprocessor):
         data = self._text_process(data)
         return data
 
-# TODO: build contextual preprocessor!
+"""
+ContextualPreprocessor for ASR Data Preparation
+
+This module extends the CommonPreprocessor by adding support for contextual ASR tasks. It handles the preparation of both text and speech data, including optional data augmentation and NLP prompts, ensuring the model can effectively process diverse inputs.
+
+Key Features:
+1. **Context List Processing:**  
+   - Converts context lists into numerical arrays for ASR models.
+2. **Speech and Text Preprocessing:**  
+   - Applies volume normalization and text tokenization.
+3. **Data Augmentation Support:**  
+   - Adds noise and RIR effects with configurable probabilities.
+4. **Whisper Integration:**  
+   - Supports Whisper-specific tasks and token conversion.
+"""
 class ContextualPreprocessor(CommonPreprocessor):
     def __init__(
         self,

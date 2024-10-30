@@ -95,7 +95,6 @@ from espnet2.utils.get_default_kwargs import get_default_kwargs
 from espnet2.utils.nested_dict_action import NestedDictAction
 from espnet2.utils.types import float_or_none, int_or_none, str2bool, str_or_none
 
-from espnet2.text.contextual.rareword_processor import RarewordProcessor
 from espnet2.text.contextual.context_sampler    import ContextSampler
 # from espnet2.asr.contextual_asr_espnet_model import ESPnetContextualASRModel
 from espnet2.asr.contextualized_espnet_model import ESPnetContextualASRModel
@@ -215,10 +214,9 @@ contextualizer_choices = ClassChoices(
 contextual_choices = ClassChoices(
     "contextual",
     classes=dict(
-        rareword_processor=RarewordProcessor,
         context_sampler=ContextSampler,
     ),
-    default="rareword_processor",
+    default="context_sampler",
 )
 preprocessor_choices = ClassChoices(
     "preprocessor",
@@ -659,38 +657,7 @@ class ASRTask(AbsTask):
     def build_contextual_processor(cls, args: argparse.Namespace, model: object):
         contextual_type  = args.contextual_conf.get("contextual_type", None)
         contextual_class = contextual_choices.get_class(contextual_type)
-        logging.info(f'args.contextual_conf: {args.contextual_conf}')
-        if contextual_type == "rareword_processor":
-            # TODO: remove rareword processor and replace by context sampler
-            contextual_processor = contextual_class(
-                blist_path=args.contextual_conf.get("blist_path", None), 
-                blist_occurrence_path=args.contextual_conf.get("blist_occurrence_path", None), 
-                blist_xphonebert_path=args.contextual_conf.get("blist_xphone_path", None),
-                drop_out=args.contextual_conf.get("blist_drop_out", 0),
-                full_drop_out=args.contextual_conf.get("full_drop_out", 0),
-                blist_max=args.contextual_conf.get("blist_max", 500),
-                pad_value=-1,
-                oov_value=len(args.token_list),
-                token_type=args.token_type,
-                token_list=args.token_list,
-                bpemodel=args.bpemodel,
-                g2p_type=args.g2p,
-                non_linguistic_symbols=args.non_linguistic_symbols,
-                structure_type=args.contextual_conf.get("structure_type", "none"),
-                sampling_method=args.contextual_conf.get("sampling_method", "none"),
-                hnwr_pre_gold_length=args.contextual_conf.get("hnwr_pre_gold_length", 5),
-                hardness_range=args.contextual_conf.get("hardness_range", 20),
-                sampler_drop=args.contextual_conf.get("sampler_drop", 0.5),
-                asr_model=model,
-                use_oov=args.contextual_conf.get("use_oov", True),
-                use_gpu=args.contextual_conf.get("use_gpu", True),
-                text_cleaner=args.cleaner,
-                prompt_template_context=args.contextual_conf.get("prompt_template_context", "THE TOPIC OF TODAY'S"),
-                prompt_template_no_context=args.contextual_conf.get("prompt_template_no_context", "OKAY THEN I'LL CONTINUE."),
-                do_context_shuffle=args.contextual_conf.get("do_context_shuffle", False),
-                **args.preprocessor_conf,
-            )
-        elif contextual_type == "context_sampler":
+        if contextual_type == "context_sampler":
             preprocessor = cls.build_preprocess_fn(args, train=True)
             context_preprocessor = cls.build_preprocess_for_context_sampler_fn(args, train=True)
             contextual_processor = contextual_class(

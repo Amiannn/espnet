@@ -1,3 +1,22 @@
+"""
+Hard Negative Sampling Module for Contextual ASR
+
+This module implements hard negative sampling to enhance ASR systems by introducing 
+challenging distractors during training and inference. It supports various sampling 
+strategies to improve model robustness for rare word recognition.
+
+Key Features:
+1. **ANN and Q-HNW Sampling Methods:** 
+   - Uses Approximate Nearest Neighbors (ANN) and Query-based HNW (Q-HNW) techniques.
+2. **Phoneme-aware Mean Pooling:** 
+   - Extracts phoneme embeddings for enhanced context biasing.
+3. **Adaptive Indexing:** 
+   - Builds FAISS-based indices for efficient contextual retrieval.
+4. **GPU Support:** 
+   - Optional GPU acceleration for faster processing.
+"""
+
+
 import os
 import math
 import json

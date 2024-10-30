@@ -1,3 +1,21 @@
+"""
+TrieProcessor for Efficient Contextual ASR Matching
+
+This module constructs and manages trie structures to facilitate token matching 
+for contextual ASR systems. It supports batch and sequence-wise searches with 
+features for efficient caching and context-based mask generation.
+
+Key Features:
+1. **Trie-based Token Matching:**  
+   - Builds and searches trie structures for fast sequence matching.
+2. **Batch and Sequence-wise Searches:**  
+   - Supports efficient searches for multiple sequences with mask generation.
+3. **Cache Management:**  
+   - Caches subword paths to optimize search performance.
+4. **Integration with Transducer Models:**  
+   - Adds optional transducer-compatible <blank> tokens to the search.
+"""
+
 import os
 import json 
 import random
@@ -10,8 +28,6 @@ from espnet2.text.build_tokenizer import build_tokenizer
 from espnet2.text.hugging_face_token_id_converter import HuggingFaceTokenIDConverter
 from espnet2.text.token_id_converter import TokenIDConverter
 from espnet2.text.whisper_token_id_converter import OpenAIWhisperTokenIDConverter
-
-random.seed(0)
 
 class TrieProcessor():
     def __init__(

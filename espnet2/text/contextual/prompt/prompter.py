@@ -1,3 +1,18 @@
+"""
+WhisperPrompter for NLP-based Contextual Prompts
+
+This module generates dynamic prompts for contextualized ASR tasks using Whisper token converters. 
+It builds both training and inference prompts based on context elements and templates.
+
+Key Features:
+1. **Training Prompt Generation:**
+   - Constructs prompts with context elements, optionally including confidence scores and positions.
+2. **Inference Prompt Templates:**
+   - Provides templates for both context-aware and context-free scenarios.
+3. **Context Shuffling:**
+   - Supports random shuffling of context elements to diversify prompts.
+"""
+
 import os
 import json
 import torch

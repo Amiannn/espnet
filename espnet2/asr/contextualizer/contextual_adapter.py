@@ -1,3 +1,20 @@
+"""
+ContextualAdapter Module for Context-Aware ASR
+
+This module provides multiple contextual adapters to improve ASR performance through advanced contextual embedding and attention-based mechanisms. It integrates adapters with phoneme-aware components to bias recognition towards relevant context.
+
+Key Features:
+1. **Attention-based Contextual Adapters:**  
+   - Supports transformer-based, BiLSTM, and phoneme-aware encoders.
+2. **Gated Mechanisms for Context Control:**  
+   - Uses gating to dynamically regulate context influence during inference.
+3. **Support for Convolutional and Hybrid Attention Models:**  
+   - Adapts to complex ASR pipelines with multiple attention mechanisms.
+4. **Residual Gate Control:**  
+   - Balances over-adaptation by regulating residual information flow.
+"""
+
+
 import math
 import torch
 import random

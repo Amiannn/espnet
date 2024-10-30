@@ -1,3 +1,37 @@
+"""
+ESPnetContextualASRModel: Contextual Adaptation for Enhanced ASR Performance
+
+This custom ASR model builds upon ESPnet's ASR architecture with added contextual biasing. It integrates contextual retrievers, adapters, and prompt generation to improve the recognition of rare and domain-specific terms in speech.
+
+### Key Modifications:
+1. **Contextual Adaptation:**
+   - Introduces retrievers and adapters to bias recognition based on relevant subword and phoneme-level contexts.
+   - Supports multiple contextualizer types (retrievers, encoder adapters, and decoder adapters).
+
+2. **Loss Functions for Contextualization:**
+   - Custom losses like contextual CTC, RNN-T, and reweighted label prior losses.
+   - Dynamically adjusts contextualization losses through warm-up mechanisms and loss weighting.
+
+3. **Contextual Prompts Handling:**
+   - Uses retrieved context hypotheses to generate NLP-based prompts for improved decoding.
+   - Updates contexts dynamically during decoding to reflect model predictions.
+
+4. **Advanced Decoding and Loss Management:**
+   - Combines contextualization loss with standard CTC and attention-based loss functions.
+   - Applies contextualization at both encoder and decoder levels, with bias vectors influencing final predictions.
+
+5. **Transducer Model Integration:**
+   - Enhanced support for transducer models with contextual bias applied to joint networks.
+   - Seamlessly combines bias vectors from encoder and decoder for optimized predictions.
+
+6. **Prompt and Tokenization Support:**
+   - Handles Whisper-style text prompts and manages auxiliary tasks for token handling.
+   - Includes NLP prompt integration to steer predictions.
+
+This model extends ESPnet to support contextual ASR, making it ideal for applications requiring high accuracy in recognizing domain-specific or rare vocabulary.
+"""
+
+
 import torch
 import logging
 

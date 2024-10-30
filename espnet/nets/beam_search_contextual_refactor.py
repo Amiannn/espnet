@@ -1,4 +1,36 @@
-"""Beam search module with contextualization."""
+"""
+Contextualized Beam Search for ASR
+
+This module extends the beam search algorithm by integrating contextual biasing mechanisms, improving ASR performance on domain-specific vocabulary. The contextualization affects both the encoder and decoder, dynamically influencing the scoring and token selection processes during decoding.
+
+Key Features:
+1. **Contextual Hypotheses Tracking:**
+   - Introduces `ContextualHypothesis` to maintain contextual predictions along with standard ASR hypotheses.
+
+2. **Contextualized Decoder Scorer:**
+   - Wraps the decoder with contextual scoring logic using `ContextualizedDecoderScorer`.
+   - Dynamically biases predictions based on context data and hidden state manipulation.
+
+3. **Encoder and Decoder Contextualization:**
+   - Applies contextualization at both the encoder and decoder stages through the adapter and retriever models.
+   - Uses retrieval mechanisms (e.g., top-k tokens) to influence token probabilities during inference.
+
+4. **Handling Whisper and NLP Prompts:**
+   - Seamlessly integrates with OpenAI Whisper decoder and manages NLP prompts for initializing context-aware decoding.
+
+5. **Flexible Beam Search Loop:**
+   - Modifies the beam search loop to accommodate contextual information and generate hypotheses with added context predictions.
+   - Includes token generation, scoring, and context adaptation for each search iteration.
+
+6. **Support for Multiple Contextualization Strategies:**
+   - Adapts to various contextual mechanisms, including retriever and adapter models, through `CONTEXTUAL_RETRIEVER` and `CONTEXTUAL_ADAPTER` options.
+
+7. **Prompt Generation and Contextual Predictions:**
+   - Generates NLP-based prompts from retrieved hypotheses and updates decoding states with relevant contextual predictions.
+
+8. **Integration with Hard Negative Mining:**
+   - Enables retrieval-based contextual scoring to incorporate hard negatives, improving robustness.
+"""
 
 import logging
 from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Union

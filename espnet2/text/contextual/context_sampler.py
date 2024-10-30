@@ -1,3 +1,47 @@
+"""
+This module provides the `ContextSampler` class, which enhances Automatic Speech Recognition (ASR) models by incorporating contextual information during training and inference. The `ContextSampler` facilitates the sampling and management of context data, including gold contexts, hard negative distractors, and context prompts, to improve recognition of rare words and handle out-of-vocabulary terms.
+
+Key Features:
+--------------
+1. **Context Sampling:**
+   - Samples relevant contexts (gold contexts) and introduces distractors.
+   - Supports dropout for variability and integrates hard negative sampling through `HardNegativeSampler`.
+
+2. **Auxiliary Loss Labels Construction:**
+   - Generates CTC-based and occurrence-based auxiliary labels for utterance-wise and batch-wise operations to guide model training.
+
+3. **Prompt Construction:**
+   - Creates NLP-based prompts using `WhisperPrompter` to bias predictions toward relevant contexts.
+   - Supports both context-present and context-absent prompt templates.
+
+4. **Context Embedding Management:**
+   - Loads and processes context phone embeddings for use as model inputs or auxiliary tasks.
+   - Aligns and pads embeddings for efficient batch processing.
+
+5. **Special Structure Support:**
+   - Manages trie structures via `TrieProcessor` for fast token matching and sequence searches.
+   - Supports custom context list structures for advanced ASR use cases.
+
+Integration with Other Components:
+----------------------------------
+- **`HardNegativeSampler`:** Introduces hard negative distractors to enhance model robustness.
+- **`WhisperPrompter`:** Dynamically generates NLP prompts for context-aware prediction.
+- **`TrieProcessor`:** Optimizes token matching using trie-based structures for efficient search.
+
+Usage Scenario:
+---------------
+This module is designed for ASR training pipelines where contextual biasing significantly improves recognition performance. It provides a flexible interface to sample contexts, generate auxiliary labels, and construct prompts for context-enhanced ASR models.
+
+Workflow Example:
+-----------------
+1. **Initialization:** Configure `ContextSampler` with tokenizers, models, and context data paths.
+2. **Context Sampling:** Use `context_sampling()` to retrieve gold contexts and hard negative distractors for each batch.
+3. **Label Construction:** Generate auxiliary labels for additional training objectives.
+4. **Prompt Generation:** Create context-aware prompts if supported by the ASR model.
+5. **Training Integration:** Incorporate sampled contexts, labels, and prompts into the training loop for improved ASR performance.
+"""
+
+
 import os
 import json 
 import torch
@@ -23,6 +67,11 @@ from dataclasses import (
 from ordered_set import OrderedSet
 from torch.nn.utils.rnn import pad_sequence
 
+"""
+1. HardNegativeSampler: Implements hard negative sampling to introduce challenging distractors during training, enhancing the robustness of ASR models by improving rare word recognition and handling out-of-vocabulary terms.
+2. WhisperPrompter: Generates NLP-based contextual prompts for training and inference in Whisper models, helping to bias predictions toward relevant context elements dynamically.
+3. TrieProcessor: Manages trie structures for fast token matching and context-based sequence searches, supporting batch operations with efficient caching for ASR systems.
+"""
 from espnet2.text.contextual.sampler.hard_negative_mining import HardNegativeSampler
 from espnet2.text.contextual.prompt.prompter              import WhisperPrompter
 from espnet2.text.contextual.structure.trie               import TrieProcessor

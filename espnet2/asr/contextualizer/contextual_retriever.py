@@ -1,3 +1,19 @@
+"""
+ContextualRetriever Module for ASR
+
+This module provides multiple retriever models that enhance ASR systems with context-aware embeddings. It integrates various retrieval strategies to bias recognition towards relevant subword and phoneme contexts.
+
+Key Features:
+1. **Multi-Strategy Retrieval:**  
+   - Supports dot-product and late interaction models for efficient context retrieval.
+2. **Phoneme-Aware Context Encoding:**  
+   - Encodes both subword and phoneme-based representations.
+3. **Hard Negative Context Mining:**  
+   - Integrates mining to improve retrieval accuracy through distractors.
+4. **Adaptive Query Encoding:**  
+   - Uses conformer and BiLSTM-based encoders for flexible query projection.
+"""
+
 import abc
 import torch
 import torch.nn.functional as F
