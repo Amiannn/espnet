@@ -1,10 +1,16 @@
 # Enhanced ASR with Contextualization
 
-This project is a fork of an existing Automatic Speech Recognition (ASR) system, enhanced with contextualization capabilities to improve recognition performance, especially for rare and domain-specific terms. The modifications introduce context-aware components that adapt the ASR model to better handle out-of-vocabulary words and provide more accurate transcriptions in specialized domains.
+## Introduction
+
+**Enhanced ASR with Contextualization** is a fork from ESPNet project, augmented with advanced contextualization capabilities. This project aims to improve recognition performance, especially for rare and domain-specific terms, by integrating context-aware components. These enhancements enable the ASR model to better handle out-of-vocabulary words and provide more accurate transcriptions in specialized domains.
 
 ## Table of Contents
 
+- [Introduction](#introduction)
 - [Key Features](#key-features)
+- [Usage](#usage)
+  - [Training the Model](#training-the-model)
+  - [Performing Inference](#performing-inference)
 - [Modified Components](#modified-components)
   - [Contextual ASR Model](#contextual-asr-model)
   - [Contextual Adapters](#contextual-adapters)
@@ -13,16 +19,24 @@ This project is a fork of an existing Automatic Speech Recognition (ASR) system,
   - [Hard Negative Mining](#hard-negative-mining)
   - [Whisper Prompter](#whisper-prompter)
   - [Trie Processor](#trie-processor)
-  - [Beam Search Refactoring](#beam-search-refactoring)
+  - [Contextualized Beam Search for ASR](#contextualized-beam-search-for-asr)
+- [Module Interactions](#module-interactions)
+  - [Training Time Interactions](#training-time-interactions)
+  - [Decoding Time Interactions](#decoding-time-interactions)
 
 ## Key Features
 
-- **Contextual Adaptation:** Enhances the ASR model with context-aware components to recognize rare and domain-specific terms.
-- **Advanced Contextualizers:** Includes retrievers, adapters, and prompt generators to incorporate context at various stages of the ASR pipeline.
-- **Hard Negative Sampling:** Implements hard negative sampling to introduce challenging distractors during training, improving model robustness.
-- **Prompt Generation:** Generates NLP-based prompts to bias predictions towards relevant contexts dynamically.
-- **Trie-Based Token Matching:** Uses trie structures for efficient token matching and context-based sequence searches.
-- **Support for Multiple Models:** Integrates seamlessly with different ASR models, including transformer and transducer architectures.
+- **Contextual Adaptation:** Enhances the ASR model with context-aware components to recognize rare and domain-specific terms more effectively.
+- **Advanced Contextualizers:** Incorporates retrievers, adapters, and prompt generators to introduce context at various stages of the ASR pipeline.
+- **Hard Negative Sampling:** Implements hard negative sampling to introduce challenging distractors during training, improving model robustness against confusing terms.
+- **Dynamic Prompt Generation:** Generates NLP-based prompts in real-time to bias predictions towards relevant contexts.
+- **Efficient Token Matching:** Utilizes trie structures for efficient token matching and context-based sequence searches.
+- **Multi-Model Support:** Seamlessly integrates with different ASR models, including transformer and transducer architectures, offering flexibility in deployment.
+
+## Usage
+
+### Training the Model
+Fill in examples.
 
 ## Modified Components
 
@@ -30,33 +44,33 @@ This project is a fork of an existing Automatic Speech Recognition (ASR) system,
 
 **File:** `espnet2/asr/contextualized_espnet_model.py`
 
-This custom ASR model builds upon the ESPnet ASR architecture with added contextual biasing. It integrates contextual retrievers, adapters, and prompt generation to improve the recognition of rare and domain-specific terms in speech.
+A custom ASR model built upon the ESPnet architecture with added contextual biasing. It integrates contextual retrievers, adapters, and prompt generation mechanisms to improve recognition of rare and domain-specific terms.
 
 #### Key Modifications:
 
 1. **Contextual Adaptation:**
-   - Introduces retrievers and adapters to bias recognition based on relevant subword and phoneme-level contexts.
+   - Integrates retrievers and adapters for biasing recognition based on relevant subword and phoneme-level contexts.
    - Supports multiple contextualizer types, including retrievers, encoder adapters, and decoder adapters.
 
-2. **Loss Functions for Contextualization:**
-   - Implements custom losses like contextual CTC, RNN-T, and reweighted label prior losses.
-   - Dynamically adjusts contextualization losses through warm-up mechanisms and loss weighting.
+2. **Enhanced Loss Functions:**
+   - Implements custom losses such as contextual Connectionist Temporal Classification (CTC), Recurrent Neural Network Transducer (RNN-T), and reweighted label prior losses.
+   - Employs dynamic adjustment of contextualization losses through warm-up mechanisms and loss weighting strategies.
 
-3. **Contextual Prompts Handling:**
+3. **Dynamic Context Handling:**
    - Utilizes retrieved context hypotheses to generate NLP-based prompts for improved decoding.
-   - Updates contexts dynamically during decoding to reflect model predictions.
+   - Updates contexts dynamically during decoding to reflect evolving model predictions.
 
-4. **Advanced Decoding and Loss Management:**
+4. **Advanced Decoding and Integration:**
    - Combines contextualization loss with standard CTC and attention-based loss functions.
-   - Applies contextualization at both encoder and decoder levels, with bias vectors influencing final predictions.
+   - Applies contextualization at both encoder and decoder levels, influencing final predictions with bias vectors.
 
 5. **Transducer Model Integration:**
-   - Enhances support for transducer models with contextual bias applied to joint networks.
-   - Seamlessly combines bias vectors from encoder and decoder for optimized predictions.
+   - Enhances support for transducer models by applying contextual bias to joint networks.
+   - Seamlessly merges bias vectors from both encoder and decoder for optimized predictions.
 
 6. **Prompt and Tokenization Support:**
    - Handles Whisper-style text prompts and manages auxiliary tasks for token handling.
-   - Includes NLP prompt integration to steer predictions.
+   - Integrates NLP prompts to steer predictions towards relevant contexts.
 
 ### Contextual Adapters
 
@@ -187,26 +201,42 @@ This module constructs and manages trie structures to facilitate token matching 
 
 This module extends the beam search algorithm by integrating contextual biasing mechanisms.
 
-- **Contextual Hypotheses Tracking:**
-  - Maintains contextual predictions alongside standard ASR hypotheses.
+#### Key Features:
 
-- **Contextualized Decoder Scorer:**
-  - Wraps the decoder with contextual scoring logic using `ContextualizedDecoderScorer`.
+1. **Contextual Hypotheses Tracking:**
+   - Maintains contextual predictions alongside standard ASR hypotheses.
 
-- **Encoder and Decoder Contextualization:**
-  - Applies contextualization at both the encoder and decoder stages.
+2. **Contextualized Decoder Scorer:**
+   - Wraps the decoder with contextual scoring logic using `ContextualizedDecoderScorer`.
 
-- **Handling Whisper and NLP Prompts:**
-  - Integrates with OpenAI Whisper decoder and manages NLP prompts for initializing context-aware decoding.
+3. **Encoder and Decoder Contextualization:**
+   - Applies contextualization at both the encoder and decoder stages.
 
-- **Flexible Beam Search Loop:**
-  - Modifies the beam search loop to accommodate contextual information.
+4. **Handling Whisper and NLP Prompts:**
+   - Integrates with OpenAI Whisper decoder and manages NLP prompts for initializing context-aware decoding.
 
-- **Support for Multiple Contextualization Strategies:**
-  - Adapts to various contextual mechanisms, including retriever and adapter models.
+5. **Flexible Beam Search Loop:**
+   - Modifies the beam search loop to accommodate contextual information.
 
-- **Prompt Generation and Contextual Predictions:**
-  - Generates NLP-based prompts from retrieved hypotheses.
+6. **Support for Multiple Contextualization Strategies:**
+   - Adapts to various contextual mechanisms, including retriever and adapter models.
 
-- **Integration with Hard Negative Mining:**
-  - Incorporates hard negatives into the retrieval-based contextual scoring.y through optimized search strategies.
+7. **Prompt Generation and Contextual Predictions:**
+   - Generates NLP-based prompts from retrieved hypotheses.
+
+8. **Integration with Hard Negative Mining:**
+   - Incorporates hard negatives into the retrieval-based contextual scoring.
+
+## Module Interactions
+
+- **Contextual ASR Model:** Serves as the central component, integrating both **Contextual Adapters** and **Contextual Retrievers** to enhance performance using contextual information.
+- **Contextual Adapters** & **Contextual Retrievers:** Work in tandem within the model to incorporate context into the recognition process.
+- **Context Sampler:** Supplies necessary context data to the model, interacting with:
+  - **Hard Negative Sampler:** Introduces challenging distractors during training to improve model robustness.
+  - **Whisper Prompter:** Generates NLP-based prompts to bias predictions.
+  - **Trie Processor:** Facilitates efficient token matching and context-based sequence searches.
+
+### Additional Notes
+
+- **Hard Negative Sampler**, **Whisper Prompter**, and **Trie Processor** primarily interact with the **Context Sampler**.
+- The **Context Sampler** is responsible for supplying context to both the **Contextual ASR Model** during training and the **Contextualized Beam Search** during decoding.
