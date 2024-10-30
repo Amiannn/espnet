@@ -1084,18 +1084,33 @@ def inference(
                 if isinstance(results, tuple):
                     results, encoder_interctc_res = results
 
-                for n, (
-                    text, 
-                    token, 
-                    token_int, 
-                    hyp,                
-                    context_text,
-                    context_token,
-                    context_token_int,
-                    context_idxs
-                ) in zip(
+                for n, result in zip(
                     range(1, nbest + 1), results
                 ):
+                    if len(result) == 8:
+                        (
+                            text, 
+                            token, 
+                            token_int, 
+                            hyp,                
+                            context_text,
+                            context_token,
+                            context_token_int,
+                            context_idxs
+                        ) = result
+                    else:
+                        (
+                            text, 
+                            token, 
+                            token_int, 
+                            hyp,
+                        ) = result
+
+                        context_text = None
+                        context_token = None
+                        context_token_int = None
+                        context_idxs = None
+                    
                     # Create a directory: outdir/{n}best_recog
                     ibest_writer = writer[f"{n}best_recog"]
 
@@ -1104,15 +1119,17 @@ def inference(
                     ibest_writer["token_int"][key] = " ".join(map(str, token_int))
                     ibest_writer["score"][key] = str(hyp.score)
 
-                    ibest_writer["context_token"][key] = " ".join(context_token)
-                    ibest_writer["context_token_int"][key] = " ".join(map(str, context_token_int))
-                    ibest_writer["context_score"][key] = " ".join([str(s) for s in hyp.context_score])
-                    ibest_writer["context_candidate"][key] = " ".join(contexts['context_list'])
-                    ibest_writer["context_idx"][key] = " ".join([str(idx) for idx in context_idxs])
+                    if context_text is not None:
+                        ibest_writer["context_token"][key] = " ".join(context_token)
+                        ibest_writer["context_token_int"][key] = " ".join(map(str, context_token_int))
+                        ibest_writer["context_score"][key] = " ".join([str(s) for s in hyp.context_score])
+                        ibest_writer["context_candidate"][key] = " ".join(contexts['context_list'])
+                        ibest_writer["context_idx"][key] = " ".join([str(idx) for idx in context_idxs])
                     
                     if text is not None:
                         ibest_writer["text"][key] = text
-                        ibest_writer["context_text"][key] = context_text
+                        if context_text is not None:
+                            ibest_writer["context_text"][key] = context_text
 
                 # Write intermediate predictions to
                 # encoder_interctc_layer<layer_idx>.txt
