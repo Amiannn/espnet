@@ -12,9 +12,6 @@ from espnet2.asr.contextualizer import (
     CONTEXTUAL_ADAPTER_ENCODER,
     CONTEXTUAL_RETRIEVER,
 )
-from espnet2.asr.contextualizer.func.contextual_adapter_func import (
-    forward_contextual_adapter,
-)
 from espnet2.asr.contextualizer.func.contextual_retriever_func import (
     decode_topk_tokens,
     generate_prompt_from_hypotheses,
@@ -74,6 +71,7 @@ class ContextualizedDecoderScorer(ScorerInterface):
     def score(
         self,
         yseq: torch.Tensor,
+        context_predictions: List,
         state: Any,
         x: torch.Tensor,
         *args,
@@ -90,32 +88,31 @@ class ContextualizedDecoderScorer(ScorerInterface):
                 logger.warning("Hidden state not available for contextualization.")
                 return score, state
 
-            decoder_embedding = hidden_state  # Shape: (D,)
+            decoder_embedding = hidden_state.reshape(1, 1, -1)  # Shape: (1, 1, D,)
             # Apply decoder contextualizer
             decoder_bias_vector, context_hypotheses = self.contextualizer(
-                model_embed=decoder_embedding.unsqueeze(0),  # Shape: (1, D)
+                model_embed=decoder_embedding,
                 context_embed=self.context_data["blist"],
                 ilens=self.context_data["ilens"],
                 return_atten=True,
             )
             # Mean across attention heads
             context_hypotheses = torch.mean(context_hypotheses, dim=1)
-            context_predictions = decode_topk_tokens(
+            context_prediction = decode_topk_tokens(
                 token_probs=context_hypotheses,
                 vocabulary=self.context_data["context_list"],
                 blank_index=0,
                 top_k=100,
                 threshold=0.01,
             )
-            pred_texts = ", ".join([pred[1] for pred in context_predictions])
-            logging.info(f'pred_texts: {pred_texts}')
+            context_predictions.extend(context_prediction)
 
             # Bias the hidden state
-            # hidden_state = hidden_state + decoder_bias_vector
+            hidden_state = hidden_state + decoder_bias_vector
             
             # Adjust the score
             adjusted_score = torch.log_softmax(self.decoder_scorer.output_layer(hidden_state), dim=-1)
-            adjusted_score = adjusted_score.squeeze(0)
+            adjusted_score = adjusted_score.reshape(-1)
             return adjusted_score, state
         else:
             return score, state
@@ -184,7 +181,7 @@ class ContextualBeamSearch(BeamSearch):
         self,
         encoder_output: torch.Tensor,
         context_data: Dict[str, Any] = None,
-    ) -> List[Hypothesis]:
+    ) -> List[ContextualHypothesis]:
         """Initialize the hypothesis list."""
         init_states = {}
         init_scores = {}
@@ -296,10 +293,11 @@ class ContextualBeamSearch(BeamSearch):
             self.scorers["decoder"].context_data = context_data
 
         # Main beam search loop
+        context_predictions = []
         for i in range(maxlen):
             logger.debug(f"Beam search iteration {i}")
             best_hypotheses = self.search(
-                running_hypotheses, encoder_output, pre_encoder_output
+                running_hypotheses, encoder_output, pre_encoder_output, context_predictions
             )
             running_hypotheses = self.post_process(
                 i, maxlen, minlen, maxlenratio, best_hypotheses, ended_hypotheses
@@ -340,6 +338,112 @@ class ContextualBeamSearch(BeamSearch):
         )
 
         return contextual_nbest_hypotheses
+
+    def search(
+        self,
+        running_hyps: List[Hypothesis],
+        x: torch.Tensor,
+        pre_x: torch.Tensor = None,
+        context_predictions: List = [],
+    ) -> List[Hypothesis]:
+        """Search new tokens for running hypotheses and encoded speech x.
+
+        Args:
+            running_hyps (List[Hypothesis]): Running hypotheses on beam
+            x (torch.Tensor): Encoded speech feature (T, D)
+            pre_x (torch.Tensor): Encoded speech feature for sequential attn (T, D)
+                Sequential attn computes attn first on pre_x then on x,
+                thereby attending to two sources in sequence.
+
+        Returns:
+            List[Hypotheses]: Best sorted hypotheses
+
+        """
+        best_hyps = []
+        part_ids = torch.arange(self.n_vocab, device=x.device)  # no pre-beam
+        for hyp in running_hyps:
+            # scoring
+            weighted_scores = torch.zeros(self.n_vocab, dtype=x.dtype, device=x.device)
+            if self.return_hs:
+                hs, scores, states = self.score_full(hyp, x, pre_x=pre_x, context_predictions=context_predictions)
+            else:
+                scores, states = self.score_full(hyp, x, pre_x=pre_x, context_predictions=context_predictions)
+            for k in self.full_scorers:
+                weighted_scores += self.weights[k] * scores[k]
+            # partial scoring
+            if self.do_pre_beam:
+                pre_beam_scores = (
+                    weighted_scores
+                    if self.pre_beam_score_key == "full"
+                    else scores[self.pre_beam_score_key]
+                )
+                part_ids = torch.topk(pre_beam_scores, self.pre_beam_size)[1]
+            part_scores, part_states = self.score_partial(hyp, part_ids, x)
+            for k in self.part_scorers:
+                weighted_scores[part_ids] += self.weights[k] * part_scores[k]
+            # add previous hyp score
+            weighted_scores += hyp.score
+
+            # update hyps
+            for j, part_j in zip(*self.beam(weighted_scores, part_ids)):
+                # will be (2 x beam at most)
+                if self.return_hs:
+                    new_hs = hyp.hs + [hs.squeeze(0)]
+                else:
+                    new_hs = []
+                best_hyps.append(
+                    Hypothesis(
+                        score=weighted_scores[j],
+                        yseq=self.append_token(hyp.yseq, j),
+                        scores=self.merge_scores(
+                            hyp.scores, scores, j, part_scores, part_j
+                        ),
+                        states=self.merge_states(states, part_states, part_j),
+                        hs=new_hs,
+                    )
+                )
+
+            # sort and prune 2 x beam -> beam
+            best_hyps = sorted(best_hyps, key=lambda x: x.score, reverse=True)[
+                : min(len(best_hyps), self.beam_size)
+            ]
+        return best_hyps
+
+    def score_full(
+        self, hyp: Hypothesis, x: torch.Tensor, pre_x: torch.Tensor = None, context_predictions: List = [],
+    ) -> Tuple[Dict[str, torch.Tensor], Dict[str, Any]]:
+        """Score new hypothesis by `self.full_scorers`.
+
+        Args:
+            hyp (Hypothesis): Hypothesis with prefix tokens to score
+            x (torch.Tensor): Corresponding input feature
+            pre_x (torch.Tensor): Encoded speech feature for sequential attn (T, D)
+                Sequential attn computes attn first on pre_x then on x,
+                thereby attending to two sources in sequence.
+
+        Returns:
+            Tuple[Dict[str, torch.Tensor], Dict[str, Any]]: Tuple of
+                score dict of `hyp` that has string keys of `self.full_scorers`
+                and tensor score values of shape: `(self.n_vocab,)`,
+                and state dict that has string keys
+                and state values of `self.full_scorers`
+
+        """
+        scores = dict()
+        states = dict()
+        for k, d in self.full_scorers.items():
+            if "decoder" in k and self.return_hs:
+                scores[k], hs, states[k] = d.score(
+                    hyp.yseq, hyp.states[k], context_predictions, x, return_hs=self.return_hs
+                )
+            elif pre_x is not None:
+                scores[k], states[k] = d.score(hyp.yseq, context_predictions, hyp.states[k], x, pre_x)
+            else:
+                scores[k], states[k] = d.score(hyp.yseq, context_predictions, hyp.states[k], x)
+
+        if self.return_hs:
+            return hs, scores, states
+        return scores, states
 
     def _get_max_length(self, maxlenratio: float, input_feature: torch.Tensor) -> int:
         """Calculate the maximum output length."""
@@ -400,7 +504,7 @@ class ContextualBeamSearch(BeamSearch):
         nbest_hypotheses: List[Hypothesis],
         context_predictions: List[Tuple[int, str, float]],
         context_data: Dict[str, Any],
-    ) -> List[Hypothesis]:
+    ) -> List[ContextualHypothesis]:
         """Add context predictions to the hypotheses."""
         if context_predictions is not None:
             pred_texts = " ".join([pred[1] for pred in context_predictions])

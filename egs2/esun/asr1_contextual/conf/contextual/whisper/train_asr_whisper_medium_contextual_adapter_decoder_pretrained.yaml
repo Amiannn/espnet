@@ -46,9 +46,9 @@ sort_in_batch: descending       # how to sort data in making batch
 sort_batch: descending          # how to sort created batches
 batch_type: numel
 # batch_bins: 12000000            # good for single GPU w/ 40G mem
-batch_bins: 48000000            # good for single GPU w/ 40G mem
+batch_bins: 96000000            # good for single GPU w/ 40G mem
 accum_grad: 2
-max_epoch: 50
+max_epoch: 150
 patience: none
 init: none
 # best_model_criterion:
@@ -132,7 +132,7 @@ contextualizer_conf:
     # contextualizer loss settings
     warmup_epoch: 0
     embed_share_weight_ctc: false
-    contextualizer_weight: 0.5
+    contextualizer_weight: 1
     contextualizer_losses:
         loss_contextualizer_ga_ctc: 1
 
@@ -144,7 +144,7 @@ lora_conf:
     dropout_rate: 0.05
     target_prefixs: ["decoder"]
     target_modules: ["query", "key", "value", "attn.out"]
-    train_lora: True
+    train_lora: False
 
 freeze_param: [
     "encoder",

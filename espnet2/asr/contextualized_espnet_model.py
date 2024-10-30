@@ -37,6 +37,7 @@ from espnet2.asr.contextualizer import (
     CONTEXTUAL_ADAPTER_DECODER,
 )
 from espnet2.asr.contextualizer.func.contextual_retriever_func import (
+    decode_topk_tokens,
     generate_prompt_from_hypotheses,
 )
 from espnet2.asr.decoder.whisper_decoder import OpenAIWhisperDecoder
@@ -209,6 +210,10 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             context_logit_encoder,
             encoder_out_proj,
         ) = self._apply_contextualizer_encoder(encoder_out, encoder_out_lens, contexts, stats)
+        
+        # Here we can pass the retrieved contexts to the decoder
+        if contexts_hypotheses_encoder is not None:
+            self._update_contexts(contexts, contexts_hypotheses_encoder)
 
         # 1. CTC branch
         if self.ctc_weight != 0.0:
@@ -295,6 +300,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
                 loss_contextualizer = loss_contextualizer + loss
                 stats.update(individual_losses)
         stats["loss_contextualizer"] = loss_contextualizer.detach()
+        stats["contextualizer_warmup"] = self.epoch >= self.warmup_epoch
 
         # Combine losses
         loss = self._combine_losses(
@@ -346,7 +352,6 @@ class ESPnetContextualASRModel(ESPnetASRModel):
                     logging.info(
                         f"Warning: Shape mismatch between encoder_out {encoder_out.shape} and encoder_bias_vector {encoder_bias_vector.shape}!"
                     )
-            stats["contextualizer_warmup"] = self.epoch >= self.warmup_epoch
         elif contextualizer_type in CONTEXTUAL_HISTORY_ADAPTER_ENCODER:
             decoder_in, target, t_len, u_len = get_transducer_task_io(
                 labels=contexts["context_label"],
@@ -395,6 +400,25 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             contexts_hypotheses = torch.mean(decoder_attention, dim=1)
 
         return decoder_bias_vector, contexts_hypotheses
+
+    def _update_contexts(self, contexts, contexts_hypotheses):
+        # Update the context prompt
+        if contexts["nlp_prompt_tensor"] is not None:
+            generated_prompts, generated_prompt_tensors = generate_prompt_from_hypotheses(
+                contexts=contexts,
+                context_hypotheses=contexts_hypotheses,
+                construct_prompt_labels_fn=self.context_sampler.construct_prompt_labels,
+                top_k=self.context_sampler.max_utterance_disrupt_context,
+                blank_index=0,
+                threshold=0.5,
+            )
+            prompts = [prompt.to(contexts_hypotheses.device) for prompt in generated_prompt_tensors]
+            contexts.update(
+                {
+                    "nlp_prompt": generated_prompts,
+                    "nlp_prompt_tensor": prompts,
+                }
+            )
 
     def _calc_intermediate_ctc_loss(
         self,
@@ -517,24 +541,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             prompts = contexts["nlp_prompt_tensor"]
             prompt_lengths = torch.tensor([p.shape[0] for p in prompts], device=target_sequences.device)
             prompt_text = "\n".join(contexts.get("nlp_prompt", []))
-            logging.info(f'\n{"_" * 30} (Teacher Forcing)\n{prompt_text}')
-
-            # If encoder context hypotheses are available, generate prompts from hypotheses
-            if encoder_context_hypotheses is not None:
-                generated_prompts, generated_prompt_tensors = generate_prompt_from_hypotheses(
-                    context_hypotheses=encoder_context_hypotheses,
-                    contexts=contexts,
-                    construct_prompt_labels_fn=self.context_sampler.construct_prompt_labels,
-                    blank_index=0,
-                    top_k=10,
-                    threshold=0.5,
-                )
-                prompt_text = "\n".join(generated_prompts)
-                logging.info(f'\n{"+" * 30} (KWS)\n{prompt_text}')
-
-                prompts = [prompt.to(target_sequences.device) for prompt in generated_prompt_tensors]
-                prompt_lengths = torch.tensor([p.shape[0] for p in prompts], device=target_sequences.device)
-
+            logging.info(f'\n{"_" * 30}\n{prompt_text}')
             # Prepare input and output sequences with prompts
             ys_in_pad, ys_out_pad = add_sop_sos_eos(
                 target_sequences, prompts, self.sop, self.sos, self.eos, self.ignore_id
@@ -562,8 +569,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             decoder_embeddings, contexts
         )
 
-        # for debugging, now we skip the biasing part
-        if False and decoder_bias_vector is not None:
+        if decoder_bias_vector is not None and (self.epoch >= self.warmup_epoch):
             decoder_bias_vector = self.decoder.output_layer(decoder_bias_vector)
             decoder_output = decoder_output + decoder_bias_vector
 
