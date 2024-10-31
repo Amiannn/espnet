@@ -43,6 +43,8 @@ if __name__ == '__main__':
         blist_path = ENTITY_LIST_PATH
         blist = [b[0].lower().replace('.', ' ') for b in read_file(blist_path, sp=',')]
         word2idx = {word: i for i, word in enumerate(blist)}
+        # Sort by length
+        blist = sorted(blist, key=lambda s: len(s), reverse=True)
 
         print(f'processing {path}...')
         text_path  = os.path.join(path, 'text')
@@ -62,8 +64,8 @@ if __name__ == '__main__':
                 [uttid] + (uttblist_idx if len(uttblist_idx) > 0 else [''])
             )
 
-        output_path_uttblist = os.path.join(path, f'uttblist_entity_earningcall')
+        output_path_uttblist = os.path.join(path, f'uttblist_entity_earningcall_fixed')
         write_file(output_path_uttblist, rareword_datas)
 
-        output_path_uttblist_idx = os.path.join(path, f'uttblist_idx_entity_earningcall')
+        output_path_uttblist_idx = os.path.join(path, f'uttblist_idx_entity_earningcall_fixed')
         write_file(output_path_uttblist_idx, rareword_idxs)

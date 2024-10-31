@@ -1,4 +1,5 @@
 import os
+import jieba
 from collections import defaultdict
 
 from jiwer import cer, wer, mer
@@ -50,7 +51,7 @@ def concatenate_non_english_chars(words):
     return " ".join(result)
 
 
-def find_rare_words(sentence, rare_words):
+def find_rare_words_old(sentence, rare_words):
     """
     Find rare words in a sentence.
     For English words, check for exact matches with spaces.
@@ -70,8 +71,39 @@ def find_rare_words(sentence, rare_words):
         else:
             if word in sentence_no_space:
                 found_words.append(word)
+    print(f'sentence_no_space: {sentence_no_space}')
+    print(f'found_words: {found_words}')
     return found_words
 
+def is_phrase_in_sentence(segmented_phrase, segmented_sentence):
+    phrase_len = len(segmented_phrase)
+    for i in range(len(segmented_sentence) - phrase_len + 1):
+        if segmented_sentence[i:i + phrase_len] == segmented_phrase:
+            return True
+    return False
+
+def resegment_sentence(sentence):
+    sentence_no_space  = sentence.replace(" ", "")
+    segmented_sentence = list(jieba.cut(sentence_no_space))
+    return segmented_sentence
+
+def find_rare_words(sentence, entity_phrases):
+    # Segment the sentence using jieba
+    sentence_no_space  = sentence.replace(" ", "")
+    segmented_sentence = list(jieba.cut(sentence_no_space))
+
+    # Set to keep track of detected phrases
+    detected_phrases = []
+
+    # Check if each phrase is present in the segmented sentence
+    for phrase in entity_phrases:
+        segmented_phrase = list(jieba.cut("".join(phrase.split(' '))))
+        segmented_phrase_str = " ".join(segmented_phrase)
+        if is_phrase_in_sentence(segmented_phrase, segmented_sentence):
+            if not any(segmented_phrase_str in detected for _, detected in detected_phrases):
+                detected_phrases.append([None, phrase])
+    detected_phrases = [d[-1] for d in detected_phrases]
+    return detected_phrases
 
 class ASREvaluator:
     def __init__(self, rare_words_list):
@@ -108,6 +140,11 @@ class ASREvaluator:
         # Find rare words in the reference
         ref_sentence = " ".join(ref_words)
         rare_words_in_ref = find_rare_words(ref_sentence, self.rare_words)
+        
+        hyp_sentence = " ".join(hyp_words)
+        
+        ref_words = resegment_sentence(ref_sentence)
+        hyp_words = resegment_sentence(hyp_sentence)
 
         # Align reference and hypothesis words
         alignment_chunks = align_to_index(ref_words, hyp_words)
@@ -157,16 +194,16 @@ class ASREvaluator:
 
         # Append processed data for this utterance
         self.ref_rareword_sentences.append(
-            " ".join(ref_rare_words) if ref_rare_words else "correct"
+            ",".join(ref_rare_words) if ref_rare_words else "correct"
         )
         self.hyp_rareword_sentences.append(
-            " ".join(hyp_rare_words) if hyp_rare_words else "correct"
+            ",".join(hyp_rare_words) if hyp_rare_words else "correct"
         )
         self.ref_common_sentences.append(
-            " ".join(ref_common_words) if ref_common_words else "correct"
+            ",".join(ref_common_words) if ref_common_words else "correct"
         )
         self.hyp_common_sentences.append(
-            " ".join(hyp_common_words) if hyp_common_words else "correct"
+            ",".join(hyp_common_words) if hyp_common_words else "correct"
         )
 
         if ref_rare_eng_words:
@@ -204,6 +241,9 @@ class ASREvaluator:
             self.ref_rare_non_english, self.hyp_rare_non_english
         )
 
+        self.ref_rareword_sentences = [s.replace(' ', '') if s != "correct" else "" for s in self.ref_rareword_sentences]
+        self.hyp_rareword_sentences = [s.replace(' ', '') if s != "correct" else "" for s in self.hyp_rareword_sentences]
+
         # Display metrics
         print(f"Overall MER: {self.overall_mer * 100:.2f}%")
         print(f"Rare Words MER: {self.rareword_mer * 100:.2f}%")
@@ -211,10 +251,23 @@ class ASREvaluator:
         print(f"Rare English Words WER: {self.rare_eng_wer * 100:.2f}%")
         print(f"Rare Non-English Words CER: {self.rare_non_eng_cer * 100:.2f}%")
 
-    def save_results(self, output_dir="./exp/test"):
+    def save_results(self, uttids, word2idx, output_dir="./exp/test"):
         """Write processed sentences and error patterns to files."""
         os.makedirs(output_dir, exist_ok=True)
 
+        hyp_rare_idx   = []
+        hyp_rare_score = []
+        for hyp_sent, uid in zip(self.ref_rareword_sentences, uttids):
+            if hyp_sent != "":
+                hyps = list(set(hyp_sent.split(',')))
+                idxs = " ".join([str(word2idx[hyp]) for hyp in hyps if hyp in word2idx])
+                scores = " ".join([str(0.99) for hyp in hyps if hyp in word2idx])
+            else:
+                idxs = ""
+                scores = ""
+            hyp_rare_idx.append(f'{uid} {idxs}')            
+            hyp_rare_score.append(f'{uid} {scores}')            
+            
         # Define file mappings
         file_data = {
             "reference_sentences": self.reference_sentences,
@@ -227,6 +280,8 @@ class ASREvaluator:
             "hyp_rare_english": self.hyp_rare_english,
             "ref_rare_non_english": self.ref_rare_non_english,
             "hyp_rare_non_english": self.hyp_rare_non_english,
+            # "hyp_context_idx": hyp_rare_idx,
+            # "hyp_context_score": hyp_rare_score,
         }
 
         # Write sentences to files
@@ -241,34 +296,43 @@ class ASREvaluator:
             frequency = self.rareword_counts[word]
             error_rate = total_errors / frequency if frequency > 0 else 0.0
             patterns = [
-                f"{err} ({count})"
+                f"{err} ({count})" if len(err) != 0 else f'_ ({count})'
                 for err, count in sorted(errors.items(), key=lambda x: x[1], reverse=True)
             ]
             error_pattern_list.append(
                 [
                     word,
                     str(frequency),
-                    f"{error_rate:.2f}",
                     str(total_errors),
+                    f"{error_rate*100:.2f}",
                     ", ".join(patterns),
                 ]
             )
-
-        error_pattern_list.sort(key=lambda x: int(x[1]), reverse=True)
+    
+        error_pattern_list.sort(key=lambda x: float(x[2]), reverse=True)
+        error_pattern_list.sort(key=lambda x: float(x[3]), reverse=True)
+        error_pattern_title = ['Entity', 'Counts', 'ErrorCounts', 'ErrorRate(%)', 'ErrorPatterns']
         output_path = os.path.join(output_dir, "error_patterns.tsv")
-        write_file(output_path, error_pattern_list, sp="\t")
+        write_file(output_path, [error_pattern_title] + error_pattern_list, sp="\t")
 
 
 def main():
     # Define file paths
     rareword_list_path = "./local/contextual/rarewords/esun_earningcall.entity.txt"
     reference_path = "./data/test/text"
+    # reference_path = "/mnt/storage1/experiments/espnet/egs2/esun/asr1/exp/asr_whisper_medium_lora_decoder/decode_asr_whisper_noctc_greedy_asr_model_3epoch/test/text"
     hypothesis_path = (
-        "/mnt/storage1/experiments/espnet/egs2/esun/asr1_contextual/exp/asr_whisper/run_medium_contextual_adapter_decoder/decode_asr_whisper_contextual_adapter_decoder_c20_entity_earningcall_asr_model_valid.loss.ave_10best_fixed/test/text"
+        "/mnt/storage1/experiments/espnet/egs2/esun/asr1/exp/asr_whisper_medium_lora_decoder/decode_asr_whisper_noctc_greedy_asr_model_3epoch/test/text"
+        # "./data/test/text"
     )
 
     # Read rare words
     rare_words = [line[0] for line in read_file(rareword_list_path, sp=" ")]
+    word2idx   = {word.replace(' ', ''):i for i, word in enumerate(rare_words)}
+
+    # Sort by length
+    rare_words = sorted(rare_words, key=lambda s: len(s), reverse=True)
+    jieba.load_userdict(rareword_list_path)
 
     # Read reference and hypothesis files
     references = [[line[0], line[1:]] for line in read_file(reference_path, sp=" ")]
@@ -276,17 +340,32 @@ def main():
         [line[0], [word for word in line[1:] if word]]
         for line in read_file(hypothesis_path, sp=" ")
     ]
+    uttids     = [line[0] for line in references]
 
     evaluator = ASREvaluator(rare_words)
 
     # Process each reference-hypothesis pair
     for ref, hyp in zip(references, hypotheses):
         evaluator.process_utterance(ref, hyp)
-
+    
     # Compute metrics and save results
     evaluator.compute_metrics()
-    evaluator.save_results()
+    
+    dump_dir = "/".join(hypothesis_path.split('/')[:-1])
+    evaluator.save_results(uttids, word2idx, output_dir=f'{dump_dir}/analysis')
 
 
 if __name__ == "__main__":
     main()
+
+
+"""
+python3 -m pyscripts.contextual.error_analysis.caluate_context_retrieval_errors \
+    --context_list_path "./local/contextual/rarewords/esun_earningcall.entity.txt" \
+    --ref_context_path "./dump/raw/test/uttblist_idx_entity_earningcall" \
+    --hyp_context_path "./exp/test/hyp_context_idx" \
+    --hyp_context_prob_path "./exp/test/hyp_context_score" \
+    --context_candidate_path "./exp/asr_whisper/run_medium_contextual_adapter_decoder/decode_asr_whisper_contextual_adapter_decoder_c100_entity_earningcall_asr_model_valid.loss.ave_10best_fixed/test/context_candidate" \
+    --k 10 \
+    --threshold 0.5
+"""

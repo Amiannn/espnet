@@ -6,13 +6,31 @@ from sklearn.metrics import (
     f1_score,
 )
 
+from pyscripts.utils.fileio import read_file, write_file
+
+def select_max(idxs, probs):
+    new_idxs, new_probs = [], []
+    for idx, prob in zip(idxs, probs):
+        result = {}
+        new_idx, new_prob = [], []
+        for i in range(len(idx)):
+            index = idx[i]
+            result[index] = result[index] + [prob[i]] if index in result else [prob[i]]
+        for idx in result:
+            prob = max(result[idx])
+            new_idx.append(idx)
+            new_prob.append(prob)
+        new_idxs.append(new_idx)
+        new_probs.append(new_prob)
+    return new_idxs, new_probs
+
 def filter_space(data):
     return [d for d in data if d != '' and d != '⁇']
 
-def read_file(file_path, sp=' '):
-    with open(file_path, 'r', encoding='utf-8') as f:
-        lines = f.readlines()
-    return [line.strip().split(sp) for line in lines]
+# def read_file(file_path, sp=' '):
+#     with open(file_path, 'r', encoding='utf-8') as f:
+#         lines = f.readlines()
+#     return [line.strip().split(sp) for line in lines]
 
 def average_precision_at_k(relevant_items, retrieved_items, k):
     """Compute Average Precision at K for a single query"""
@@ -158,6 +176,38 @@ def is_english(word):
             return True
     return False
 
+def analysis(ref_context_datas, hyp_context_datas, hyp_context_prob_datas, thres):
+    context_words = {}
+    for relevant_items, hyp_contexts, hyp_probs in zip(ref_context_datas, hyp_context_datas, hyp_context_prob_datas):
+        hyp_contexts = [hyp for prob, hyp in zip(hyp_probs, hyp_contexts) if prob > thres ]
+        for relevant_item in relevant_items:
+            if relevant_item in context_words:
+                context_words[relevant_item]['counts'] += 1
+            else:
+                context_words[relevant_item] = {
+                    'counts': 1,
+                    'correct': 0,
+                }
+            if relevant_item in hyp_contexts:
+                context_words[relevant_item]['correct'] += 1
+
+    title = [['Context', 'Counts', 'ErrorCounts', 'ErrorRate(%)']]
+    table = []
+    for context in context_words:
+        counts  = context_words[context]['counts']
+        correct = context_words[context]['correct']
+        table.append([
+            context,
+            counts,
+            counts - correct,
+            ((counts - correct) / counts) * 100,
+        ])
+    table = sorted(table, key=lambda d: d[2], reverse=True)
+    table = sorted(table, key=lambda d: d[3], reverse=True)
+    table = [[d[0], str(d[1]), str(d[2]), f'{d[3]:.2f}'] for d in table]
+    return title + table
+    
+
 def main(
     context_list_path,
     ref_context_path,
@@ -173,8 +223,10 @@ def main(
     hyp_context_prob_datas = [list(map(float, filter_space(d[1:]))) for d in read_file(hyp_context_prob_path, sp=' ')]
     context_candidate_datas = [filter_space(d[1:]) for d in read_file(context_candidate_path, sp=' ')]
 
-    ref_context_datas      = [list(map(lambda x: context_list_datas[x], d)) for d in ref_context_datas]
+    ref_context_datas      = [list(map(lambda x: context_list_datas[x], list(set(d)))) for d in ref_context_datas]
     hyp_context_datas      = [list(map(lambda x: context_list_datas[x], d)) for d in hyp_context_datas]
+
+    hyp_context_datas, hyp_context_prob_datas = select_max(hyp_context_datas, hyp_context_prob_datas)
 
     all_context_words = context_list_datas
 
@@ -208,6 +260,8 @@ def main(
             y_score = hyp_context_prob_dict.get(word, 0.0)
             global_y_true.append(y_true)
             global_y_scores.append(y_score)
+
+    analysis_table = analysis(ref_context_datas, hyp_context_datas, hyp_context_prob_datas, thres)
 
     if len(np.unique(global_y_true)) > 1:
         roc_auc = roc_auc_score(global_y_true, global_y_scores)
@@ -382,6 +436,7 @@ def main(
     #         threshold=thresh
     #     )
     #     print(f"{thresh:.1f}\t\t{mean_precision:.4f}\t\t\t{mean_recall:.4f}\t\t\t{mean_f1:.4f}")
+    return analysis_table
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Calculate information retrieval metrics including Macro-Averaged Precision, Recall, and F1 at different thresholds.")
@@ -394,7 +449,7 @@ if __name__ == "__main__":
     parser.add_argument('--threshold', type=float, default=0.5, help='Threshold.')
     args = parser.parse_args()
 
-    main(
+    analysis_table = main(
         args.context_list_path,
         args.ref_context_path,
         args.hyp_context_path,
@@ -404,3 +459,6 @@ if __name__ == "__main__":
         args.threshold,
     )
     
+    output_dir  = "/".join(args.hyp_context_path.split('/')[:-1])
+    output_path = os.path.join(output_dir, 'error_patterns_retrieval.tsv') 
+    write_file(output_path, analysis_table, sp='\t')

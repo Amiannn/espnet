@@ -55,7 +55,7 @@ for context in "${contexts[@]}"; do
         for distractor_len in $distractor_len_list; do
             exp_path="./exp/asr_whisper/${folder}/decode_asr_whisper_ctc_greedy_c${distractor_len}${exp_path_suffix}_asr_model_valid.loss.ave_10best/test"
 
-            output=$(python3 -m pyscripts.contextual.error_analysis.zh.caluate_context_retrieval_errors \
+            output=$(python3 -m pyscripts.contextual.error_analysis.caluate_context_retrieval_errors \
                 --context_list_path "$context_list_path" \
                 --ref_context_path "$ref_context_path" \
                 --hyp_context_path "${exp_path}/context_idx" \

@@ -1,0 +1,31 @@
+context_words:
+{'投資法人': {'counts': 13, 'correct': 13}, '玉山金控': {'counts': 80, 'correct': 75}, '財富管理': {'counts': 133, 'correct': 118}, '淨手續費': {'counts': 47, 'correct': 21}, '玉山': {'counts': 506, 'correct': 458}, '台灣': {'counts': 178, 'correct': 176}, '南山人壽': {'counts': 1, 'correct': 1}, '南山廣場': {'counts': 2, 'correct': 2}, '法金': {'counts': 24, 'correct': 22}, '預放': {'counts': 5, 'correct': 4}, 'cost': {'counts': 16, 'correct': 12}, '離岸風電': {'counts': 7, 'correct': 1}, '聯貸': {'counts': 11, 'correct': 3}, '放款': {'counts': 380, 'correct': 366}, '歐洲': {'counts': 8, 'correct': 8}, '利差': {'counts': 62, 'correct': 42}, '美國': {'counts': 46, 'correct': 45}, '先進': {'counts': 29, 'correct': 18}, '中國': {'counts': 30, 'correct': 29}, '經濟成長率': {'counts': 32, 'correct': 29}, '貨幣政策': {'counts': 9, 'correct': 8}, '主計處': {'counts': 17, 'correct': 9}, '雙重槓桿比率': {'counts': 9, 'correct': 2}, '淨值': {'counts': 16, 'correct': 15}, '稅後淨利': {'counts': 19, 'correct': 7}, '淨收益': {'counts': 30, 'correct': 22}, 'pi錢包': {'counts': 4, 'correct': 0}, '預期放款比率': {'counts': 4, 'correct': 2}, '創投': {'counts': 22, 'correct': 18}, '消金': {'counts': 18, 'correct': 6}, '存放比': {'counts': 14, 'correct': 12}, '企金': {'counts': 25, 'correct': 1}, '資本適足率': {'counts': 26, 'correct': 0}, '財管': {'counts': 14, 'correct': 10}, '陳美滿': {'counts': 4, 'correct': 1}, '謝冠仁': {'counts': 5, 'correct': 2}, '新加坡': {'counts': 16, 'correct': 15}, '香港': {'counts': 18, 'correct': 18}, '法說會': {'counts': 8, 'correct': 4}, 'mortgage': {'counts': 4, 'correct': 2}, 'corporate': {'counts': 6, 'correct': 5}, '曝險': {'counts': 11, 'correct': 3}, '深圳': {'counts': 1, 'correct': 1}, '廣州': {'counts': 1, 'correct': 1}, '關聯稅制': {'counts': 1, 'correct': 1}, '亞洲': {'counts': 23, 'correct': 23}, '全家': {'counts': 3, 'correct': 3}, 'pi信用卡': {'counts': 4, 'correct': 0}, '智能金融處': {'counts': 1, 'correct': 1}, '摩根大通': {'counts': 3, 'correct': 0}, '美林證券': {'counts': 1, 'correct': 1}, '企金法': {'counts': 1, 'correct': 0}, '稅後盈餘': {'counts': 1, 'correct': 0}, '央行': {'counts': 42, 'correct': 37}, '亞洲四小龍': {'counts': 1, 'correct': 1}, '南山': {'counts': 1, 'correct': 1}, '熔斷': {'counts': 1, 'correct': 1}, '國泰': {'counts': 1, 'correct': 1}, '花旗': {'counts': 10, 'correct': 6}, '玉證': {'counts': 2, 'correct': 0}, '指數型': {'counts': 1, 'correct': 1}, '外幣存放比': {'counts': 1, 'correct': 1}, '紓困振興': {'counts': 2, 'correct': 2}, '半導體五G': {'counts': 1, 'correct': 0}, '通貨膨脹': {'counts': 3, 'correct': 1}, '英國': {'counts': 3, 'correct': 3}, '淨利收': {'counts': 5, 'correct': 4}, '淨手收': {'counts': 3, 'correct': 1}, '市占率': {'counts': 2, 'correct': 1}, '生技股': {'counts': 1, 'correct': 1}, '數位轉型': {'counts': 12, 'correct': 7}, '松江': {'counts': 1, 'correct': 1}, '張智星': {'counts': 1, 'correct': 0}, '台大': {'counts': 3, 'correct': 3}, '淨提存': {'counts': 2, 'correct': 1}, '手收': {'counts': 14, 'correct': 3}, '統一': {'counts': 4, 'correct': 3}, 'capital': {'counts': 4, 'correct': 4}, '三道防線': {'counts': 1, 'correct': 1}, '停售效應': {'counts': 1, 'correct': 1}, '元大': {'counts': 6, 'correct': 4}, '美林': {'counts': 2, 'correct': 1}, 'Q': {'counts': 1, 'correct': 0}, '民營': {'counts': 2, 'correct': 2}, '川普': {'counts': 1, 'correct': 1}, '拜登': {'counts': 3, 'correct': 3}, '道瓊永續指數': {'counts': 1, 'correct': 0}, '毛手收': {'counts': 2, 'correct': 2}, '富邦': {'counts': 2, 'correct': 2}, '清華': {'counts': 1, 'correct': 1}, '金管會': {'counts': 5, 'correct': 4}, '玉輝': {'counts': 1, 'correct': 1}, '國泰證券': {'counts': 1, 'correct': 0}, '北富銀': {'counts': 1, 'correct': 1}, '許誠洲': {'counts': 2, 'correct': 0}, 'market': {'counts': 10, 'correct': 7}, '東協': {'counts': 3, 'correct': 2}, '永續發展委員會': {'counts': 2, 'correct': 2}, '瑞士信貸': {'counts': 3, 'correct': 2}, '日盛': {'counts': 1, 'correct': 1}, 'consumer': {'counts': 1, 'correct': 1}, '數金處': {'counts': 2, 'correct': 1}, '智金': {'counts': 1, 'correct': 0}, '綠色金融': {'counts': 5, 'correct': 4}, '終端消費': {'counts': 1, 'correct': 1}, '富比士': {'counts': 2, 'correct': 0}, 'ixml': {'counts': 1, 'correct': 1}, 'customer': {'counts': 1, 'correct': 1}, '玉山wallet': {'counts': 1, 'correct': 0}, '個金': {'counts': 1, 'correct': 1}, 'risk': {'counts': 1, 'correct': 1}, '風險管理委會': {'counts': 1, 'correct': 0}, '黃男州': {'counts': 2, 'correct': 0}, '中國人壽': {'counts': 3, 'correct': 0}, '殖利率': {'counts': 4, 'correct': 2}, 'powerpoint': {'counts': 2, 'correct': 1}, 'inflation': {'counts': 1, 'correct': 0}, '曼谷': {'counts': 6, 'correct': 6}, '智慧金融': {'counts': 1, 'correct': 1}, '聯合國': {'counts': 1, 'correct': 1}, '華爾街': {'counts': 1, 'correct': 1}, '育輝': {'counts': 1, 'correct': 0}, '南韓': {'counts': 1, 'correct': 1}, '日本': {'counts': 3, 'correct': 3}, '史密斯': {'counts': 1, 'correct': 0}, '烏克蘭': {'counts': 1, 'correct': 1}, '俄國': {'counts': 1, 'correct': 0}, 'data': {'counts': 1, 'correct': 1}, '國民旅遊卡': {'counts': 1, 'correct': 1}, '福岡': {'counts': 2, 'correct': 2}, '胡志明': {'counts': 2, 'correct': 2}, '泰國': {'counts': 1, 'correct': 1}, '越南': {'counts': 2, 'correct': 2}, 'SMP': {'counts': 1, 'correct': 0}, '淨零碳排': {'counts': 2, 'correct': 0}, '財金處': {'counts': 1, 'correct': 0}, '澳洲': {'counts': 2, 'correct': 2}, 'joseph': {'counts': 1, 'correct': 0}, '東南亞': {'counts': 1, 'correct': 1}}
+Overall Metrics:
+Mean Average Precision at 10: 0.9415
+Mean Reciprocal Rank: 0.2468
+Mean NDCG at 10: 0.2423
+Mean Precision at 10: 0.0292
+Macro-Averaged Precision at threshold 0.5: 0.9314
+Macro-Averaged Recall at threshold 0.5: 0.9468
+Macro-Averaged F1 Score at threshold 0.5: 0.8906
+ROC AUC (Overall): 0.9108
+
+Metrics for Chinese Context Words:
+Mean Average Precision at 10 (Chinese): 0.9462
+Mean Reciprocal Rank (Chinese): 0.2444
+Mean NDCG at 10 (Chinese): 0.2393
+Mean Precision at 10 (Chinese): 0.0287
+Macro-Averaged Precision at threshold 0.5 (Chinese): 0.9564
+Macro-Averaged Recall at threshold 0.5 (Chinese): 0.9489
+Macro-Averaged F1 Score at threshold 0.5 (Chinese): 0.9153
+ROC AUC (Chinese): 0.9125
+
+Metrics for English Context Words:
+Mean Average Precision at 10 (English): 0.9960
+Mean Reciprocal Rank (English): 0.0058
+Mean NDCG at 10 (English): 0.0058
+Mean Precision at 10 (English): 0.0006
+Macro-Averaged Precision at threshold 0.5 (English): 0.9711
+Macro-Averaged Recall at threshold 0.5 (English): 0.9961
+Macro-Averaged F1 Score at threshold 0.5 (English): 0.9674
+ROC AUC (English): 0.8191
