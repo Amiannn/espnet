@@ -158,31 +158,25 @@ def is_english(word):
             return True
     return False
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Calculate information retrieval metrics including Macro-Averaged Precision, Recall, and F1 at different thresholds.")
-    parser.add_argument('--context_list_path', type=str, required=True, help='Path to context list file.')
-    parser.add_argument('--ref_context_path', type=str, required=True, help='Path to reference context file.')
-    parser.add_argument('--hyp_context_path', type=str, required=True, help='Path to hypothesis context file.')
-    parser.add_argument('--hyp_context_prob_path', type=str, required=True, help='Path to hypothesis context probability file.')
-    parser.add_argument('--context_candidate_path', type=str, required=True, help='Path to context candidate file.')
-    parser.add_argument('--k', type=int, default=5, help='Value of K for metrics.')
-    parser.add_argument('--threshold', type=float, default=0.5, help='Threshold.')
-    args = parser.parse_args()
-    k     = args.k
-    thres = args.threshold
-
-    context_list_datas     = [d[0] for d in read_file(args.context_list_path, sp=' ')]
-    ref_context_datas      = [list(map(int, filter_space(d[1:]))) for d in read_file(args.ref_context_path, sp=' ')]
-    hyp_context_datas      = [filter_space(d[1:]) for d in read_file(args.hyp_context_path, sp=' ')]
-    hyp_context_prob_datas = [list(map(float, filter_space(d[1:]))) for d in read_file(args.hyp_context_prob_path, sp=' ')]
-    context_candidate_datas = [filter_space(d[1:]) for d in read_file(args.context_candidate_path, sp=' ')]
+def main(
+    context_list_path,
+    ref_context_path,
+    hyp_context_path,
+    hyp_context_prob_path,
+    context_candidate_path,
+    k,
+    thres,
+):
+    context_list_datas     = [d[0] for d in read_file(context_list_path, sp=' ')]
+    ref_context_datas      = [list(map(int, filter_space(d[1:]))) for d in read_file(ref_context_path, sp=' ')]
+    hyp_context_datas      = [list(map(int, filter_space(d[1:]))) for d in read_file(hyp_context_path, sp=' ')]
+    hyp_context_prob_datas = [list(map(float, filter_space(d[1:]))) for d in read_file(hyp_context_prob_path, sp=' ')]
+    context_candidate_datas = [filter_space(d[1:]) for d in read_file(context_candidate_path, sp=' ')]
 
     ref_context_datas      = [list(map(lambda x: context_list_datas[x], d)) for d in ref_context_datas]
+    hyp_context_datas      = [list(map(lambda x: context_list_datas[x], d)) for d in hyp_context_datas]
 
-    all_context_words = set()
-    for candidates in context_candidate_datas:
-        all_context_words.update(candidates)
-    all_context_words = list(all_context_words)
+    all_context_words = context_list_datas
 
     sorted_hyp_context_datas = []
     sorted_hyp_context_prob_datas = []
@@ -388,3 +382,25 @@ if __name__ == "__main__":
     #         threshold=thresh
     #     )
     #     print(f"{thresh:.1f}\t\t{mean_precision:.4f}\t\t\t{mean_recall:.4f}\t\t\t{mean_f1:.4f}")
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Calculate information retrieval metrics including Macro-Averaged Precision, Recall, and F1 at different thresholds.")
+    parser.add_argument('--context_list_path', type=str, required=True, help='Path to context list file.')
+    parser.add_argument('--ref_context_path', type=str, required=True, help='Path to reference context file.')
+    parser.add_argument('--hyp_context_path', type=str, required=True, help='Path to hypothesis context file.')
+    parser.add_argument('--hyp_context_prob_path', type=str, required=True, help='Path to hypothesis context probability file.')
+    parser.add_argument('--context_candidate_path', type=str, required=True, help='Path to context candidate file.')
+    parser.add_argument('--k', type=int, default=5, help='Value of K for metrics.')
+    parser.add_argument('--threshold', type=float, default=0.5, help='Threshold.')
+    args = parser.parse_args()
+
+    main(
+        args.context_list_path,
+        args.ref_context_path,
+        args.hyp_context_path,
+        args.hyp_context_prob_path,
+        args.context_candidate_path,
+        args.k,
+        args.threshold,
+    )
+    

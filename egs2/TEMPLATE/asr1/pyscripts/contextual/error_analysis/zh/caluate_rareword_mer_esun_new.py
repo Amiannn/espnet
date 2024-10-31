@@ -261,10 +261,10 @@ class ASREvaluator:
 
 def main():
     # Define file paths
-    rareword_list_path = "./local/contextual/rarewords/rareword_f10_test.txt"
+    rareword_list_path = "./local/contextual/rarewords/esun_earningcall.entity.txt"
     reference_path = "./data/test/text"
     hypothesis_path = (
-        "/mnt/storage1/experiments/espnet/egs2/esun/asr1_contextual/exp/asr_whisper/run_medium_contextual_adapter_decoder/decode_asr_whisper_contextual_adapter_decoder_c20_asr_model_valid.loss.ave_10best_fixed/test/text"
+        "/mnt/storage1/experiments/espnet/egs2/esun/asr1_contextual/exp/asr_whisper/run_medium_contextual_adapter_decoder/decode_asr_whisper_contextual_adapter_decoder_c20_entity_earningcall_asr_model_valid.loss.ave_10best_fixed/test/text"
     )
 
     # Read rare words
