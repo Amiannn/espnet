@@ -1,5 +1,6 @@
 import os
 import jieba
+import argparse
 from collections import defaultdict
 
 from jiwer import cer, wer, mer
@@ -51,30 +52,6 @@ def concatenate_non_english_chars(words):
     return " ".join(result)
 
 
-def find_rare_words_old(sentence, rare_words):
-    """
-    Find rare words in a sentence.
-    For English words, check for exact matches with spaces.
-    For non-English words, check for substring matches without spaces.
-    """
-    found_words = []
-    sentence_no_space = sentence.replace(" ", "")
-    for word in rare_words:
-        if is_ascii(word):
-            if (
-                f" {word} " in sentence
-                or sentence.startswith(f"{word} ")
-                or sentence.endswith(f" {word}")
-                or sentence == word
-            ):
-                found_words.append(word)
-        else:
-            if word in sentence_no_space:
-                found_words.append(word)
-    print(f'sentence_no_space: {sentence_no_space}')
-    print(f'found_words: {found_words}')
-    return found_words
-
 def is_phrase_in_sentence(segmented_phrase, segmented_sentence):
     phrase_len = len(segmented_phrase)
     for i in range(len(segmented_sentence) - phrase_len + 1):
@@ -82,10 +59,12 @@ def is_phrase_in_sentence(segmented_phrase, segmented_sentence):
             return True
     return False
 
+
 def resegment_sentence(sentence):
     sentence_no_space  = sentence.replace(" ", "")
     segmented_sentence = list(jieba.cut(sentence_no_space))
     return segmented_sentence
+
 
 def find_rare_words(sentence, entity_phrases):
     # Segment the sentence using jieba
@@ -104,6 +83,7 @@ def find_rare_words(sentence, entity_phrases):
                 detected_phrases.append([None, phrase])
     detected_phrases = [d[-1] for d in detected_phrases]
     return detected_phrases
+
 
 class ASREvaluator:
     def __init__(self, rare_words_list):
@@ -251,7 +231,7 @@ class ASREvaluator:
         print(f"Rare English Words WER: {self.rare_eng_wer * 100:.2f}%")
         print(f"Rare Non-English Words CER: {self.rare_non_eng_cer * 100:.2f}%")
 
-    def save_results(self, uttids, word2idx, output_dir="./exp/test"):
+    def save_results(self, uttids, word2idx, output_dir):
         """Write processed sentences and error patterns to files."""
         os.makedirs(output_dir, exist_ok=True)
 
@@ -316,15 +296,12 @@ class ASREvaluator:
         write_file(output_path, [error_pattern_title] + error_pattern_list, sp="\t")
 
 
-def main():
-    # Define file paths
-    rareword_list_path = "./local/contextual/rarewords/esun_earningcall.entity.txt"
-    reference_path = "./data/test/text"
-    # reference_path = "/mnt/storage1/experiments/espnet/egs2/esun/asr1/exp/asr_whisper_medium_lora_decoder/decode_asr_whisper_noctc_greedy_asr_model_3epoch/test/text"
-    hypothesis_path = (
-        "/mnt/storage1/experiments/espnet/egs2/esun/asr1/exp/asr_whisper_medium_lora_decoder/decode_asr_whisper_noctc_greedy_asr_model_3epoch/test/text"
-        # "./data/test/text"
-    )
+def main(
+    rareword_list_path,
+    reference_path,
+    hypothesis_path,
+    output_dir
+):
 
     # Read rare words
     rare_words = [line[0] for line in read_file(rareword_list_path, sp=" ")]
@@ -351,21 +328,36 @@ def main():
     # Compute metrics and save results
     evaluator.compute_metrics()
     
-    dump_dir = "/".join(hypothesis_path.split('/')[:-1])
-    evaluator.save_results(uttids, word2idx, output_dir=f'{dump_dir}/analysis')
+    if output_dir is None:
+        dump_dir = "/".join(hypothesis_path.split('/')[:-1])
+        output_dir = f'{dump_dir}/analysis'
+
+    evaluator.save_results(uttids, word2idx, output_dir=output_dir)
 
 
 if __name__ == "__main__":
-    main()
 
+    # Define command-line arguments
+    parser = argparse.ArgumentParser(description='ASR Evaluator')
 
-"""
-python3 -m pyscripts.contextual.error_analysis.caluate_context_retrieval_errors \
-    --context_list_path "./local/contextual/rarewords/esun_earningcall.entity.txt" \
-    --ref_context_path "./dump/raw/test/uttblist_idx_entity_earningcall" \
-    --hyp_context_path "./exp/test/hyp_context_idx" \
-    --hyp_context_prob_path "./exp/test/hyp_context_score" \
-    --context_candidate_path "./exp/asr_whisper/run_medium_contextual_adapter_decoder/decode_asr_whisper_contextual_adapter_decoder_c100_entity_earningcall_asr_model_valid.loss.ave_10best_fixed/test/context_candidate" \
-    --k 10 \
-    --threshold 0.5
-"""
+    parser.add_argument('--rareword_list_path', type=str, required=True,
+                        help='Path to the rare words list')
+    parser.add_argument('--reference_path', type=str, required=True,
+                        help='Path to the reference transcripts')
+    parser.add_argument('--hypothesis_path', type=str, required=True,
+                        help='Path to the hypothesis transcripts')
+    parser.add_argument('--output_dir', type=str,
+                        help='Directory to save the output results')
+
+    args = parser.parse_args()
+
+    rareword_list_path = args.rareword_list_path
+    reference_path = args.reference_path
+    hypothesis_path = args.hypothesis_path
+    output_dir = args.output_dir
+    main(
+        rareword_list_path,
+        reference_path,
+        hypothesis_path,
+        output_dir
+    )
