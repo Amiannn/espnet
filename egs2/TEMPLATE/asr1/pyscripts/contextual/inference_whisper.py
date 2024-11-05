@@ -247,7 +247,7 @@ if __name__ == "__main__":
         'contextual_type': 'context_sampler',
         'context_list_path': rareword_path,
         'context_phone_embedding_path': context_list_xphone_path,
-        'max_batch_disrupt_context': 100,
+        'max_batch_disrupt_context': 20,
         'sub_context_list_dropout': 0.0,
         'warmup_epoch': 0,
         'use_no_context_token': True,

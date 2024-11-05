@@ -189,7 +189,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             self.lp_gamma = self.contextualizer_conf.get("lp_gamma", 0.99)
             self.loss_amp = 10
         if "loss_contextualizer_ga_ce" in self.contextualizer_losses:
-            self.contextualizer_ga_nll = torch.nn.NLLLoss(reduction="sum")
+            self.contextualizer_ga_ce = torch.nn.CrossEntropyLoss(reduction='mean', ignore_index=ignore_id)
         self.context_sampler = context_sampler
 
     def forward(
@@ -334,7 +334,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
                 loss_contextualizer = loss_contextualizer + loss
                 stats.update(individual_losses)
         stats["loss_contextualizer"] = loss_contextualizer.detach()
-        stats["contextualizer_warmup"] = self.epoch >= self.warmup_epoch
+        stats["contextualizer_warmup"] = self.epoch < self.warmup_epoch
 
         # Combine losses
         loss = self._combine_losses(
@@ -717,7 +717,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
 
         device = contextual_hypotheses.device
         # contexts = {k: v.to(device) if isinstance(v, torch.Tensor) else v for k, v in contexts.items()}
-
+                
         individual_losses = {}
         epsilon = 1e-10  # To prevent log(0)
         log_contextual_hypotheses = torch.log(contextual_hypotheses + epsilon)
@@ -812,14 +812,16 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         if "loss_contextualizer_ga_ce" in normalized_weights:
             ga_log_probs = log_contextual_hypotheses  # Shape: (batch_size, seq_len, num_classes)
             batch_size, seq_len, num_classes = ga_log_probs.shape
-            ce_targets = torch.zeros(batch_size, seq_len, dtype=torch.long, device=ga_log_probs.device)
+            
+            label_ce       = contexts['label_cross_entropy']
+            label_ce_ilens = contexts['label_cross_entropy_ilens']
 
             # Flatten inputs and targets
-            input_flat = ga_log_probs.view(-1, num_classes)
-            target_flat = ce_targets.view(-1)
+            input_flat  = ga_log_probs[:, :-1, :].reshape(-1, num_classes)
+            target_flat = label_ce.view(-1)
 
             # Compute Cross-Entropy loss
-            loss_ce = self.contextualizer_ga_nll(input_flat, target_flat)
+            loss_ce = self.contextualizer_ga_ce(input_flat, target_flat)
             individual_losses[f"loss_contextualizer_ga_ce_{loss_suffix}"] = loss_ce
 
         # Combine the individual losses into a total loss

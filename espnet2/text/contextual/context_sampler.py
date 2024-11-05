@@ -64,7 +64,7 @@ from dataclasses import (
     asdict,
 )
 
-from ordered_set import OrderedSet
+# from ordered_set import OrderedSet
 from torch.nn.utils.rnn import pad_sequence
 
 """
@@ -94,6 +94,12 @@ def read_file(path):
             datas.append(data)
     return datas
 
+def OrderedSet(elements):
+    _tmp = {}
+    for element in elements:
+        _tmp[element] = 0
+    return list(_tmp.keys())
+
 @dataclass
 class ContextSampleOutput:
     blist: torch.Tensor
@@ -111,6 +117,8 @@ class ContextSampleOutput:
     context_label_ilens: Optional[torch.Tensor] = None
     label_occurrence: Optional[torch.Tensor] = None
     label_occurrence_ilens: Optional[torch.Tensor] = None
+    label_cross_entropy: Optional[torch.Tensor] = None
+    label_cross_entropy_ilens: Optional[torch.Tensor] = None
     context_list: Optional[List[str]] = None
     context_list_idxs: Optional[List[int]] = None
     context_list_ints: Optional[List[int]] = None
@@ -303,19 +311,84 @@ class ContextSampler():
         logging.info(f'Loaded conetxt phone embeddings ({context_phone_embeddings.shape})')
         return context_phone_embeddings, context_phone_embedding_indexis
 
-    def tensorify(self, Xs):
+    def tensorify(self, Xs, pad_value=None):
+        if pad_value is None:
+            pad_value = self.pad_token_value
         x_tensors = pad_sequence(
             [torch.tensor(x) for x in Xs], 
             batch_first=True, 
-            padding_value=self.pad_token_value
+            padding_value=pad_value
         ).long()
         x_tensor_ilens = (
-            x_tensors != self.pad_token_value
+            x_tensors != pad_value
         ).sum(dim=-1)
         return x_tensors, x_tensor_ilens
     
+    def _map_tokens_to_words(self, token_ids, tokens, text):
+        last_text = ""
+        mapping = []
+        collapse2token_idx = {}
+        index = 0
+
+        for idx in range(len(tokens)):
+            # Get the token string up to the current token
+            token_str = self.tokenizer.tokens2text(tokens[:idx + 1])
+            if text.startswith(token_str):
+                token_text = token_str[len(last_text):]
+                index = len(last_text)
+                last_text = token_str
+            mapping.append([token_ids[idx], token_text, index, idx])
+
+        for i in range(len(mapping)):
+            token_idx = mapping[i][-1]
+            token_start = mapping[i][-2]
+            token_text = mapping[i][1]
+            for char_pos in range(token_start, token_start + len(token_text)):
+                collapse2token_idx[char_pos] = token_idx
+
+        return collapse2token_idx
+
+    def _find_phrase_positions(self, sentence, phrase):
+        positions = []
+        index = sentence.find(phrase)
+        while index != -1:
+            positions.append(index)
+            index = sentence.find(phrase, index + 1)
+        return positions
+
+    def _find_contexts_with_positions(self, sentence, entity_phrases):
+        detected_phrases = []
+        for i, phrase in enumerate(entity_phrases):
+            positions = self._find_phrase_positions(sentence, phrase)
+            if positions:
+                detected_phrases.append((i, positions))
+        return detected_phrases
+
+    def build_label_for_cross_entropy_loss(self, token_ids_batch, token_ilens_batch, gold_contexts, batch_wise_context_list, pad_value=0):
+        batch_size, seq_length = token_ids_batch.shape
+        labels = []
+        for i in range(batch_size):
+            label = [0 for _ in range(token_ilens_batch[i])]
+            token_ids = token_ids_batch[i]
+            valid_token_ids = token_ids[token_ids != pad_value].tolist()
+            tokens = self.token_id_converter.ids2tokens(valid_token_ids, skip_special_tokens=False)
+            text = self.tokenizer.tokens2text(tokens)
+
+            ent_data = [self.context_list[idx] for idx in gold_contexts[i]]
+            char2token_idx = self._map_tokens_to_words(valid_token_ids, tokens, text)
+            for ent_idx, positions in self._find_contexts_with_positions(text, ent_data):
+                for pos in positions:
+                    index = char2token_idx.get(pos)
+                    if index is not None:
+                        ent_pos = batch_wise_context_list.index(gold_contexts[i][ent_idx])
+                        label[index] = ent_pos + (1 if self.use_no_context_token else 0)
+            labels.append(label)
+        return labels
+
     def construct_auxiliary_loss_label(
         self,
+        texts,
+        text_lengths,
         utterance_wise_gold_contexts,
         utterance_wise_sub_context_lists, 
         batch_wise_sub_context_list,
@@ -391,6 +464,24 @@ class ContextSampler():
             outputs.label_occurrence       = batch_wise_context_occurrences_label_tensors
             outputs.label_occurrence_ilens = batch_wise_context_occurrences_label_tensor_lens
 
+        # Build cross-entropy labels
+        if texts is not None:
+            labels = self.build_label_for_cross_entropy_loss(
+                texts,
+                text_lengths, 
+                utterance_wise_gold_contexts, 
+                batch_wise_sub_context_list, 
+                pad_value=self.pad_token_value
+            )
+            (
+                batch_wise_context_ce_label_tensors, 
+                batch_wise_context_ce_label_tensor_lens
+            ) = self.tensorify(
+                labels,
+            )
+            outputs.label_cross_entropy       = batch_wise_context_ce_label_tensors
+            outputs.label_cross_entropy_ilens = batch_wise_context_ce_label_tensor_lens
+
     def construct_prompt_labels(
         self,
         utterance_wise_sub_context_lists,
@@ -438,17 +529,18 @@ class ContextSampler():
         self, 
         utterance_wise_gold_contexts, 
         speechs=None, 
-        speech_lengths=None
+        speech_lengths=None,
     ):
         batch_size = len(utterance_wise_gold_contexts)
         if self.sub_context_list_dropout > random.random():
             return [[] for _ in range(batch_size)], []
 
-        utterance_wise_sub_context_lists = [
-            list(OrderedSet(
+        utterance_wise_gold_contexts_droped = [
+            OrderedSet(
                 [context for context in contexts if random.random() > self.gold_context_dropout]
-            )) for contexts in utterance_wise_gold_contexts
+            ) for contexts in utterance_wise_gold_contexts
         ]
+        utterance_wise_sub_context_lists = [contexts.copy() for contexts in utterance_wise_gold_contexts_droped]
         batch_wise_sub_context_list      = []
         batch_wise_to_utterance_wise_ids = []
 
@@ -510,11 +602,10 @@ class ContextSampler():
 
         # remove repeated contexts
         utterance_wise_sub_context_lists = [
-            list(OrderedSet(context)) for context in utterance_wise_sub_context_lists
+            OrderedSet(context) for context in utterance_wise_sub_context_lists
         ]
-        batch_wise_sub_context_list = list(OrderedSet(batch_wise_sub_context_list))
-
-        return utterance_wise_sub_context_lists, batch_wise_sub_context_list
+        batch_wise_sub_context_list = OrderedSet(batch_wise_sub_context_list)
+        return utterance_wise_gold_contexts_droped, utterance_wise_sub_context_lists, batch_wise_sub_context_list
 
     def sample(
         self,
@@ -524,14 +615,17 @@ class ContextSampler():
     ):
         speechs        = batch_data['speech']
         speech_lengths = batch_data['speech_lengths']
+        texts          = batch_data['text'] if 'text' in batch_data else None
+        text_lengths   = batch_data['text_lengths'] if 'text_lengths' in batch_data else None
 
         (
+            utterance_wise_gold_contexts_droped,
             utterance_wise_sub_context_idxs_lists, 
             batch_wise_sub_context_idxs_list
         ) = self.context_sampling(
             utterance_wise_gold_contexts=uttblists,
             speechs=speechs,
-            speech_lengths=speech_lengths
+            speech_lengths=speech_lengths,
         )
 
         # idxs to tokens
@@ -594,7 +688,9 @@ class ContextSampler():
 
         # build auxiliary loss label
         self.construct_auxiliary_loss_label(
-            utterance_wise_gold_contexts=uttblists,
+            texts=texts,
+            text_lengths=text_lengths,
+            utterance_wise_gold_contexts=utterance_wise_gold_contexts_droped,
             utterance_wise_sub_context_lists=utterance_wise_sub_context_idxs_lists, 
             batch_wise_sub_context_list=batch_wise_sub_context_idxs_list,
             outputs=outputs,

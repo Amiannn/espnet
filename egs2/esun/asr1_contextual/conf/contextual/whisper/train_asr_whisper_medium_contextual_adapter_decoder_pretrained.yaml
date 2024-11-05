@@ -91,17 +91,17 @@ contextual: context_sampler
 contextual_conf:
     contextual_type: context_sampler
     # metadata for context list
-    context_list_path: ./local/contextual/rarewords/rareword_f1000_train.txt
+    context_list_path: ./local/contextual/rarewords/rareword_f65536_train.txt
     context_phone_embedding_path: null
     context_list_occurrence_path: null
     # context settings
     use_no_context_token: true
     # sampling settings
-    gold_context_dropout: 0.0
+    gold_context_dropout: 0.1
     sub_context_list_dropout: 0.0
     max_utterance_disrupt_context: 10
     max_batch_disrupt_context: 1000
-    shuffle_sub_context_list: True
+    shuffle_sub_context_list: False
     # hard negative context settings
     hnc_sampler_type: null
     hnc_per_gold_context: 1
@@ -130,11 +130,11 @@ contextualizer_conf:
     atten_temperature: 1.0
     use_local_attn_conv: False
     # contextualizer loss settings
-    warmup_epoch: 0
+    warmup_epoch: 200
     embed_share_weight_ctc: false
     contextualizer_weight: 1
     contextualizer_losses:
-        loss_contextualizer_ga_ctc: 1
+        loss_contextualizer_ga_ce: 1
 
 use_lora: true
 save_lora_only: false
