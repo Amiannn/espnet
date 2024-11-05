@@ -45,7 +45,7 @@ nbpe=5000
 CUDA_LAUNCH_BLOCKING=1 CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --nj 20 \
     --gpu_inference false \
-    --inference_nj 20 \
+    --inference_nj 10 \
     --lang zh \
     --ngpu 1 \
     --token_type whisper_multilingual \
@@ -57,7 +57,7 @@ CUDA_LAUNCH_BLOCKING=1 CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --asr_tag "${asr_tag}" \
     --asr_config "${asr_config}" \
     --inference_config "${inference_config}" \
-    --inference_asr_model 140epoch_fixed.pth \
+    --inference_asr_model valid.loss.ave_10best_fixed.pth \
     --train_set "${train_set}" \
     --valid_set "${valid_set}" \
     --test_sets "${test_sets}" \
