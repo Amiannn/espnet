@@ -1,5 +1,7 @@
 # Enhanced ASR with Contextualization
 
+![Contextualized_asr](contextualized_asr.svg)
+
 ## Introduction
 
 **Enhanced ASR with Contextualization** is a fork from[ ESPNet project](README_espnet.md), augmented with advanced contextualization capabilities. This project aims to improve recognition performance, especially for rare and domain-specific terms, by integrating context-aware components. These enhancements enable the ASR model to better handle out-of-vocabulary words and provide more accurate transcriptions in specialized domains.
