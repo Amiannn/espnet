@@ -1,6 +1,6 @@
 # Define the array of experiment folder names
 exp_folder=(
-  "run_medium_contextual_adapter_decoder"
+  "run_medium_contextual_adapter_decoder_pretrained_ce"
 )
 
 top_k=10
