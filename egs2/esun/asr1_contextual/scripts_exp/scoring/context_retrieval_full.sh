@@ -10,8 +10,8 @@ threshold=0.5
 echo "Experiment,Context,Distractor,Mean Average Precision at ${top_k},Mean Reciprocal Rank,Mean NDCG at ${top_k},Mean Precision at ${top_k},Macro-Averaged Precision,Macro-Averaged Recall,Macro-Averaged F1 Score,ROC AUC Score,Mean Average Precision at ${top_k} (Chinese),Mean Reciprocal Rank (Chinese),Mean NDCG at ${top_k} (Chinese),Mean Precision at ${top_k} (Chinese),Macro-Averaged Precision (Chinese),Macro-Averaged Recall (Chinese),Macro-Averaged F1 Score (Chinese),ROC AUC Score (Chinese),Mean Average Precision at ${top_k} (English),Mean Reciprocal Rank (English),Mean NDCG at ${top_k} (English),Mean Precision at ${top_k} (English),Macro-Averaged Precision (English),Macro-Averaged Recall (English),Macro-Averaged F1 Score (English),ROC AUC Score (English)" > context_retrieval_results.csv
 
 # Define contexts and their parameters
-# contexts=("RW" "ENT(300)")
-contexts=("ENT(300)")
+contexts=("RW" "ENT(300)")
+# contexts=("ENT(300)")
 
 declare -A context_list_paths
 context_list_paths["RW"]="./local/contextual/rarewords/rareword_f10_test.txt"

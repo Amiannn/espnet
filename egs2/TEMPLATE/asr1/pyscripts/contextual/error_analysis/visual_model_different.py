@@ -156,7 +156,7 @@ if __name__ == '__main__':
 """
 python -m pyscripts.contextual.error_analysis.visual_model_different \
   --path "Whisper (LoRA Dec):../asr1/exp/asr_whisper_medium_lora_decoder/decode_asr_whisper_noctc_greedy_asr_model_3epoch/test/analysis/error_patterns.tsv" \
-  --path "Whisper Context Retriever (Dec):./exp/asr_whisper/run_medium_contextual_adapter_decoder/decode_asr_whisper_contextual_adapter_decoder_c20_entity_earningcall_asr_model_valid.loss.ave_10best_fixed/test/error_patterns_retrieval.tsv" \
+  --path "Whisper Context Retriever (Dec):./exp/asr_whisper/run_medium_contextual_adapter_decoder_pretrained_ce/decode_asr_whisper_contextual_adapter_decoder_c20_entity_earningcall_asr_model_valid.loss.ave_10best_fixed/test/error_patterns_retrieval.tsv" \
   --path "Whisper Context Retriever (Enc):./exp/asr_whisper/run_medium_xdotproduct_contextual_retriever_suffix/decode_asr_whisper_ctc_greedy_c100_entity_earningcall_asr_model_valid.loss.ave_10best/test/error_patterns_retrieval.tsv" \
   --path "Whisper Context Retriever 0.8 (Enc):./exp/asr_whisper/run_medium_xdotproduct_contextual_retriever_balanced_alpha0.8_suffix/decode_asr_whisper_ctc_greedy_c100_entity_earningcall_asr_model_valid.loss.ave_10best/test/error_patterns_retrieval.tsv" \
   --context-path ./local/contextual/rarewords/esun_earningcall.entity.txt \
