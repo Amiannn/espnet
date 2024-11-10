@@ -121,8 +121,8 @@ contextualizer_conf:
     embed_share_weight_ctc: true
     contextualizer_weight: 0.5
     contextualizer_losses:
-        loss_contextualizer_ga_ctc: 0.5
-        loss_contextualizer_ga_reweight_lp: 0.5
+        loss_contextualizer_ga_ctc: [0.5, "encoder"]
+        loss_contextualizer_ga_reweight_lp: [0.5, "encoder"]
     lp_gamma: 0.8
 
 

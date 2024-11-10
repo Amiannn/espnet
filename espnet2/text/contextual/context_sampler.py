@@ -105,6 +105,8 @@ class ContextSampleOutput:
     blist: torch.Tensor
     blist_idxs: list
     ilens: torch.Tensor
+    blist_utterance_wise: torch.Tensor
+    ilens_utterance_wise: torch.Tensor
     trie: Optional[object] = None
     blist_xphone_mean: Optional[torch.Tensor] = None
     blist_xphone: Optional[torch.Tensor] = None
@@ -196,7 +198,8 @@ class ContextSampler():
         (
             self.context_list, 
             self.context_idxs_list, 
-            self.context_ints_list
+            self.context_ints_list,
+            self.context_prompt_ints_list
         ) = self.load_context_list(context_list_path)
 
         # load context occurrence
@@ -297,7 +300,8 @@ class ContextSampler():
         context_list = [context.lower() for context in read_file(path)]
         context_idxs_list = [i for i in range(len(context_list))]
         context_ints_list = [self.text2int(context) for context in context_list]
-        return context_list, context_idxs_list, context_ints_list 
+        context_prompt_ints_list = [self.prompt_text2int(context) for context in context_list]
+        return context_list, context_idxs_list, context_ints_list, context_prompt_ints_list
 
     def load_context_occurrence_list(self, path):
         context_occurrence = read_file(path)
@@ -332,7 +336,7 @@ class ContextSampler():
 
         for idx in range(len(tokens)):
             # Get the token string up to the current token
-            token_str = self.tokenizer.tokens2text(tokens[:idx + 1])
+            token_str = self.prompt_tokenizer.tokens2text(tokens[:idx + 1])
             if text.startswith(token_str):
                 token_text = token_str[len(last_text):]
                 index = len(last_text)
@@ -364,15 +368,15 @@ class ContextSampler():
                 detected_phrases.append((i, positions))
         return detected_phrases
 
-    def build_label_for_cross_entropy_loss(self, token_ids_batch, token_ilens_batch, gold_contexts, batch_wise_context_list, pad_value=0):
+    def build_label_for_cross_entropy_loss(self, token_ids_batch, token_ilens_batch, gold_contexts, utterance_wise_sub_context_lists, pad_value=0):
         batch_size, seq_length = token_ids_batch.shape
         labels = []
         for i in range(batch_size):
             label = [0 for _ in range(token_ilens_batch[i])]
             token_ids = token_ids_batch[i]
             valid_token_ids = token_ids[token_ids != pad_value].tolist()
-            tokens = self.token_id_converter.ids2tokens(valid_token_ids, skip_special_tokens=False)
-            text = self.tokenizer.tokens2text(tokens)
+            tokens = self.prompt_token_id_converter.ids2tokens(valid_token_ids, skip_special_tokens=False)
+            text = self.prompt_tokenizer.tokens2text(tokens)
 
             ent_data = [self.context_list[idx] for idx in gold_contexts[i]]
             char2token_idx = self._map_tokens_to_words(valid_token_ids, tokens, text)
@@ -380,7 +384,7 @@ class ContextSampler():
                 for pos in positions:
                     index = char2token_idx.get(pos)
                     if index is not None:
-                        ent_pos = batch_wise_context_list.index(gold_contexts[i][ent_idx])
+                        ent_pos = utterance_wise_sub_context_lists[i].index(gold_contexts[i][ent_idx])
                         label[index] = ent_pos + (1 if self.use_no_context_token else 0)
             labels.append(label)
         return labels
@@ -470,17 +474,17 @@ class ContextSampler():
                 texts,
                 text_lengths, 
                 utterance_wise_gold_contexts, 
-                batch_wise_sub_context_list, 
+                utterance_wise_sub_context_lists, 
                 pad_value=self.pad_token_value
             )
             (
-                batch_wise_context_ce_label_tensors, 
-                batch_wise_context_ce_label_tensor_lens
+                utterance_wise_context_ce_label_tensors, 
+                utterance_wise_context_ce_label_tensor_lens
             ) = self.tensorify(
                 labels,
             )
-            outputs.label_cross_entropy       = batch_wise_context_ce_label_tensors
-            outputs.label_cross_entropy_ilens = batch_wise_context_ce_label_tensor_lens
+            outputs.label_cross_entropy       = utterance_wise_context_ce_label_tensors
+            outputs.label_cross_entropy_ilens = utterance_wise_context_ce_label_tensor_lens
 
     def construct_prompt_labels(
         self,
@@ -631,7 +635,7 @@ class ContextSampler():
         # idxs to tokens
         utterance_wise_sub_context_ints_lists = [
             [
-                self.context_ints_list[idx] for idx in idxs
+                self.context_prompt_ints_list[idx] for idx in idxs
             ] for idxs in utterance_wise_sub_context_idxs_lists
         ]
 
@@ -654,10 +658,20 @@ class ContextSampler():
             batch_wise_sub_context_ints_lists
         )
 
+        utterance_wise_sub_context_ints_datas = [
+            self.tensorify(
+                utterance_wise_sub_context_ints_list
+            ) for utterance_wise_sub_context_ints_list in utterance_wise_sub_context_ints_lists
+        ]
+        utterance_wise_sub_context_ints_tensors     = [d[0] for d in utterance_wise_sub_context_ints_datas]
+        utterance_wise_sub_context_ints_tensor_lens = [d[1] for d in utterance_wise_sub_context_ints_datas]
+        
         outputs = self.output_class(
             blist=batch_wise_sub_context_ints_tensors,
             blist_idxs=batch_wise_sub_context_idxs_list,
             ilens=batch_wise_sub_context_ints_tensor_lens,
+            blist_utterance_wise=utterance_wise_sub_context_ints_tensors,
+            ilens_utterance_wise=utterance_wise_sub_context_ints_tensor_lens,
             context_list=[self.context_list[c] for c in batch_wise_sub_context_idxs_list],
         )
         outputs.context_list_ints=batch_wise_sub_context_ints_lists

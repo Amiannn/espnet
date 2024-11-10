@@ -41,6 +41,8 @@ from typing import Dict, List, Optional, Tuple, Union
 from packaging.version import parse as V
 from typeguard import check_argument_types
 
+from torch.nn.utils.rnn import pad_sequence
+
 from espnet2.asr.ctc import CTC
 from espnet2.asr.decoder.abs_decoder import AbsDecoder
 from espnet2.asr.encoder.abs_encoder import AbsEncoder
@@ -69,6 +71,7 @@ from espnet2.asr.contextualizer import (
     CONTEXTUAL_ADAPTER_ENCODER,
     CONTEXTUAL_HISTORY_ADAPTER_ENCODER,
     CONTEXTUAL_ADAPTER_DECODER,
+    CONTEXTUAL_PROTOTYPE,
 )
 from espnet2.asr.contextualizer.func.contextual_retriever_func import (
     decode_topk_tokens,
@@ -413,6 +416,17 @@ class ESPnetContextualASRModel(ESPnetASRModel):
                         f"Warning: Shape mismatch between encoder_out {encoder_out.shape} and encoder_bias_vector {encoder_bias_vector.shape}!"
                     )
             stats["contextualizer_warmup"] = self.epoch >= self.warmup_epoch
+        elif contextualizer_type in CONTEXTUAL_PROTOTYPE:
+            contexts_hypotheses, encoder_out_proj = self.contextualizer.forward_at_encode(
+                query=encoder_out,
+                query_ilens=encoder_out_lens,
+                context_subword=contexts["blist"],
+                context_subword_ilens=contexts["ilens"],
+                context_phone=contexts["blist_xphone"],
+                context_phone_ilens=contexts["blist_xphone_ilens"],
+                return_model_proj=True,
+            )
+
         return encoder_out, encoder_bias_vector, contexts_hypotheses, context_logit, encoder_out_proj
 
     def _apply_contextualizer_decoder(
@@ -423,8 +437,9 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         """Apply contextualizer to the decoder output."""
         decoder_bias_vector = None
         contexts_hypotheses = None
+        contextualizer_type = self.contextualizer_conf["contextualizer_type"]
 
-        if self.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_ADAPTER_DECODER:
+        if contextualizer_type in CONTEXTUAL_ADAPTER_DECODER:
             decoder_bias_vector, decoder_attention = self.contextualizer(
                 model_embed=decoder_embed,
                 context_embed=contexts["blist"],
@@ -432,6 +447,28 @@ class ESPnetContextualASRModel(ESPnetASRModel):
                 return_atten=True,
             )
             contexts_hypotheses = torch.mean(decoder_attention, dim=1)
+        elif contextualizer_type in CONTEXTUAL_PROTOTYPE:
+            blist_utterance_wise = contexts["blist_utterance_wise"]
+            ilens_utterance_wise = contexts["ilens_utterance_wise"]
+            decoder_bias_vectors = []
+            decoder_attentions   = []
+            for i in range(len(blist_utterance_wise)):
+                decoder_bias_vector, decoder_attention = self.contextualizer.forward_at_decode(
+                    model_embed=decoder_embed[i].unsqueeze(0),
+                    context_embed=blist_utterance_wise[i],
+                    ilens=ilens_utterance_wise[i],
+                    return_atten=True,
+                )
+                decoder_attention = decoder_attention.squeeze(0).transpose(-1, 0)
+                decoder_bias_vectors.append(decoder_bias_vector)
+                decoder_attentions.append(decoder_attention)
+            decoder_bias_vector = torch.stack(decoder_bias_vectors, dim=0)
+            decoder_attentions = pad_sequence(
+                decoder_attentions, 
+                batch_first=True, 
+                padding_value=0
+            ).transpose(-1, 1)
+            contexts_hypotheses = torch.mean(decoder_attentions, dim=1)
 
         return decoder_bias_vector, contexts_hypotheses
 
@@ -725,7 +762,9 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         batch_size, seq_len, _ = contextual_hypotheses.shape
         encoder_output_lengths = torch.full((batch_size,), seq_len, dtype=torch.long, device=device)
 
-        total_weight = sum(self.contextualizer_losses.values())
+        contextualizer_losses        = {name: self.contextualizer_losses[name][0] for name in self.contextualizer_losses}
+        contextualizer_losses_suffix = {name: self.contextualizer_losses[name][1] for name in self.contextualizer_losses}
+        total_weight = sum(contextualizer_losses.values())
         if total_weight == 0.0:
             logging.warning("Total weight of contextualizer losses is zero. No losses will be calculated.")
             return None, {}
@@ -733,12 +772,12 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             logging.warning(
                 f"The sum of contextualizer loss weights is {total_weight}, not 1.0. Normalizing weights."
             )
-            normalized_weights = {k: v / total_weight for k, v in self.contextualizer_losses.items()}
+            normalized_weights = {k: v / total_weight for k, v in contextualizer_losses.items()}
         else:
-            normalized_weights = self.contextualizer_losses
+            normalized_weights = contextualizer_losses
 
         # Compute individual losses
-        if "loss_contextualizer_ga_ctc" in normalized_weights:
+        if "loss_contextualizer_ga_ctc" in normalized_weights and loss_suffix == contextualizer_losses_suffix["loss_contextualizer_ga_ctc"]:
             # Ensure required context keys are available
             required_keys = ["label_ctc", "label_ctc_ilens"]
             for key in required_keys:
@@ -760,7 +799,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             )
             individual_losses[f"loss_contextualizer_ga_ctc_{loss_suffix}"] = loss_ctc
 
-        if "loss_contextualizer_ga_rnnt" in normalized_weights:
+        if "loss_contextualizer_ga_rnnt" in normalized_weights and loss_suffix == contextualizer_losses_suffix["loss_contextualizer_ga_rnnt"]:
             if contextual_hypotheses_logits is None:
                 raise ValueError("contextual_hypotheses_logits is required for 'loss_contextualizer_ga_rnnt'")
 
@@ -784,7 +823,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             )
             individual_losses["loss_contextualizer_ga_rnnt"] = loss_rnnt
 
-        if "loss_contextualizer_ga_reweight_lp" in normalized_weights:
+        if "loss_contextualizer_ga_reweight_lp" in normalized_weights and loss_suffix == contextualizer_losses_suffix["loss_contextualizer_ga_reweight_lp"]:
             required_keys = ["label_ctc", "label_occurrence", "label_occurrence_ilens"]
             for key in required_keys:
                 if key not in contexts:
@@ -809,7 +848,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             loss_reweighted_lp = -self.loss_amp * ((weighted_labels * predicted_log_probs).sum(dim=-1)).mean()
             individual_losses[f"loss_contextualizer_ga_reweight_lp_{loss_suffix}"] = loss_reweighted_lp
 
-        if "loss_contextualizer_ga_ce" in normalized_weights:
+        if "loss_contextualizer_ga_ce" in normalized_weights and loss_suffix == contextualizer_losses_suffix["loss_contextualizer_ga_ce"]:
             ga_log_probs = log_contextual_hypotheses  # Shape: (batch_size, seq_len, num_classes)
             batch_size, seq_len, num_classes = ga_log_probs.shape
             

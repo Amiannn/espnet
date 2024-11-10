@@ -642,11 +642,14 @@ class ASRTask(AbsTask):
         return retval
 
     @classmethod
-    def build_contextualizer(cls, vocab_size: int, args: argparse.Namespace):
+    def build_contextualizer(cls, original_vocab_size: int, context_vocab_size: int, args: argparse.Namespace):
         contextualizer_type  = args.contextualizer_conf.get("contextualizer_type", None)
         contextualizer_class = contextualizer_choices.get_class(contextualizer_type)
+        args.contextualizer_conf.update({
+            'vocab_size': context_vocab_size,
+            'original_vocab_size': original_vocab_size,
+        })
         contextualizer       = contextualizer_class(
-            vocab_size=vocab_size,
             padding_idx=-1,
             use_oov=args.contextual_conf.get("use_oov", True),
             **args.contextualizer_conf, 
@@ -808,7 +811,7 @@ class ASRTask(AbsTask):
         ctc_lo_fn = None
         contextualizer_conf = getattr(args, "contextualizer_conf", {})
         if contextualizer_conf != {}:
-            contextualizer = cls.build_contextualizer(context_vocab_size, args)
+            contextualizer = cls.build_contextualizer(vocab_size, context_vocab_size, args)
             if "embed_share_weight_ctc" in contextualizer_conf and contextualizer_conf['embed_share_weight_ctc']:
                 ctc_lo_fn = CustomLinear(
                     embedding=contextualizer.context_encoder.embed,

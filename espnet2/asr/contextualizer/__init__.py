@@ -20,6 +20,8 @@ from espnet2.asr.contextualizer.contextual_retriever import (
     MultiLateInteractionContextualRetriever,
 )
 
+from espnet2.asr.contextualizer.prototype.rradapter import RRAdapter
+
 CONTEXTUAL_RETRIEVER = {
     "dotproduct_contextual_retriever"          : DotProductContextualRetriever,
     "dotproduct_xphone_contextual_retriever"   : DotProductXPhoneContextualRetriever,
@@ -50,8 +52,13 @@ CONTEXTUAL_ADAPTER_DECODER = {
     "contextual_conv2_xphone_gated_adapter_decoder": ContextualConv2XPhoneGatedAdapter,
 }
 
+CONTEXTUAL_PROTOTYPE = {
+    "rradapter": RRAdapter,
+}
+
 CONTEXTUALIZERS = {}
 CONTEXTUALIZERS.update(CONTEXTUAL_RETRIEVER)
 CONTEXTUALIZERS.update(CONTEXTUAL_HISTORY_ADAPTER_ENCODER)
 CONTEXTUALIZERS.update(CONTEXTUAL_ADAPTER_ENCODER)
 CONTEXTUALIZERS.update(CONTEXTUAL_ADAPTER_DECODER)
+CONTEXTUALIZERS.update(CONTEXTUAL_PROTOTYPE)

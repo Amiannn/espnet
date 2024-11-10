@@ -46,9 +46,9 @@ sort_in_batch: descending       # how to sort data in making batch
 sort_batch: descending          # how to sort created batches
 batch_type: numel
 # batch_bins: 12000000            # good for single GPU w/ 40G mem
-batch_bins: 48000000            # good for single GPU w/ 40G mem
+batch_bins: 96000000            # good for single GPU w/ 40G mem
 accum_grad: 2
-max_epoch: 50
+max_epoch: 150
 patience: none
 init: none
 # best_model_criterion:
@@ -91,17 +91,17 @@ contextual: context_sampler
 contextual_conf:
     contextual_type: context_sampler
     # metadata for context list
-    context_list_path: ./local/contextual/rarewords/rareword_f1000_train.txt
-    context_phone_embedding_path: null
-    context_list_occurrence_path: null
+    context_list_path: ./local/contextual/rarewords/rareword_f65536_train.txt
+    context_phone_embedding_path: ./local/contextual/ssl_features/rareword_f65536_train.xphone.seq.pt
+    context_list_occurrence_path: ./local/contextual/rarewords/rareword_f65536_train_occurrence.txt
     # context settings
     use_no_context_token: true
     # sampling settings
-    gold_context_dropout: 0.0
+    gold_context_dropout: 0.1
     sub_context_list_dropout: 0.0
     max_utterance_disrupt_context: 10
     max_batch_disrupt_context: 1000
-    shuffle_sub_context_list: True
+    shuffle_sub_context_list: False
     # hard negative context settings
     hnc_sampler_type: null
     hnc_per_gold_context: 1
@@ -114,27 +114,32 @@ contextual_conf:
     sub_context_list_structure_type: null
 
 # contextualizer settings
-contextualizer: contextual_adapter_transformer_decoder
+contextualizer: rradapter
 contextualizer_conf:
-    contextualizer_type: contextual_adapter_transformer_decoder
-    context_embed_size: 1024
-    context_hidden_size: 1024
-    model_hidden_size: 1024
-    attndim: 1024
-    proj_hidden_size: 1024
-    drop_out: 0.1
-    num_blocks: 2
-    linear_units: 1024
-    context_attention_heads: 1
+    contextualizer_type: rradapter
+    # retriever config
+    retriever_query_input_dim: 1024
+    retriever_context_input_dim: 1024
+    retriever_proj_dim: 1024
+    retriever_interaction_proj_dim: 1024
+    # adapter config
+    adapter_context_embed_size: 1024
+    adapter_context_hidden_size: 1024
+    adapter_model_hidden_size: 1024
+    adapter_attndim: 1024
+    adapter_proj_hidden_size: 1024
+    adapter_num_blocks: 2
+    adapter_linear_units: 1024
+    adapter_context_attention_heads: 1
     adapter_attention_heads: 1
-    atten_temperature: 1.0
-    use_local_attn_conv: False
+    dropout: 0.1
+    pad_token_value: -1
     # contextualizer loss settings
-    warmup_epoch: 0
+    warmup_epoch: 200
     embed_share_weight_ctc: false
-    contextualizer_weight: 0.5
+    contextualizer_weight: 1
     contextualizer_losses:
-        loss_contextualizer_ga_ctc: [1, "decoder"]
+        loss_contextualizer_ga_ce: [1, "decoder"]
 
 use_lora: true
 save_lora_only: false
@@ -144,11 +149,10 @@ lora_conf:
     dropout_rate: 0.05
     target_prefixs: ["decoder"]
     target_modules: ["query", "key", "value", "attn.out"]
-    train_lora: True
+    train_lora: False
 
 freeze_param: [
     "encoder",
     "decoder",
-    "contextualizer.encoder.embed",
-    "contextualizer.encoder.pad_embed",
+    "contextualizer.retriever",
 ]
