@@ -36,6 +36,9 @@ import logging
 from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Union
 
 import torch
+
+from torch.nn.utils.rnn import pad_sequence
+
 from espnet.nets.beam_search import BeamSearch, Hypothesis
 from espnet.nets.e2e_asr_common import end_detect
 from espnet.nets.scorer_interface import ScorerInterface, PartialScorerInterface
@@ -43,10 +46,12 @@ from espnet2.asr.contextualizer import (
     CONTEXTUAL_ADAPTER_DECODER,
     CONTEXTUAL_ADAPTER_ENCODER,
     CONTEXTUAL_RETRIEVER,
+    CONTEXTUAL_PROTOTYPE,
 )
 from espnet2.asr.contextualizer.func.contextual_retriever_func import (
     decode_topk_tokens,
     generate_prompt_from_hypotheses,
+    select_max_predictions,
 )
 from espnet2.torch_utils.device_funcs import to_device
 from espnet2.asr.decoder.whisper_decoder import OpenAIWhisperDecoder
@@ -156,7 +161,24 @@ class ContextualizedDecoderScorer(ScorerInterface):
             # Adjust the score
             decoder_output = torch.log_softmax(self.decoder_scorer.output_layer(decoder_output), dim=-1)
             decoder_output = decoder_output.reshape(-1)
+        elif self.contextualizer_config["contextualizer_type"] in CONTEXTUAL_PROTOTYPE:
+            decoder_embedding    = decoder_output.reshape(1, 1, -1)
+            blist_utterance_wise = context_data["blist_utterance_wise"][0]
+            ilens_utterance_wise = context_data["ilens_utterance_wise"][0]
 
+            decoder_bias_vector, decoder_attention = self.contextualizer.forward_at_decode(
+                model_embed=decoder_embedding,
+                context_embed=blist_utterance_wise,
+                ilens=ilens_utterance_wise,
+                return_atten=True,
+            )
+            # Mean across attention heads
+            context_hypotheses = torch.mean(decoder_attention, dim=1)
+            # Bias the hidden state
+            # decoder_output = decoder_output + decoder_bias_vector
+            # Adjust the score
+            decoder_output = torch.log_softmax(self.decoder_scorer.output_layer(decoder_output), dim=-1)
+            decoder_output = decoder_output.reshape(-1)
         return decoder_output, context_hypotheses
 
 class ContextualBeamSearch(BeamSearch):
@@ -292,35 +314,12 @@ class ContextualBeamSearch(BeamSearch):
         encoder_output, context_hypotheses = self._apply_contextualizer_encoder(
             encoder_output, context_data
         )
-
-        context_predictions = None
-
         # Here we can pass the retrieved context information to the decoder
-        if context_hypotheses is not None:
-            context_predictions = decode_topk_tokens(
-                token_probs=context_hypotheses,
-                vocabulary=context_data["context_list"],
-                blank_index=0,
-                top_k=100,
-                threshold=0.01,
-            )
-
-            if context_data["nlp_prompt_tensor"] is not None:
-                nlp_prompt, nlp_prompt_tensor = generate_prompt_from_hypotheses(
-                    context_hypotheses=context_hypotheses,
-                    contexts=context_data,
-                    construct_prompt_labels_fn=self.context_sampler.construct_prompt_labels,
-                    blank_index=0,
-                    top_k=10,
-                    threshold=0.5,
-                )
-                context_data.update(
-                    {
-                        "nlp_prompt": nlp_prompt,
-                        "nlp_prompt_tensor": nlp_prompt_tensor,
-                    }
-                )
-
+        context_predictions_encoder = self._update_contexts(
+            contexts=context_data, 
+            contexts_hypotheses=context_hypotheses
+        )
+        
         # Initialize hypotheses
         running_hypotheses = self.init_hypothesis(
             encoder_output if pre_encoder_output is None else pre_encoder_output,
@@ -335,11 +334,11 @@ class ContextualBeamSearch(BeamSearch):
             self.scorers["decoder"].context_data = context_data
 
         # Main beam search loop
-        context_predictions = []
+        context_predictions_decoder = []
         for i in range(maxlen):
             logger.debug(f"Beam search iteration {i}")
             best_hypotheses = self.search(
-                running_hypotheses, encoder_output, pre_encoder_output, context_predictions
+                running_hypotheses, encoder_output, pre_encoder_output, context_predictions_decoder
             )
             running_hypotheses = self.post_process(
                 i, maxlen, minlen, maxlenratio, best_hypotheses, ended_hypotheses
@@ -374,6 +373,11 @@ class ContextualBeamSearch(BeamSearch):
         # Log the best hypothesis
         self._log_best_hypothesis(nbest_hypotheses[0])
 
+        # TODO: Change to save both
+        # if len(context_predictions_decoder) > 0:
+        context_predictions = select_max_predictions(context_predictions_decoder)
+        # else:
+        #     context_predictions = select_max_predictions(context_predictions_encoder)
         # Add context predictions to the hypotheses
         contextual_nbest_hypotheses = self._add_context_predictions(
             nbest_hypotheses, context_predictions, context_data
@@ -487,6 +491,55 @@ class ContextualBeamSearch(BeamSearch):
             return hs, scores, states
         return scores, states
 
+    def _update_contexts(self, contexts, contexts_hypotheses):
+        context_predictions = None
+        if contexts_hypotheses is None:
+            return context_predictions
+        
+        context_predictions = decode_topk_tokens(
+            token_probs=contexts_hypotheses,
+            vocabulary=contexts["context_list"],
+            blank_index=0,
+            top_k=self.contextualizer_config.get('retrieve_top_k', 100),
+            threshold=self.contextualizer_config.get('retrieve_threshold', 0.01),
+        )
+        # Update utterance wise contexts
+        if self.contextualizer_config["contextualizer_type"] in CONTEXTUAL_PROTOTYPE:
+            prediction_context_idxs_lists = [
+                contexts['context_list_idxs'][idx] for idx, _, _ in context_predictions
+            ]
+            (
+                utterance_wise_sub_context_lists,
+                utterance_wise_sub_context_ints_tensors,
+                utterance_wise_sub_context_ints_tensor_lens
+            ) = self.context_sampler.construct_utterance_wise_context(
+                [prediction_context_idxs_lists],
+            )
+            contexts.update(
+                {
+                    "context_list": utterance_wise_sub_context_lists[0],
+                    "blist_utterance_wise": utterance_wise_sub_context_ints_tensors,
+                    "ilens_utterance_wise": utterance_wise_sub_context_ints_tensor_lens,
+                }
+            )
+        # Update the context prompt
+        if contexts["nlp_prompt_tensor"] is not None:
+            nlp_prompt, nlp_prompt_tensor = generate_prompt_from_hypotheses(
+                contexts=contexts,
+                context_hypotheses=contexts_hypotheses,
+                construct_prompt_labels_fn=self.context_sampler.construct_prompt_labels,
+                top_k=self.context_sampler.max_utterance_disrupt_context,
+                blank_index=0,
+                threshold=0.5,
+            )
+            contexts.update(
+                {
+                    "nlp_prompt": nlp_prompt,
+                    "nlp_prompt_tensor": nlp_prompt_tensor,
+                }
+            )
+        return context_predictions
+
     def _get_max_length(self, maxlenratio: float, input_feature: torch.Tensor) -> int:
         """Calculate the maximum output length."""
         if maxlenratio == 0:
@@ -525,7 +578,7 @@ class ContextualBeamSearch(BeamSearch):
             )
 
             if self.use_ctc_only_decoding:
-                encoder_output = encoder_output_proj
+                encoder_output = encoder_output_proj.squeeze(0)
 
         elif contextualizer_type in CONTEXTUAL_ADAPTER_ENCODER:
             encoder_output = encoder_output.unsqueeze(0)
@@ -539,6 +592,18 @@ class ContextualBeamSearch(BeamSearch):
             context_hypotheses = torch.mean(context_hypotheses, dim=1)
             encoder_output = (encoder_output + encoder_bias_vector)
 
+        elif contextualizer_type in CONTEXTUAL_PROTOTYPE:
+            context_hypotheses, encoder_output_proj = self.contextualizer.forward_at_encode(
+                query=encoder_output.unsqueeze(0),
+                query_ilens=None,
+                context_subword=context_data["blist"],
+                context_subword_ilens=context_data["ilens"],
+                context_phone=context_data["blist_xphone"],
+                context_phone_ilens=context_data["blist_xphone_ilens"],
+                return_model_proj=True,
+            )
+            if self.use_ctc_only_decoding:
+                encoder_output = encoder_output_proj.squeeze(0)
         return encoder_output, context_hypotheses
 
     def _add_context_predictions(

@@ -8,6 +8,31 @@ from itertools import groupby
 from espnet2.asr.decoder.whisper_decoder import OpenAIWhisperDecoder
 from espnet.nets.pytorch_backend.nets_utils import make_pad_mask
 
+def select_max(idxs, probs):
+    new_idxs, new_probs = [], []
+    for idx, prob in zip(idxs, probs):
+        result = {}
+        new_idx, new_prob = [], []
+        for i in range(len(idx)):
+            index = idx[i]
+            result[index] = result[index] + [prob[i]] if index in result else [prob[i]]
+        for idx in result:
+            prob = max(result[idx])
+            new_idx.append(idx)
+            new_prob.append(prob)
+        new_idxs.append(new_idx)
+        new_probs.append(new_prob)
+    return new_idxs, new_probs
+
+def select_max_predictions(predictions):
+    idxs  = [p[0] for p in predictions]
+    probs = [p[2] for p in predictions]
+    ints  = {}
+    for p in predictions:
+        ints[p[0]] = p[1]
+    idxs, probs = select_max([idxs], [probs])
+    return [[idx, ints[idx], prob] for idx, prob in zip(idxs[0], probs[0])]
+
 def decode_ctc_predictions(
     ctc_probs: torch.Tensor,
     vocabulary: List[str],

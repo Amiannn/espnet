@@ -14,7 +14,7 @@ uttblist_idx_valid="uttblist_idx_f65536.txt"
 uttblist_idx_test="uttblist_idx"
 
 asr_config=conf/contextual/whisper/train_asr_whisper_medium_rradapter.yaml
-inference_config=conf/contextual/whisper/decode_asr_whisper_contextual_adapter_decoder_c20.yaml
+inference_config=conf/contextual/whisper/decode_asr_whisper_contextual_adapter_decoder_c1000.yaml
 asr_tag=whisper/run_medium_rradapter
 
 pretrained_model=../asr1/exp/asr_whisper_medium_lora_decoder/3epoch.pth
@@ -51,7 +51,7 @@ nbpe=5000
 CUDA_LAUNCH_BLOCKING=1 CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --nj 20 \
     --gpu_inference false \
-    --inference_nj 10 \
+    --inference_nj 1 \
     --lang zh \
     --ngpu 1 \
     --token_type whisper_multilingual \
@@ -63,7 +63,7 @@ CUDA_LAUNCH_BLOCKING=1 CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --asr_tag "${asr_tag}" \
     --asr_config "${asr_config}" \
     --inference_config "${inference_config}" \
-    --inference_asr_model valid.loss.ave_10best_fixed.pth \
+    --inference_asr_model 0epoch.pth \
     --train_set "${train_set}" \
     --valid_set "${valid_set}" \
     --test_sets "${test_sets}" \
@@ -78,7 +78,6 @@ CUDA_LAUNCH_BLOCKING=1 CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --context_bpemodel "${context_bpemodel}" \
     --context_token_type "${context_token_type}" \
     --context_token_list "${context_token_list}" \
-    --pretrained_model "${pretrained_model},${retriever_pretrained_model}:contextualizer:contextualizer.retriever,${adapter_pretrained_model}:contextualizer:contextualizer.adapter" \
-    --ignore_init_mismatch true \
+    --pretrained_model "${pretrained_model}:decoder:decoder,${retriever_pretrained_model}:contextualizer:contextualizer.retriever,${adapter_pretrained_model}:contextualizer:contextualizer.adapter" \
     "$@"
 

@@ -18,7 +18,7 @@ contextual_conf:
     gold_context_dropout: 0.0
     sub_context_list_dropout: 0.0
     max_utterance_disrupt_context: 0
-    max_batch_disrupt_context: 100
+    max_batch_disrupt_context: 1000
     shuffle_sub_context_list: False
     # hard negative context settings
     hnc_sampler_type: null

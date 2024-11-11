@@ -122,6 +122,7 @@ class ContextSampleOutput:
     label_cross_entropy: Optional[torch.Tensor] = None
     label_cross_entropy_ilens: Optional[torch.Tensor] = None
     context_list: Optional[List[str]] = None
+    gold_context_list: Optional[List[int]] = None
     context_list_idxs: Optional[List[int]] = None
     context_list_ints: Optional[List[int]] = None
     nlp_prompt: Optional[str] = None
@@ -529,6 +530,38 @@ class ContextSampler():
             no_context_prompt_template_tensor,
         )
     
+    def construct_utterance_wise_context(
+        self,
+        utterance_wise_sub_context_idxs_lists,
+    ):
+        utterance_wise_sub_context_ints_lists = [
+            [
+                self.context_prompt_ints_list[idx] for idx in idxs
+            ] for idxs in utterance_wise_sub_context_idxs_lists
+        ]
+        if self.use_no_context_token:
+            utterance_wise_sub_context_ints_lists = [
+                ([[self.no_context_token_value]] + contexts) for contexts in utterance_wise_sub_context_ints_lists
+            ]
+            utterance_wise_sub_context_lists = [
+                ['<no-context>'] + 
+                [
+                    self.context_list[idx] for idx in idxs
+                ] for idxs in utterance_wise_sub_context_idxs_lists
+            ]
+        utterance_wise_sub_context_ints_datas = [
+            self.tensorify(
+                utterance_wise_sub_context_ints_list
+            ) for utterance_wise_sub_context_ints_list in utterance_wise_sub_context_ints_lists
+        ]
+        utterance_wise_sub_context_ints_tensors     = [d[0] for d in utterance_wise_sub_context_ints_datas]
+        utterance_wise_sub_context_ints_tensor_lens = [d[1] for d in utterance_wise_sub_context_ints_datas]
+        return (
+            utterance_wise_sub_context_lists,
+            utterance_wise_sub_context_ints_tensors,
+            utterance_wise_sub_context_ints_tensor_lens
+        )
+
     def context_sampling(
         self, 
         utterance_wise_gold_contexts, 
@@ -633,20 +666,18 @@ class ContextSampler():
         )
 
         # idxs to tokens
-        utterance_wise_sub_context_ints_lists = [
-            [
-                self.context_prompt_ints_list[idx] for idx in idxs
-            ] for idxs in utterance_wise_sub_context_idxs_lists
-        ]
+        (
+            utterance_wise_sub_context_lists,
+            utterance_wise_sub_context_ints_tensors,
+            utterance_wise_sub_context_ints_tensor_lens
+        ) = self.construct_utterance_wise_context(
+            utterance_wise_sub_context_idxs_lists,
+        )
 
         batch_wise_sub_context_ints_lists = [self.context_ints_list[idx] for idx in batch_wise_sub_context_idxs_list]
 
         # add <no-context> token
         if self.use_no_context_token:
-            utterance_wise_sub_context_ints_lists = [
-                ([[self.no_context_token_value]] + contexts) for contexts in utterance_wise_sub_context_ints_lists
-            ]
-
             batch_wise_sub_context_ints_lists = (
                 [[self.no_context_token_value]] + batch_wise_sub_context_ints_lists
             )
@@ -658,14 +689,6 @@ class ContextSampler():
             batch_wise_sub_context_ints_lists
         )
 
-        utterance_wise_sub_context_ints_datas = [
-            self.tensorify(
-                utterance_wise_sub_context_ints_list
-            ) for utterance_wise_sub_context_ints_list in utterance_wise_sub_context_ints_lists
-        ]
-        utterance_wise_sub_context_ints_tensors     = [d[0] for d in utterance_wise_sub_context_ints_datas]
-        utterance_wise_sub_context_ints_tensor_lens = [d[1] for d in utterance_wise_sub_context_ints_datas]
-        
         outputs = self.output_class(
             blist=batch_wise_sub_context_ints_tensors,
             blist_idxs=batch_wise_sub_context_idxs_list,
