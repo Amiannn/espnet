@@ -3,6 +3,7 @@ import jieba
 import argparse
 from collections import defaultdict
 
+from tqdm import tqdm
 from jiwer import cer, wer, mer
 
 from pyscripts.utils.fileio import read_file, write_file
@@ -210,13 +211,15 @@ class ASREvaluator:
     def compute_metrics(self):
         """Compute MER, WER, and CER for the collected sentences."""
         self.finalize_sentences()
-
         self.overall_mer = mer(self.reference_sentences, self.hypothesis_sentences)
         self.rareword_mer = mer(
             self.ref_rareword_sentences, self.hyp_rareword_sentences
         )
         self.common_mer = mer(self.ref_common_sentences, self.hyp_common_sentences)
-        self.rare_eng_wer = wer(self.ref_rare_english, self.hyp_rare_english)
+        try:
+            self.rare_eng_wer = wer(self.ref_rare_english, self.hyp_rare_english)
+        except:
+            self.rare_eng_wer = 0
         self.rare_non_eng_cer = cer(
             self.ref_rare_non_english, self.hyp_rare_non_english
         )
@@ -322,7 +325,7 @@ def main(
     evaluator = ASREvaluator(rare_words)
 
     # Process each reference-hypothesis pair
-    for ref, hyp in zip(references, hypotheses):
+    for ref, hyp in tqdm(zip(references[:100], hypotheses[:100])):
         evaluator.process_utterance(ref, hyp)
     
     # Compute metrics and save results
