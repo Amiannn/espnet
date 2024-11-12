@@ -325,7 +325,7 @@ def main(
     evaluator = ASREvaluator(rare_words)
 
     # Process each reference-hypothesis pair
-    for ref, hyp in tqdm(zip(references[:100], hypotheses[:100])):
+    for ref, hyp in tqdm(zip(references, hypotheses)):
         evaluator.process_utterance(ref, hyp)
     
     # Compute metrics and save results

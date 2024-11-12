@@ -11,7 +11,7 @@ def write_file(datas, path, sp=' '):
             fr.write(sp.join([str(d) for d in data]) + "\n")
 
 if __name__ == '__main__':
-    hyp_path = './exp/test/hyp.txt'
+    hyp_path = './hyp.txt'
 
     hyp_datas = read_file(hyp_path, sp=' ')
     hyp_datas = [[d[0], (" ".join(d[1:])).split('開始吧.')[-1]] for d in hyp_datas]
