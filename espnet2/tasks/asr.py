@@ -673,6 +673,7 @@ class ASRTask(AbsTask):
                 pad_token_value=-1,
                 asr_model=model,
                 no_context_token_value=len(args.context_token_list),
+                no_context_prompt_token_value=len(args.token_list),
                 **args.contextual_conf,
             )
         return contextual_processor

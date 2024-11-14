@@ -149,8 +149,9 @@ class ContextSampler():
         context_phone_embedding_path: str,
         context_list_occurrence_path: str,
         # context settings
-        use_no_context_token  : bool = True,
-        no_context_token_value: int = 600,
+        use_no_context_token         : bool = True,
+        no_context_token_value       : int = 600,
+        no_context_prompt_token_value: int = 600,
         # sampling settings
         gold_context_dropout         : float = 0.3,
         sub_context_list_dropout     : float = 0.0,
@@ -217,8 +218,9 @@ class ContextSampler():
             ) = self.load_context_phone_embedding(context_phone_embedding_path)
 
         # context settings
-        self.use_no_context_token   = use_no_context_token
-        self.no_context_token_value = no_context_token_value
+        self.use_no_context_token          = use_no_context_token
+        self.no_context_token_value        = no_context_token_value
+        self.no_context_prompt_token_value = no_context_prompt_token_value
 
         # sampling settings
         self.gold_context_dropout          = gold_context_dropout
@@ -541,7 +543,7 @@ class ContextSampler():
         ]
         if self.use_no_context_token:
             utterance_wise_sub_context_ints_lists = [
-                ([[self.no_context_token_value]] + contexts) for contexts in utterance_wise_sub_context_ints_lists
+                ([[self.no_context_prompt_token_value]] + contexts) for contexts in utterance_wise_sub_context_ints_lists
             ]
             utterance_wise_sub_context_lists = [
                 ['<no-context>'] + 

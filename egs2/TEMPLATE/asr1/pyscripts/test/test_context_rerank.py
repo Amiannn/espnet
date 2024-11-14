@@ -1,6 +1,7 @@
 import os
+import numpy as np
 
-from pyscripts.contextual.error_analysis.zh.caluate_context_retrieval_errors import main as error_analysis_func
+from pyscripts.contextual.error_analysis.caluate_context_retrieval_errors import main as error_analysis_func
 
 def read_file(file_path, sp=' '):
     with open(file_path, 'r', encoding='utf-8') as f:
@@ -28,6 +29,32 @@ def select_max(idxs, probs):
         new_probs.append(new_prob)
     return new_idxs, new_probs
 
+def weight_combine(idx_a, prob_a, idx_b, prob_b):
+    idx     = list(set(idx_a + idx_b))
+    prob_a  = {idx_a[i]: prob_a[i] for i in range(len(idx_a))}
+    prob_b  = {idx_b[i]: prob_b[i] for i in range(len(idx_b))}
+    score_a = {i: prob_a[i] if i in prob_a else 0.0 for i in idx}
+    score_b = {i: prob_b[i] if i in prob_b else 0.0 for i in idx}
+    idx     = list(score_a.keys())
+    score_a = np.array(list(score_a.values()))
+    score_b = np.array(list(score_b.values()))
+
+    score = score_a * 1 + score_b * 0.0
+
+    # print(f'idx: {idx}')
+    # print(f'score_a: {score_a}')
+    # print(f'score_b: {score_b}')
+    # print(f'score  : {score}')
+    return idx, score.tolist()
+
+def process_weight_combine(idxs_a, probs_a, idxs_b, probs_b):
+    idxs_m, probs_m = [], []
+    for idx_a, prob_a, idx_b, prob_b in zip(idxs_a, probs_a, idxs_b, probs_b):
+        idx_m, prob_m = weight_combine(idx_a, prob_a, idx_b, prob_b)
+        idxs_m.append(idx_m)
+        probs_m.append(prob_m)
+    return idxs_m, probs_m
+
 def merge(idxs_a, probs_a, idxs_b, probs_b):
     idxs_m, probs_m = [], []
     for idx_a, prob_a, idx_b, prob_b in zip(idxs_a, probs_a, idxs_b, probs_b):
@@ -38,10 +65,11 @@ def merge(idxs_a, probs_a, idxs_b, probs_b):
 if __name__ == '__main__':
     context_list_path      = "./local/contextual/rarewords/esun_earningcall.entity.txt"
     
-    enc_context_idx_path   = "./exp/asr_whisper/run_medium_xdotproduct_contextual_retriever_suffix/decode_asr_whisper_ctc_greedy_c100_entity_earningcall_asr_model_valid.loss.ave_10best/test/context_idx"
-    enc_context_score_path = "./exp/asr_whisper/run_medium_xdotproduct_contextual_retriever_suffix/decode_asr_whisper_ctc_greedy_c100_entity_earningcall_asr_model_valid.loss.ave_10best/test/context_score"
-    dec_context_idx_path   = "./exp/asr_whisper/run_medium_contextual_adapter_decoder/decode_asr_whisper_contextual_adapter_decoder_c100_entity_earningcall_asr_model_valid.loss.ave_10best_fixed/test/context_idx"
-    dec_context_score_path = "./exp/asr_whisper/run_medium_contextual_adapter_decoder/decode_asr_whisper_contextual_adapter_decoder_c100_entity_earningcall_asr_model_valid.loss.ave_10best_fixed/test/context_score"
+    enc_context_idx_path   = "./exp/asr_whisper/run_medium_xdotproduct_contextual_retriever_balanced_alpha0.8_suffix/decode_asr_whisper_ctc_greedy_c300_entity_earningcall_asr_model_valid.loss.ave_10best/test/context_idx"
+    enc_context_score_path = "./exp/asr_whisper/run_medium_xdotproduct_contextual_retriever_balanced_alpha0.8_suffix/decode_asr_whisper_ctc_greedy_c300_entity_earningcall_asr_model_valid.loss.ave_10best/test/context_score"
+
+    dec_context_idx_path   = "./exp/asr_whisper/run_medium_contextual_adapter_decoder_pretrained_ce/decode_asr_whisper_contextual_adapter_decoder_c300_entity_earningcall_asr_model_valid.loss.ave_10best_fixed/test/context_idx"
+    dec_context_score_path = "./exp/asr_whisper/run_medium_contextual_adapter_decoder_pretrained_ce/decode_asr_whisper_contextual_adapter_decoder_c300_entity_earningcall_asr_model_valid.loss.ave_10best_fixed/test/context_score"
     
     context_list_datas     = [d[0] for d in read_file(context_list_path, sp=' ')]
     
@@ -54,7 +82,7 @@ if __name__ == '__main__':
     
     dec_context_idx, dec_context_prob_datas = select_max(dec_context_idx, dec_context_prob_datas)
 
-    merge_context_idx, merge_contetx_prob_datas = merge(
+    merge_context_idx, merge_contetx_prob_datas = process_weight_combine(
         enc_context_idx,
         enc_context_prob_datas,
         dec_context_idx,
@@ -65,8 +93,8 @@ if __name__ == '__main__':
     merge_context_idx, merge_contetx_prob_datas = merge(
         uid_datas,
         uid_datas,
-        dec_context_idx,
-        dec_context_prob_datas,
+        merge_context_idx,
+        merge_contetx_prob_datas,
     )
 
     output_root = "./exp/test"
@@ -79,13 +107,9 @@ if __name__ == '__main__':
     error_analysis_func(
         context_list_path="./local/contextual/rarewords/esun_earningcall.entity.txt",
         ref_context_path="./dump/raw/test/uttblist_idx_entity_earningcall",
-        hyp_context_path=enc_context_idx_path,
-        hyp_context_prob_path=enc_context_score_path,
-        # hyp_context_path=dec_context_idx_path,
-        # hyp_context_prob_path=dec_context_score_path,
-        # hyp_context_path=output_idx_path,
-        # hyp_context_prob_path=output_prob_path,
+        hyp_context_path=output_idx_path,
+        hyp_context_prob_path=output_prob_path,
         context_candidate_path="./exp/asr_whisper/run_medium_contextual_adapter_decoder/decode_asr_whisper_contextual_adapter_decoder_c100_entity_earningcall_asr_model_valid.loss.ave_10best_fixed/test/context_candidate",
         k=10,
-        thres=0.5,
+        thres=-1,
     )

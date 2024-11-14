@@ -1,4 +1,5 @@
 # Define the array of experiment folder names
+# Define the array of experiment folder names
 exp_folder=(
   "run_medium_dotproduct_contextual_retriever_suffix"
   "run_medium_lateinteraction_contextual_retriever_suffix"
@@ -10,11 +11,35 @@ exp_folder=(
   "run_medium_xdotproduct_contextual_retriever_balanced_alpha0.8_suffix"
 )
 
-top_k=10
-threshold=0.5
+# Define the array of thresholds corresponding to each experiment
+# thresholds=(
+#   0.8
+#   0.8
+#   0.9
+#   0.6
+#   0.9
+#   0.8
+#   0.9
+#   0.9
+# )
+
+# Set to -1 for auto threshold search
+# thresholds=(
+#   -1
+#   -1
+#   -1
+#   -1
+#   -1
+#   -1
+#   -1
+#   -1
+# )
+
+top_k=20
+# threshold=-1
 
 # Create CSV header
-echo "Experiment,Context,Distractor,Mean Average Precision at ${top_k},Mean Reciprocal Rank,Mean NDCG at ${top_k},Mean Precision at ${top_k},Macro-Averaged Precision,Macro-Averaged Recall,Macro-Averaged F1 Score,ROC AUC Score,Mean Average Precision at ${top_k} (Chinese),Mean Reciprocal Rank (Chinese),Mean NDCG at ${top_k} (Chinese),Mean Precision at ${top_k} (Chinese),Macro-Averaged Precision (Chinese),Macro-Averaged Recall (Chinese),Macro-Averaged F1 Score (Chinese),ROC AUC Score (Chinese),Mean Average Precision at ${top_k} (English),Mean Reciprocal Rank (English),Mean NDCG at ${top_k} (English),Mean Precision at ${top_k} (English),Macro-Averaged Precision (English),Macro-Averaged Recall (English),Macro-Averaged F1 Score (English),ROC AUC Score (English)" > context_retrieval_results.csv
+echo "Experiment,Context,Distractor,Best Threshold,Mean Average Precision at ${top_k},Mean Reciprocal Rank,Mean NDCG at ${top_k},Mean Precision at ${top_k},Macro-Averaged Precision,Macro-Averaged Recall,Macro-Averaged F1 Score,ROC AUC Score,Mean Average Precision at ${top_k} (Chinese),Mean Reciprocal Rank (Chinese),Mean NDCG at ${top_k} (Chinese),Mean Precision at ${top_k} (Chinese),Macro-Averaged Precision (Chinese),Macro-Averaged Recall (Chinese),Macro-Averaged F1 Score (Chinese),ROC AUC Score (Chinese),Mean Average Precision at ${top_k} (English),Mean Reciprocal Rank (English),Mean NDCG at ${top_k} (English),Mean Precision at ${top_k} (English),Macro-Averaged Precision (English),Macro-Averaged Recall (English),Macro-Averaged F1 Score (English),ROC AUC Score (English)" > context_retrieval_results.csv
 
 # Define contexts and their parameters
 # contexts=("RW" "ENT(300)")
@@ -50,7 +75,10 @@ for context in "${contexts[@]}"; do
     distractor_len_list="${distractor_lens[$context]}"
     exp_path_suffix="${exp_path_suffixes[$context]}"
 
-    for folder in "${exp_folder[@]}"; do
+    for i in "${!exp_folder[@]}"; do
+        folder="${exp_folder[$i]}"
+        threshold="${thresholds[$i]}"
+
         echo "Processing folder: $folder"
         for distractor_len in $distractor_len_list; do
             exp_path="./exp/asr_whisper/${folder}/decode_asr_whisper_ctc_greedy_c${distractor_len}${exp_path_suffix}_asr_model_valid.loss.ave_10best/test"
@@ -66,6 +94,7 @@ for context in "${contexts[@]}"; do
 
             # Extract metrics
             # Overall Metrics
+            best_thres=$(extract_metric "$output" 'Best Threshold: \K[0-9.]+')
             map10=$(extract_metric "$output" 'Mean Average Precision at [^:]+: \K[0-9.]+')
             mrr=$(extract_metric "$output" 'Mean Reciprocal Rank: \K[0-9.]+')
             ndcg10=$(extract_metric "$output" 'Mean NDCG at [^:]+: \K[0-9.]+')
@@ -96,6 +125,7 @@ for context in "${contexts[@]}"; do
             roc_auc_english=$(extract_metric "$output" 'ROC AUC \(English\): \K[0-9.]+')
 
             # Ensure that empty variables are set to a placeholder (e.g., "N/A") to prevent CSV misalignment
+            best_thres=${best_thres:-N/A}
             map10=${map10:-N/A}
             mrr=${mrr:-N/A}
             ndcg10=${ndcg10:-N/A}
@@ -124,7 +154,7 @@ for context in "${contexts[@]}"; do
             roc_auc_english=${roc_auc_english:-N/A}
 
             # Append the results to the CSV file
-            echo "$folder,$context,$distractor_len,$map10,$mrr,$ndcg10,$precision10,$precision,$recall,$f1,$roc_auc,$map10_chinese,$mrr_chinese,$ndcg10_chinese,$precision10_chinese,$precision_chinese,$recall_chinese,$f1_chinese,$roc_auc_chinese,$map10_english,$mrr_english,$ndcg10_english,$precision10_english,$precision_english,$recall_english,$f1_english,$roc_auc_english" >> context_retrieval_results.csv
+            echo "$folder,$context,$distractor_len,$best_thres,$map10,$mrr,$ndcg10,$precision10,$precision,$recall,$f1,$roc_auc,$map10_chinese,$mrr_chinese,$ndcg10_chinese,$precision10_chinese,$precision_chinese,$recall_chinese,$f1_chinese,$roc_auc_chinese,$map10_english,$mrr_english,$ndcg10_english,$precision10_english,$precision_english,$recall_english,$f1_english,$roc_auc_english" >> context_retrieval_results.csv
         done
     done
 done

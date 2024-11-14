@@ -133,13 +133,15 @@ def precision_recall_f1_per_query(relevant_items, retrieved_items):
 
     return precision, recall, f1
 
-def macro_precision_recall_f1_at_threshold(ref_context_datas, hyp_context_datas, hyp_context_prob_datas, all_context_words, threshold):
+def macro_precision_recall_f1_at_threshold(ref_context_datas, hyp_context_datas, hyp_context_prob_datas, all_context_words, threshold, k):
     """Compute Macro-Averaged Precision, Recall, and F1 at a given threshold"""
     precisions = []
     recalls = []
     f1_scores = []
 
     for relevant_items, hyp_contexts, hyp_probs in zip(ref_context_datas, hyp_context_datas, hyp_context_prob_datas):
+        hyp_contexts = hyp_contexts[:k]
+        hyp_probs    = hyp_probs[:k]
         # Create a dictionary for quick lookup
         hyp_context_prob_dict = dict(zip(hyp_contexts, hyp_probs))
 
@@ -176,9 +178,11 @@ def is_english(word):
             return True
     return False
 
-def analysis(ref_context_datas, hyp_context_datas, hyp_context_prob_datas, thres):
+def analysis(ref_context_datas, hyp_context_datas, hyp_context_prob_datas, thres, k):
     context_words = {}
     for relevant_items, hyp_contexts, hyp_probs in zip(ref_context_datas, hyp_context_datas, hyp_context_prob_datas):
+        hyp_contexts = hyp_contexts[:k]
+        hyp_probs    = hyp_probs[:k]
         hyp_contexts = [hyp for prob, hyp in zip(hyp_probs, hyp_contexts) if prob > thres ]
         for relevant_item in relevant_items:
             if relevant_item in context_words:
@@ -207,6 +211,25 @@ def analysis(ref_context_datas, hyp_context_datas, hyp_context_prob_datas, thres
     table = [[d[0], str(d[1]), str(d[2]), f'{d[3]:.2f}'] for d in table]
     return title + table
     
+def get_best_threshold(ref_context_datas, sorted_hyp_context_datas, sorted_hyp_context_prob_datas, all_context_words, k):
+    thresholds = np.arange(0.0, 1.01, 0.1)
+    # print("\nThreshold\tPrecision\tRecall\tF1 Score")
+    best_thresh, best_f1 = 0.5, 0
+    for thresh in thresholds:
+        mean_precision, mean_recall, mean_f1 = macro_precision_recall_f1_at_threshold(
+            ref_context_datas,
+            sorted_hyp_context_datas,
+            sorted_hyp_context_prob_datas,
+            all_context_words,
+            threshold=thresh,
+            k=k
+        )
+        # print(f"{thresh:.1f}\t\t{mean_precision:.4f}\t\t\t{mean_recall:.4f}\t\t\t{mean_f1:.4f}")
+        if mean_f1 > best_f1:
+            best_thresh = thresh
+            best_f1 = mean_f1
+    print(f'Best Threshold: {best_thresh}')
+    return best_thresh
 
 def main(
     context_list_path,
@@ -243,12 +266,23 @@ def main(
     mrr_score = mean_reciprocal_rank(ref_context_datas, sorted_hyp_context_datas)
     ndcg_score = mean_ndcg(ref_context_datas, sorted_hyp_context_datas, k)
     precision_k = mean_precision_at_k(ref_context_datas, sorted_hyp_context_datas, k)
+    
+    if thres == -1:
+        thres = get_best_threshold(
+            ref_context_datas, 
+            sorted_hyp_context_datas, 
+            sorted_hyp_context_prob_datas, 
+            all_context_words,
+            k=k
+        )
+
     mean_precision, mean_recall, mean_f1 = macro_precision_recall_f1_at_threshold(
         ref_context_datas,
         sorted_hyp_context_datas,
         sorted_hyp_context_prob_datas,
         all_context_words,
-        threshold=thres 
+        threshold=thres,
+        k=k
     )
 
     global_y_true = []
@@ -261,7 +295,7 @@ def main(
             global_y_true.append(y_true)
             global_y_scores.append(y_score)
 
-    analysis_table = analysis(ref_context_datas, hyp_context_datas, hyp_context_prob_datas, thres)
+    analysis_table = analysis(ref_context_datas, hyp_context_datas, hyp_context_prob_datas, thres, k)
 
     if len(np.unique(global_y_true)) > 1:
         roc_auc = roc_auc_score(global_y_true, global_y_scores)
@@ -342,7 +376,8 @@ def main(
         sorted_hyp_context_datas_chinese,
         sorted_hyp_context_prob_datas_chinese,
         all_chinese_context_words,
-        threshold=thres
+        threshold=thres,
+        k=k
     )
 
     map_score_english = mean_average_precision(ref_context_datas_english, sorted_hyp_context_datas_english, k)
@@ -354,7 +389,8 @@ def main(
         sorted_hyp_context_datas_english,
         sorted_hyp_context_prob_datas_english,
         all_english_context_words,
-        threshold=thres
+        threshold=thres,
+        k=k
     )
 
     global_y_true_chinese = []
@@ -413,19 +449,6 @@ def main(
     else:
         print("ROC AUC (English): Not computable due to lack of class variety.")
 
-    # thresholds = np.arange(0.0, 1.01, 0.1)
-
-    # print("\nThreshold\tPrecision (Chinese)\tRecall (Chinese)\tF1 Score (Chinese)")
-    # for thresh in thresholds:
-    #     mean_precision, mean_recall, mean_f1 = macro_precision_recall_f1_at_threshold(
-    #         ref_context_datas_chinese,
-    #         sorted_hyp_context_datas_chinese,
-    #         sorted_hyp_context_prob_datas_chinese,
-    #         all_chinese_context_words,
-    #         threshold=thresh
-    #     )
-    #     print(f"{thresh:.1f}\t\t{mean_precision:.4f}\t\t\t{mean_recall:.4f}\t\t\t{mean_f1:.4f}")
-
     # print("\nThreshold\tPrecision (English)\tRecall (English)\tF1 Score (English)")
     # for thresh in thresholds:
     #     mean_precision, mean_recall, mean_f1 = macro_precision_recall_f1_at_threshold(
@@ -436,6 +459,11 @@ def main(
     #         threshold=thresh
     #     )
     #     print(f"{thresh:.1f}\t\t{mean_precision:.4f}\t\t\t{mean_recall:.4f}\t\t\t{mean_f1:.4f}")
+
+    output_dir  = "/".join(hyp_context_path.split('/')[:-1])
+    output_path = os.path.join(output_dir, 'error_patterns_retrieval.tsv') 
+    write_file(output_path, analysis_table, sp='\t')
+
     return analysis_table
 
 if __name__ == "__main__":
@@ -458,7 +486,3 @@ if __name__ == "__main__":
         args.k,
         args.threshold,
     )
-    
-    output_dir  = "/".join(args.hyp_context_path.split('/')[:-1])
-    output_path = os.path.join(output_dir, 'error_patterns_retrieval.tsv') 
-    write_file(output_path, analysis_table, sp='\t')

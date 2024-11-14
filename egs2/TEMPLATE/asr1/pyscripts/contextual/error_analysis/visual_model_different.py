@@ -142,7 +142,7 @@ if __name__ == '__main__':
     ax1.set_ylim(ax0.get_ylim())
 
     # Add a super title for the entire figure
-    plt.suptitle("Imbalance Rate and Error Rate by Entity", fontsize=20)
+    plt.suptitle("Imbalance Rate and Recall@10 Rate by Entity", fontsize=20)
 
     # Adjust layout to accommodate the super title and prevent overlap
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
@@ -155,10 +155,11 @@ if __name__ == '__main__':
 
 """Usage:
 python -m pyscripts.contextual.error_analysis.visual_model_different \
-  --path "Whisper (LoRA Dec):../asr1/exp/asr_whisper_medium_lora_decoder/decode_asr_whisper_noctc_greedy_asr_model_3epoch/test/analysis/error_patterns.tsv" \
-  --path "Whisper Context Retriever (Dec):./exp/asr_whisper/run_medium_contextual_adapter_decoder_pretrained_ce/decode_asr_whisper_contextual_adapter_decoder_c20_entity_earningcall_asr_model_valid.loss.ave_10best_fixed/test/error_patterns_retrieval.tsv" \
-  --path "Whisper Context Retriever (Enc):./exp/asr_whisper/run_medium_xdotproduct_contextual_retriever_suffix/decode_asr_whisper_ctc_greedy_c100_entity_earningcall_asr_model_valid.loss.ave_10best/test/error_patterns_retrieval.tsv" \
-  --path "Whisper Context Retriever 0.8 (Enc):./exp/asr_whisper/run_medium_xdotproduct_contextual_retriever_balanced_alpha0.8_suffix/decode_asr_whisper_ctc_greedy_c100_entity_earningcall_asr_model_valid.loss.ave_10best/test/error_patterns_retrieval.tsv" \
+  --path "Whisper (LoRA Finetune):../asr1/exp/asr_whisper_medium_lora_decoder/decode_asr_whisper_noctc_greedy_asr_model_3epoch/test/analysis/error_patterns.tsv" \
+  --path "Dotproduct Retriever:./exp/asr_whisper/run_medium_dotproduct_contextual_retriever_suffix/decode_asr_whisper_ctc_greedy_c300_entity_earningcall_asr_model_valid.loss.ave_10best/test/error_patterns_retrieval.tsv" \
+  --path "XDotproduct Retriever:./exp/asr_whisper/run_medium_xdotproduct_contextual_retriever_suffix/decode_asr_whisper_ctc_greedy_c300_entity_earningcall_asr_model_valid.loss.ave_10best/test/error_patterns_retrieval.tsv" \
+  --path "Dotproduct Retriever (α=0.8):./exp/asr_whisper/run_medium_dotproduct_contextual_retriever_balanced_alpha0.8_suffix/decode_asr_whisper_ctc_greedy_c300_entity_earningcall_asr_model_valid.loss.ave_10best/test/error_patterns_retrieval.tsv" \
+  --path "XDotproduct Retriever (α=0.8):./exp/asr_whisper/run_medium_xdotproduct_contextual_retriever_balanced_alpha0.8_suffix/decode_asr_whisper_ctc_greedy_c300_entity_earningcall_asr_model_valid.loss.ave_10best/test/error_patterns_retrieval.tsv" \
   --context-path ./local/contextual/rarewords/esun_earningcall.entity.txt \
   --occ-train-path ./local/contextual/rarewords/esun_earningcall.entity_occurrence_train.txt \
   --occ-test-path ./local/contextual/rarewords/esun_earningcall.entity_occurrence_test.txt \
