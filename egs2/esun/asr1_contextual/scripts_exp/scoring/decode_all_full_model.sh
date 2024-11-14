@@ -4,7 +4,7 @@ testset="test"
 
 # decode using entity
 scripts=(
-  "run_medium_contextual_adapter_decoder_pretrained"
+  "run_medium_rradapter"
 )
 uttblist_idx_test="uttblist_idx_entity_earningcall"
 
@@ -23,7 +23,7 @@ for distractor_len in 20 100 300; do
 done
 
 scripts=(
-  "run_medium_contextual_adapter_decoder_pretrained"
+  "run_medium_rradapter"
 )
 uttblist_idx_test="uttblist_idx"
 
