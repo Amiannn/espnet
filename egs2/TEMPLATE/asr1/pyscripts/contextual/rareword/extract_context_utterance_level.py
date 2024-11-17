@@ -32,7 +32,8 @@ def init_worker(init_bl, init_w2i):
 def process_data(data):
     """Function to process each data entry."""
     uttid = data[0]
-    results = get_uttblist(data[1:])
+    text  = [d.lower() for d in data[1:]]
+    results = get_uttblist(text)
     uttblist = [d[1] for d in results]
     uttblist_idx = [d[0] for d in results]
     rareword_data = [uttid] + (uttblist if uttblist else [''])
@@ -79,7 +80,7 @@ if __name__ == '__main__':
         else:
             blist_path = TRAIN_DEV_BLIST_PATH
             now_filename = filename
-        blist = [b[0] for b in read_file(blist_path, sp=' ')]
+        blist = [b[0].lower() for b in read_file(blist_path, sp=' ')]
         word2idx = {word: i for i, word in enumerate(blist)}
         # Sort by length
         blist = sorted(blist, key=lambda s: len(s), reverse=True)

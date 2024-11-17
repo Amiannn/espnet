@@ -206,7 +206,9 @@ def decode_topk_tokens(
     vocabulary: List[str],
     blank_index: int = 0,
     top_k: int = 10,
-    threshold: float = 0.6
+    threshold: float = 0.6,
+    priors: List[float] = None,
+    combine_weight: float = 0.5,
 ) -> List[List[Any]]:
     """
     Decodes the top-k tokens from probabilities with optional thresholding.
@@ -236,6 +238,11 @@ def decode_topk_tokens(
     token_counts = token_counts.masked_fill(token_counts == 0, 1)
     average_probs = average_probs / token_counts
     average_probs[blank_index] = 0
+
+    if priors is not None:
+        priors = torch.tensor([0] + priors)
+        logging.info(f'priors: {priors}')
+        average_probs = (1 - combine_weight) * priors + combine_weight * average_probs
 
     # Get indices sorted by average_probs values in descending order
     sorted_indices = torch.argsort(average_probs, descending=True)

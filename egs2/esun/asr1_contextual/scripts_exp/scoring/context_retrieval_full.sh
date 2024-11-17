@@ -1,7 +1,7 @@
 # Define the array of experiment folder names
 exp_folder=(
-  "run_medium_contextual_adapter_decoder_pretrained_ce"
-#   "run_medium_rradapter"
+#   "run_medium_contextual_adapter_decoder_pretrained_ce"
+  "run_medium_rradapter"
 )
 
 top_k=10
@@ -16,8 +16,8 @@ echo "Experiment,Context,Distractor,Best Threshold,Mean Average Precision at ${t
 # Define contexts and their parameters
 # contexts=("RW" "ENT(300)")
 contexts=("ENT(300)")
-model_name=valid.loss.ave_10best_fixed
-# model_name=0epoch_fixed
+# model_name=valid.loss.ave_10best_fixed
+model_name=0epoch_fixed
 
 declare -A context_list_paths
 context_list_paths["RW"]="./local/contextual/rarewords/rareword_f10_test.txt"

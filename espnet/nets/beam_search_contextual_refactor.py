@@ -127,12 +127,15 @@ class ContextualizedDecoderScorer(ScorerInterface):
         score, context_hypotheses = self._apply_contextualizer_decoder(hidden_state, self.context_data)
 
         if context_hypotheses is not None:
+            context_predictions_prior = self.context_data.get("context_predictions_prior", None)
             context_prediction = decode_topk_tokens(
                 token_probs=context_hypotheses,
                 vocabulary=self.context_data["context_list"],
                 blank_index=0,
                 top_k=100,
                 threshold=0.01,
+                priors=context_predictions_prior,
+                combine_weight=0.5,
             )
             context_predictions.extend(context_prediction)
 
@@ -157,7 +160,7 @@ class ContextualizedDecoderScorer(ScorerInterface):
             # Mean across attention heads
             context_hypotheses = torch.mean(context_hypotheses, dim=1)
             # Bias the hidden state
-            decoder_output = decoder_output + decoder_bias_vector
+            # decoder_output = decoder_output + decoder_bias_vector
             # Adjust the score
             decoder_output = torch.log_softmax(self.decoder_scorer.output_layer(decoder_output), dim=-1)
             decoder_output = decoder_output.reshape(-1)
@@ -508,6 +511,7 @@ class ContextualBeamSearch(BeamSearch):
             prediction_context_idxs_lists = [
                 contexts['context_list_idxs'][idx] for idx, _, _ in context_predictions
             ]
+            # prediction_context_idxs_lists = contexts['context_list_idxs'][1:]
             (
                 utterance_wise_sub_context_lists,
                 utterance_wise_sub_context_ints_tensors,
@@ -515,11 +519,13 @@ class ContextualBeamSearch(BeamSearch):
             ) = self.context_sampler.construct_utterance_wise_context(
                 [prediction_context_idxs_lists],
             )
+            context_predictions_prior = [prior for _, _, prior in context_predictions]
             contexts.update(
                 {
                     "context_list": utterance_wise_sub_context_lists[0],
                     "blist_utterance_wise": utterance_wise_sub_context_ints_tensors,
                     "ilens_utterance_wise": utterance_wise_sub_context_ints_tensor_lens,
+                    "context_predictions_prior": context_predictions_prior,
                 }
             )
         # Update the context prompt

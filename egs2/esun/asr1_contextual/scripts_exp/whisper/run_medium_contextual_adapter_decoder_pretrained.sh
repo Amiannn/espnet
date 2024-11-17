@@ -14,7 +14,7 @@ uttblist_idx_valid="uttblist_idx_f65536.txt"
 uttblist_idx_test="uttblist_idx"
 
 asr_config=conf/contextual/whisper/train_asr_whisper_medium_contextual_adapter_decoder_pretrained.yaml
-inference_config=conf/contextual/whisper/decode_asr_whisper_contextual_adapter_decoder_c20.yaml
+inference_config=conf/contextual/whisper/decode_asr_whisper_contextual_adapter_decoder_c1000_test.yaml
 asr_tag=whisper/run_medium_contextual_adapter_decoder_pretrained_ce
 
 pretrained_model=../asr1/exp/asr_whisper_medium_lora_decoder/3epoch.pth
@@ -45,7 +45,7 @@ nbpe=5000
 CUDA_LAUNCH_BLOCKING=1 CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --nj 20 \
     --gpu_inference false \
-    --inference_nj 10 \
+    --inference_nj 1 \
     --lang zh \
     --ngpu 1 \
     --token_type whisper_multilingual \

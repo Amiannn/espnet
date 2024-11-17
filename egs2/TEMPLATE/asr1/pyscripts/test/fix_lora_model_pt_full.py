@@ -28,11 +28,9 @@ original_state_dict  = torch.load(original_model_ckpt_path, map_location=torch.d
 adapter_state_dict   = torch.load(adapter_model_ckpt_path, map_location=torch.device("cpu"))
 retriever_state_dict = torch.load(retriever_model_ckpt_path, map_location=torch.device("cpu"))
 
-# for key in adapter_state_dict:
-#     if 'contextual' in key or 'lora' in key:
-#         print(key)
-#         new_state_dict[key] = adapter_state_dict[key]
-
+for key in original_state_dict:
+    print(key)
+    
 # output_path = model_ckpt_path.replace('.pth', '_fixed.pth')
 # torch.save(new_state_dict, output_path)
 
@@ -44,6 +42,7 @@ adapter_state_dict   = change_prefix(adapter_state_dict, 'contextualizer', 'cont
 retriever_state_dict = change_prefix(retriever_state_dict, 'contextualizer', 'contextualizer.retriever')
 
 new_state_dict = {}
+# new_state_dict = original_state_dict
 new_state_dict.update(lora_state_dict)
 new_state_dict.update(adapter_state_dict)
 new_state_dict.update(retriever_state_dict)

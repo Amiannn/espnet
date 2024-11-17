@@ -558,6 +558,7 @@ class ContextSampler():
         ]
         utterance_wise_sub_context_ints_tensors     = [d[0] for d in utterance_wise_sub_context_ints_datas]
         utterance_wise_sub_context_ints_tensor_lens = [d[1] for d in utterance_wise_sub_context_ints_datas]
+        # logging.info(f'utterance_wise_sub_context_ints_tensors: {utterance_wise_sub_context_ints_tensors}')
         return (
             utterance_wise_sub_context_lists,
             utterance_wise_sub_context_ints_tensors,
