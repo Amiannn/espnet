@@ -132,11 +132,14 @@ class ContextualizedDecoderScorer(ScorerInterface):
                 token_probs=context_hypotheses,
                 vocabulary=self.context_data["context_list"],
                 blank_index=0,
-                top_k=100,
+                top_k=1,
                 threshold=0.01,
                 priors=context_predictions_prior,
                 combine_weight=0.5,
+                retrieve_phrase=False,
             )
+            logging.info(f'context_prediction: {[idx for idx, _, _ in context_prediction]}')
+            logging.info(f'_' * 30)
             context_predictions.extend(context_prediction)
 
         return score, state

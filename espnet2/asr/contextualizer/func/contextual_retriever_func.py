@@ -209,6 +209,7 @@ def decode_topk_tokens(
     threshold: float = 0.6,
     priors: List[float] = None,
     combine_weight: float = 0.5,
+    retrieve_phrase: bool = True,
 ) -> List[List[Any]]:
     """
     Decodes the top-k tokens from probabilities with optional thresholding.
@@ -223,31 +224,42 @@ def decode_topk_tokens(
     Returns:
         List[List[Any]]: List of decoded tokens with their positions and scores.
     """
-    max_probs_info = token_probs.cpu().max(dim=-1)
-    max_probs = max_probs_info.values[0]
-    max_indices = max_probs_info.indices[0]
+    if retrieve_phrase:
+        max_probs_info = token_probs.cpu().max(dim=-1)
+        max_probs = max_probs_info.values[0]
+        max_indices = max_probs_info.indices[0]
 
-    vocab_size = len(vocabulary)
-    average_probs = torch.zeros(vocab_size)
-    token_counts = torch.zeros(vocab_size)
+        vocab_size = len(vocabulary)
+        average_probs = torch.zeros(vocab_size)
+        token_counts = torch.zeros(vocab_size)
 
-    average_probs.scatter_add_(0, max_indices, max_probs)
-    token_counts.scatter_add_(0, max_indices, torch.ones_like(max_probs))
+        average_probs.scatter_add_(0, max_indices, max_probs)
+        token_counts.scatter_add_(0, max_indices, torch.ones_like(max_probs))
 
-    # Avoid division by zero
-    token_counts = token_counts.masked_fill(token_counts == 0, 1)
-    average_probs = average_probs / token_counts
-    average_probs[blank_index] = 0
-
-    if priors is not None:
-        priors = torch.tensor([0] + priors)
-        logging.info(f'priors: {priors}')
-        average_probs = (1 - combine_weight) * priors + combine_weight * average_probs
+        # Avoid division by zero
+        token_counts = token_counts.masked_fill(token_counts == 0, 1)
+        average_probs = average_probs / token_counts
+        average_probs[blank_index] = 0
+    else:
+        average_probs = token_probs.reshape(-1)
+        if priors is not None:
+            priors = torch.tensor([0] + priors)
+            logging.info(f'priors: {priors}')
+            logging.info(f'token_probs: {average_probs}')
+            average_probs = (1 - combine_weight) * priors + combine_weight * average_probs
+            logging.info(f'combine probs: {average_probs}')
+            average_probs[average_probs < average_probs[0]] = 0.0
+            logging.info(f'masked combine probs: {average_probs}')
 
     # Get indices sorted by average_probs values in descending order
     sorted_indices = torch.argsort(average_probs, descending=True)
+    logging.info(f'sorted_indices: {sorted_indices}')
+    logging.info(f'average_probs[sorted_indices]: {average_probs[sorted_indices]}')
+    logging.info(f'average_probs[sorted_indices] >= threshold: {average_probs[sorted_indices] >= threshold}')
+    logging.info(f'sorted_indices[average_probs[sorted_indices] >= threshold]: {sorted_indices[average_probs[sorted_indices] >= threshold]}')
     # Apply threshold filtering
     sorted_indices = sorted_indices[average_probs[sorted_indices] >= threshold][:top_k]
+    logging.info(f'sorted_indices after: {sorted_indices}')
     topk_tokens = []
     for idx in sorted_indices:
         idx_int = idx.item()
@@ -256,20 +268,22 @@ def decode_topk_tokens(
         token = vocabulary[idx_int]
         score = average_probs[idx].item()
         topk_tokens.append([idx_int, token, score])
-    # Keep the position
-    ordered_topk_tokens = []
-    seen_indices = set()
-    predicted_indices = token_probs[0].argmax(dim=-1).cpu()
-    for t in range(predicted_indices.shape[0]):
-        idx = int(predicted_indices[t])
-        if idx != blank_index and idx not in seen_indices:
-            for token_info in topk_tokens:
-                if token_info[0] == idx:
-                    ordered_topk_tokens.append(token_info)
-                    seen_indices.add(idx)
-                    break
-    return ordered_topk_tokens
-    # return topk_tokens
+    
+    if retrieve_phrase:
+        # Keep the position
+        ordered_topk_tokens = []
+        seen_indices = set()
+        predicted_indices = token_probs[0].argmax(dim=-1).cpu()
+        for t in range(predicted_indices.shape[0]):
+            idx = int(predicted_indices[t])
+            if idx != blank_index and idx not in seen_indices:
+                for token_info in topk_tokens:
+                    if token_info[0] == idx:
+                        ordered_topk_tokens.append(token_info)
+                        seen_indices.add(idx)
+                        break
+        return ordered_topk_tokens
+    return topk_tokens
 
 def generate_prompt_from_hypotheses(
     context_hypotheses: List[torch.Tensor],

@@ -7,7 +7,7 @@ exp_folder=(
 top_k=10
 # threshold=0.5
 thresholds=(
-  -1
+  0.5
 )
 
 # Create CSV header
