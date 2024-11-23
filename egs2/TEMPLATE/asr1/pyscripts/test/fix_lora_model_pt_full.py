@@ -21,7 +21,8 @@ def change_prefix(state_dict, target, prefix):
     return new_state_dict
 
 original_model_ckpt_path  = "./exp/asr_whisper/run_medium_rradapter/0epoch.pth"
-adapter_model_ckpt_path   = "./exp/asr_whisper/run_medium_contextual_adapter_decoder_pretrained_ce/valid.loss.ave_10best_fixed.pth"
+lora_model_ckpt_path      = "../asr1/exp/asr_whisper_medium_lora_decoder/3epoch.pth"
+adapter_model_ckpt_path   = "./exp/asr_whisper/run_medium_contextual_adapter_decoder_pretrained_ce_alpha0.9/valid.loss.ave_10best.pth"
 retriever_model_ckpt_path = "./exp/asr_whisper/run_medium_xdotproduct_contextual_retriever_balanced_alpha0.8_suffix/valid.loss.ave_10best.pth"
 
 original_state_dict  = torch.load(original_model_ckpt_path, map_location=torch.device("cpu"))
@@ -34,7 +35,7 @@ for key in original_state_dict:
 # output_path = model_ckpt_path.replace('.pth', '_fixed.pth')
 # torch.save(new_state_dict, output_path)
 
-lora_state_dict      = filter_weights(adapter_state_dict, ['lora'])
+lora_state_dict      = filter_weights(lora_model_ckpt_path, ['lora'])
 adapter_state_dict   = filter_weights(adapter_state_dict, ['contextualizer'])
 retriever_state_dict = filter_weights(retriever_state_dict, ['contextualizer'])
 
@@ -47,5 +48,5 @@ new_state_dict.update(lora_state_dict)
 new_state_dict.update(adapter_state_dict)
 new_state_dict.update(retriever_state_dict)
 
-output_path = original_model_ckpt_path.replace('.pth', '_fixed.pth')
+output_path = original_model_ckpt_path.replace('.pth', '_fixed_alpha0.9.pth')
 torch.save(new_state_dict, output_path)

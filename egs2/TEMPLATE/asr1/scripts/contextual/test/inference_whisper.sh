@@ -2,22 +2,22 @@
 
 # Set default paths (modify these paths according to your environment)
 SPM_PATH="whisper_multilingual"
-CONTEXT_SPM_PATH=$SPM_PATH
+CONTEXT_SPM_PATH="./data/token_list/bpe_unigram5000suffix/bpe.model"
 TOKEN_PATH="./data/zh_token_list/whisper_multilingual/tokens.txt"
-CONTEXT_TOKEN_PATH=$TOKEN_PATH
-MODEL_CONF="./conf/contextual/whisper/train_asr_whisper_medium_contextual_adapter_decoder_pretrained.yaml"
-MODEL_PATH="./exp/asr_whisper/run_medium_contextual_adapter_decoder_pretrained_ce/122epoch.pth"
+CONTEXT_TOKEN_PATH="./data/token_list/bpe_unigram5000suffix/tokens.txt"
+MODEL_CONF="./conf/contextual/whisper/train_asr_whisper_medium_rradapter.yaml"
+MODEL_PATH="./exp/asr_whisper/run_medium_rradapter/0epoch_fixed.pth"
 MODEL_LORA_PATH="../asr1/exp/asr_whisper_medium_lora_decoder/3epoch.pth"
 STATS_PATH=None
-RAREWORD_PATH="./local/contextual/rarewords/esun.entity.txt"
+RAREWORD_PATH="./local/contextual/rarewords/esun_earningcall.entity.txt"
 SPEECH_SCP_PATH="./dump/raw/test/wav.scp"
-CONTEXT_LIST_PATH="./dump/raw/test/uttblist_idx_entity"
-CONTEXT_LIST_XPHONE_PATH="./local/contextual/ssl_features/esun.entity.xphone.seq.pt"
+CONTEXT_LIST_PATH="./dump/raw/test/uttblist_idx_entity_earningcall"
+CONTEXT_LIST_XPHONE_PATH="./local/contextual/ssl_features/esun_earningcall.entity.xphone.seq.pt"
 REFERENCE_PATH="./data/test/text"
 TOKEN_TYPE="whisper_multilingual"
-CONTEXT_TOKEN_TYPE=$TOKEN_TYPE
+CONTEXT_TOKEN_TYPE="bpe"
 USE_LOCAL_ATTN_CONV="false"  # Set to "--use_local_attn_conv" if needed
-MAX_COUNT=20
+MAX_COUNT=10
 
 # Run the inference script
 python3 -m pyscripts.contextual.inference_whisper \

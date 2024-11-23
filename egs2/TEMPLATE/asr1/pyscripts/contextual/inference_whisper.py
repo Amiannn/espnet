@@ -21,7 +21,8 @@ from espnet.nets.pytorch_backend.transformer.add_sos_eos import add_sos_eos
 from espnet2.asr.contextualizer import (
     CONTEXTUAL_RETRIEVER,
     CONTEXTUAL_ADAPTER_ENCODER,
-    CONTEXTUAL_ADAPTER_DECODER
+    CONTEXTUAL_ADAPTER_DECODER,
+    CONTEXTUAL_PROTOTYPE,
 )
 
 from espnet2.asr.contextualizer.func.contextual_retriever_func import (
@@ -98,10 +99,13 @@ def retriever_decode(ys_hat, char_list, blank_index=0):
     sequence_prediction = [int(x[0]) for y in ys_hat for x in groupby(y) if int(x[0]) != -1 and int(x[0]) != blank_index]
     return ", ".join([char_list[int(idx)] for idx in sequence_prediction])
 
-def visualize(logp, attention, ctc_prediction, text, target, context_list, speech, blank_id, token_list, debug_dir, utterance_id):
+def visualize(logp, attention, ctc_prediction, text, tokens, target, context_list, speech, blank_id, token_list, debug_dir, utterance_id):
     """Visualize the attention maps and predictions"""
     if model.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_ADAPTER_DECODER:
-        mapping = map_tokens_to_words(ctc_prediction, tokenizer, token_id_converter)
+        mapping = map_tokens_to_words(tokens, tokenizer, token_id_converter)
+        frame2align = {i: m[1] for i, m in enumerate(mapping)}
+    elif model.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_PROTOTYPE:
+        mapping = map_tokens_to_words(tokens, prompt_tokenizer, prompt_token_id_converter)
         frame2align = {i: m[1] for i, m in enumerate(mapping)}
     else:
         frame2align = {i: token_list[p] if p != 0 else ' ' for i, p in enumerate(ctc_prediction)} if ctc_prediction is not None else {}
@@ -125,20 +129,49 @@ def forward(model, speech, speech_length, context_data, tokens, text, token_list
             context_phone_ilens=context_data['blist_xphone_ilens'],
             return_model_proj=True
         )
-        
-        # context_prob_sw = torch.softmax(model.contextualizer.retriever.sw_score, dim=-1)
-        # context_prob_pho = torch.softmax(model.contextualizer.retriever.ph_score, dim=-1)
-        # context_probabilities = torch.softmax(model.contextualizer.retriever.subword_scores, dim=-1)
-        # context_probabilities = torch.softmax(median_filter_over_time(
-        #     model.contextualizer.retriever.subword_scores + model.contextualizer.retriever.phoneme_scores, 
-        #     7
-        # ), dim=-1)
         prediction = decode_topk_tokens(
             token_probs=context_probabilities, 
             vocabulary=context_list, 
             blank_index=0, 
             top_k=5, 
             threshold=0.5
+        )
+    elif model.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_PROTOTYPE:
+        context_probabilities, encoder_projection = model.contextualizer.forward_at_encode(
+            query=encoder_output,
+            query_ilens=encoder_output_lengths,
+            context_subword=context_data["blist"],
+            context_subword_ilens=context_data["ilens"],
+            context_phone=context_data["blist_xphone"],
+            context_phone_ilens=context_data["blist_xphone_ilens"],
+            return_model_proj=True,
+        )
+        prediction = decode_topk_tokens(
+            token_probs=context_probabilities, 
+            vocabulary=context_list, 
+            blank_index=0, 
+            top_k=10, 
+            threshold=0.01
+        )
+        prediction_context_idxs_lists = [
+            context_data['context_list_idxs'][idx] for idx, _, _ in prediction
+        ]
+        # prediction_context_idxs_lists = contexts['context_list_idxs'][1:]
+        (
+            utterance_wise_sub_context_lists,
+            utterance_wise_sub_context_ints_tensors,
+            utterance_wise_sub_context_ints_tensor_lens
+        ) = model.context_sampler.construct_utterance_wise_context(
+            [prediction_context_idxs_lists],
+        )
+        context_predictions_prior = [prior for _, _, prior in prediction]
+        context_data.update(
+            {
+                "context_list": utterance_wise_sub_context_lists[0],
+                "blist_utterance_wise": utterance_wise_sub_context_ints_tensors,
+                "ilens_utterance_wise": utterance_wise_sub_context_ints_tensor_lens,
+                "context_predictions_prior": context_predictions_prior,
+            }
         )
 
     ctc_prediction = None
@@ -152,7 +185,7 @@ def forward(model, speech, speech_length, context_data, tokens, text, token_list
         predicted_hypothesis = "".join([d[1] for d in predicted_hypothesis]).replace("▁", ' ')
     
 
-        # 1. Forward decoder
+    # 1. Forward decoder
     if isinstance(model.decoder, OpenAIWhisperDecoder):
         ys_in_pad, _ = add_sos_eos(tokens, model.sos, model.eos, model.ignore_id)
         ys_pad_lens  = torch.tensor([tokens.shape[-1]])
@@ -175,10 +208,20 @@ def forward(model, speech, speech_length, context_data, tokens, text, token_list
             )
             context_probabilities = torch.mean(context_probabilities, dim=1)
             ctc_prediction        = ys_in_pad[0]
-            print(f'context_probabilities: {context_probabilities.shape}')
-        dec_bias_vec = model.decoder.output_layer(dec_bias_vec)
-        decoder_out = decoder_out + dec_bias_vec
-
+        elif model.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_PROTOTYPE:
+            blist_utterance_wise = context_data["blist_utterance_wise"]
+            ilens_utterance_wise = context_data["ilens_utterance_wise"]
+            dec_bias_vec, context_probabilities = model.contextualizer.forward_at_decode(
+                model_embed=dec_hidden_vec,
+                context_embed=blist_utterance_wise[0],
+                ilens=ilens_utterance_wise[0],
+                return_atten=True,
+            )
+            context_probabilities = torch.mean(context_probabilities, dim=1)
+            context_probabilities = median_filter_over_time(context_probabilities, window_size=13)
+            context_probabilities = torch.softmax(context_probabilities, dim=-1)
+        # dec_bias_vec = model.decoder.output_layer(dec_bias_vec)
+        # decoder_out = decoder_out + dec_bias_vec
 
     return None, None, context_probabilities, ctc_prediction, {
         'text': text,
@@ -247,7 +290,7 @@ if __name__ == "__main__":
         'contextual_type': 'context_sampler',
         'context_list_path': rareword_path,
         'context_phone_embedding_path': context_list_xphone_path,
-        'max_batch_disrupt_context': 20,
+        'max_batch_disrupt_context': 100,
         'sub_context_list_dropout': 0.0,
         'warmup_epoch': 0,
         'use_no_context_token': True,
@@ -277,8 +320,11 @@ if __name__ == "__main__":
     # Prepare tokenizer and token list
     preprocessor = loader.dataset.preprocess
     tokenizer = model.context_sampler.tokenizer
+    prompt_tokenizer = model.context_sampler.prompt_tokenizer
     token_id_converter = model.context_sampler.token_id_converter
+    prompt_token_id_converter = model.context_sampler.prompt_token_id_converter
     token_list = get_token_list(token_id_converter) + ['<no-context>']
+    prompt_token_list = get_token_list(prompt_token_id_converter) + ['<no-context>']
 
     # Model evaluation
     model.eval()
@@ -303,13 +349,14 @@ if __name__ == "__main__":
         print(f'context_list:\n{context_list}')
 
         tokens = torch.tensor(preprocessor._text_process({'text': text})['text']).long().unsqueeze(0)
-
         logp, target, attention, ctc_prediction, prediction = forward(model, speech, speech_length, context_data, tokens, text, token_list)
         results[uid] = prediction
         
-        # for attention, tag in zip(attentions, ['combine', 'sw', 'pho']):
-        #     visualize(logp, attention, ctc_prediction, text, target, context_list, speech, model.blank_id, token_list, debug_dir, f'{uid}_{tag}')
-        visualize(logp, attention, ctc_prediction, text, target, context_list, speech, model.blank_id, token_list, debug_dir, f'{uid}')
+        if model.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_PROTOTYPE:
+            context_list = context_data['blist_utterance_wise'][0]
+            context_list = [prompt_tokenizer.tokens2text([prompt_token_list[word] for word in rareword if word != -1]) for rareword in context_list]
+            print(f'updated context_list: {context_list}')
+        visualize(logp, attention, ctc_prediction, text, tokens[0], target, context_list, speech, model.blank_id, token_list, debug_dir, f'{uid}')
 
     # Save results
     output_path = os.path.join(debug_dir, 'predict.json')

@@ -131,12 +131,12 @@ class HardNegativeSampler():
     @torch.no_grad()
     def build_context_index(self, forward_key=False):
         build_start_time = time_.time()
+        device = next(self.asr_model.parameters()).device
         kwargs = {
-            'text_embed': self.blist_tensors,
-            'ilens'     : self.blist_tensor_ilens,
+            'text_embed': self.blist_tensors.to(device),
+            'ilens'     : self.blist_tensor_ilens.to(device),
         }
         if self.blist_xphone_mean_tensors is not None:
-            device = next(self.asr_model.parameters()).device
             kwargs['xphone_embed']      = self.blist_xphone_tensors.to(device)
             kwargs['xphone_mean_embed'] = self.blist_xphone_mean_tensors.to(device)
             kwargs['xphone_ilens']      = self.blist_xphone_tensor_ilens.to(device)

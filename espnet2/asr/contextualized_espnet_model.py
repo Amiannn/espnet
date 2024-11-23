@@ -837,6 +837,9 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             label_occurrence_lengths = contexts["label_occurrence_ilens"]  # Shape: (N,)
 
             batch_size, seq_length = labels.shape
+            labels = torch.cat([torch.zeros(batch_size, 1).to(labels.device), labels], dim=-1).long() # add no-context ids
+            seq_length += 1
+            
             indices = (
                 torch.arange(batch_size, device=labels.device).unsqueeze(1).repeat(1, seq_length).reshape(-1)
             )
