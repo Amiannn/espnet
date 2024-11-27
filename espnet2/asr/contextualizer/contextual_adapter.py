@@ -33,9 +33,10 @@ from espnet2.asr.contextualizer.component.context_encoder import (
 
 from espnet2.asr.contextualizer.component.attention_based_adapter import (
     AttentionBasedAdapter,
-    ConvAttentionAdapter,
-    Conv2AttentionAdapter,
+    AttentionBasedLightAdapter,
 )
+
+from espnet2.asr.contextualizer.component.utils import GatedAdditionWithDropout
 
 class ContextualAdapterPrototype(torch.nn.Module):
     def __init__(
@@ -163,6 +164,57 @@ class ContextualAdapterTransformer(ContextualAdapterPrototype):
             padding_idx=padding_idx,
         )
 
+class ContextualLightAdapterTransformer(ContextualAdapterPrototype):
+    def __init__(
+        self,
+        vocab_size: int,
+        context_embed_size: int,
+        context_hidden_size: int,
+        model_hidden_size: int,
+        attndim: int,
+        proj_hidden_size: int,
+        drop_out: float = 0.1,
+        num_blocks: int=2,
+        linear_units: int=256,
+        context_attention_heads: int=4,
+        adapter_attention_heads: int=1,
+        padding_idx: int=-1,
+        atten_temperature: float = 1.0,
+        use_local_attn_conv: bool = False,
+        **kwargs
+    ):
+        super().__init__(
+            vocab_size=vocab_size,
+            context_embed_size=context_embed_size,
+            context_hidden_size=context_hidden_size,
+            model_hidden_size=model_hidden_size,
+            attndim=attndim,
+            proj_hidden_size=proj_hidden_size,
+            drop_out=drop_out,
+            attention_heads=adapter_attention_heads,
+            atten_temperature=atten_temperature,
+            use_local_attn_conv=use_local_attn_conv,
+        )
+        self.encoder = ContextEncoderTransformer(
+            vocab_size=vocab_size,
+            hidden_size=context_embed_size,
+            output_size=context_hidden_size,
+            attention_heads=context_attention_heads,
+            num_blocks=num_blocks,
+            linear_units=linear_units,
+            drop_out=drop_out,
+            padding_idx=padding_idx,
+        )
+        self.adapter = AttentionBasedLightAdapter(
+            attention_heads=adapter_attention_heads,
+            attndim=attndim,
+            proj_hidden_size=proj_hidden_size,
+            drop_out=drop_out,
+            use_value_norm=False,
+            atten_temperature=atten_temperature,
+            use_local_attn_conv=use_local_attn_conv,
+        )
+
 class ContextualXPhoneAdapter(ContextualAdapterPrototype):
     def __init__(
         self,
@@ -247,7 +299,7 @@ class ContextualXPhoneAdapter(ContextualAdapterPrototype):
         )
         return output
 
-class ContextualConvXPhoneAdapter(ContextualXPhoneAdapter):
+class GatedContextualAdapterTransformer(ContextualAdapterTransformer):
     def __init__(
         self,
         vocab_size: int,
@@ -262,10 +314,7 @@ class ContextualConvXPhoneAdapter(ContextualXPhoneAdapter):
         context_attention_heads: int=4,
         adapter_attention_heads: int=1,
         padding_idx: int=-1,
-        use_value_norm: bool=True,
         atten_temperature: float = 1.0,
-        xphone_hidden_size: int = 768,
-        merge_conv_kernel: int = 3,
         use_local_attn_conv: bool = False,
         **kwargs
     ):
@@ -282,205 +331,17 @@ class ContextualConvXPhoneAdapter(ContextualXPhoneAdapter):
             context_attention_heads=context_attention_heads,
             adapter_attention_heads=adapter_attention_heads,
             padding_idx=padding_idx,
-            use_value_norm=use_value_norm,
             atten_temperature=atten_temperature,
-            xphone_hidden_size=xphone_hidden_size,
-            merge_conv_kernel=merge_conv_kernel,
             use_local_attn_conv=use_local_attn_conv,
             **kwargs
         )
-        self.adapter = ConvAttentionAdapter(
+        self.adapter = AttentionBasedAdapter(
             attention_heads=adapter_attention_heads,
             attndim=attndim,
             proj_hidden_size=proj_hidden_size,
             drop_out=drop_out,
-            use_value_norm=use_value_norm,
-            use_local_attn_conv=use_local_attn_conv,
+            use_value_norm=False,
             atten_temperature=atten_temperature,
-        )
-
-class ContextualConv2XPhoneAdapter(ContextualXPhoneAdapter):
-    def __init__(
-        self,
-        vocab_size: int,
-        context_embed_size: int,
-        context_hidden_size: int,
-        model_hidden_size: int,
-        attndim: int,
-        proj_hidden_size: int,
-        drop_out: float = 0.1,
-        num_blocks: int=2,
-        linear_units: int=256,
-        context_attention_heads: int=4,
-        adapter_attention_heads: int=1,
-        padding_idx: int=-1,
-        use_value_norm: bool=True,
-        atten_temperature: float = 1.0,
-        xphone_hidden_size: int = 768,
-        merge_conv_kernel: int = 3,
-        use_local_attn_conv: bool = False,
-        **kwargs
-    ):
-        super().__init__(
-            vocab_size=vocab_size,
-            context_embed_size=context_embed_size,
-            context_hidden_size=context_hidden_size,
-            model_hidden_size=model_hidden_size,
-            attndim=attndim,
-            proj_hidden_size=proj_hidden_size,
-            drop_out=drop_out,
-            num_blocks=num_blocks,
-            linear_units=linear_units,
-            context_attention_heads=context_attention_heads,
-            adapter_attention_heads=adapter_attention_heads,
-            padding_idx=padding_idx,
-            use_value_norm=use_value_norm,
-            atten_temperature=atten_temperature,
-            xphone_hidden_size=xphone_hidden_size,
-            merge_conv_kernel=merge_conv_kernel,
             use_local_attn_conv=use_local_attn_conv,
-            **kwargs
         )
-        self.adapter = Conv2AttentionAdapter(
-            attention_heads=adapter_attention_heads,
-            attndim=attndim,
-            proj_hidden_size=proj_hidden_size,
-            drop_out=drop_out,
-            use_value_norm=use_value_norm,
-            use_local_attn_conv=use_local_attn_conv,
-            atten_temperature=atten_temperature,
-        )
-
-class ContextualConvXPhoneGatedAdapter(ContextualConvXPhoneAdapter):
-    def __init__(
-        self,
-        vocab_size: int,
-        context_embed_size: int,
-        context_hidden_size: int,
-        model_hidden_size: int,
-        attndim: int,
-        proj_hidden_size: int,
-        drop_out: float = 0.1,
-        num_blocks: int=2,
-        linear_units: int=256,
-        context_attention_heads: int=4,
-        adapter_attention_heads: int=1,
-        padding_idx: int=-1,
-        use_value_norm: bool=True,
-        atten_temperature: float = 1.0,
-        xphone_hidden_size: int = 768,
-        merge_conv_kernel: int = 3,
-        use_local_attn_conv: bool = False,
-        **kwargs
-    ):
-        super().__init__(
-            vocab_size=vocab_size,
-            context_embed_size=context_embed_size,
-            context_hidden_size=context_hidden_size,
-            model_hidden_size=model_hidden_size,
-            attndim=attndim,
-            proj_hidden_size=proj_hidden_size,
-            drop_out=drop_out,
-            num_blocks=num_blocks,
-            linear_units=linear_units,
-            context_attention_heads=context_attention_heads,
-            adapter_attention_heads=adapter_attention_heads,
-            padding_idx=padding_idx,
-            use_value_norm=use_value_norm,
-            atten_temperature=atten_temperature,
-            xphone_hidden_size=xphone_hidden_size,
-            merge_conv_kernel=merge_conv_kernel,
-            use_local_attn_conv=use_local_attn_conv,
-            **kwargs
-        )
-        self.gate_drop_x1     = torch.nn.Dropout(0.1)
-        # self.gate_drop_x2   = torch.nn.Dropout(0.1)
-        self.gate_norm_x1     = LayerNorm(attndim)
-        # self.gate_norm_x2   = LayerNorm(proj_hidden_size)
-        self.gate_linear_x1   = torch.nn.Linear(model_hidden_size, model_hidden_size // 2)
-        # self.gate_linear_x2 = torch.nn.Linear(proj_hidden_size, proj_hidden_size // 2)
-        self.gate_linear      = torch.nn.Linear(model_hidden_size // 2, 1)
-
-    def forward(
-        self,
-        model_embed  : torch.Tensor,
-        context_embed: torch.Tensor,
-        ilens        : torch.Tensor = None,
-        mask         : torch.Tensor = None,
-        return_atten : bool = False,
-        **kwargs
-    ):
-        out = super().forward(
-            model_embed=model_embed,
-            context_embed=context_embed,
-            ilens=ilens,
-            mask=mask,
-            return_atten=return_atten,
-            **kwargs
-        )
-        if return_atten:
-            out, atten = out
-
-        query_embed = self.adapter.query_embed
-        x1 = torch.tanh(self.gate_linear_x1(self.gate_drop_x1(self.gate_norm_x1(query_embed))))
-        # x2 = self.gate_drop_x2(self.gate_linear_x2(self.gate_norm_x2(out)))
-        self.gate_value = self.gate_linear(x1)
-        # self.gate_value = x1 + x2
-        self.gate_prob  = torch.sigmoid(self.gate_value)
-        # residual gate
-        out = out * self.gate_prob
-        if return_atten:
-            return out, atten
-        return out
-
-class ContextualConv2XPhoneGatedAdapter(ContextualConvXPhoneGatedAdapter):
-    def __init__(
-        self,
-        vocab_size: int,
-        context_embed_size: int,
-        context_hidden_size: int,
-        model_hidden_size: int,
-        attndim: int,
-        proj_hidden_size: int,
-        drop_out: float = 0.1,
-        num_blocks: int=2,
-        linear_units: int=256,
-        context_attention_heads: int=4,
-        adapter_attention_heads: int=1,
-        padding_idx: int=-1,
-        use_value_norm: bool=True,
-        atten_temperature: float = 1.0,
-        xphone_hidden_size: int = 768,
-        merge_conv_kernel: int = 3,
-        use_local_attn_conv: bool = False,
-        **kwargs
-    ):
-        super().__init__(
-            vocab_size=vocab_size,
-            context_embed_size=context_embed_size,
-            context_hidden_size=context_hidden_size,
-            model_hidden_size=model_hidden_size,
-            attndim=attndim,
-            proj_hidden_size=proj_hidden_size,
-            drop_out=drop_out,
-            num_blocks=num_blocks,
-            linear_units=linear_units,
-            context_attention_heads=context_attention_heads,
-            adapter_attention_heads=adapter_attention_heads,
-            padding_idx=padding_idx,
-            use_value_norm=use_value_norm,
-            atten_temperature=atten_temperature,
-            xphone_hidden_size=xphone_hidden_size,
-            merge_conv_kernel=merge_conv_kernel,
-            use_local_attn_conv=use_local_attn_conv,
-            **kwargs
-        )
-        self.adapter = Conv2AttentionAdapter(
-            attention_heads=adapter_attention_heads,
-            attndim=attndim,
-            proj_hidden_size=proj_hidden_size,
-            drop_out=drop_out,
-            use_value_norm=use_value_norm,
-            use_local_attn_conv=use_local_attn_conv,
-            atten_temperature=atten_temperature,
-        )
+        self.gate_layer = GatedAdditionWithDropout(proj_hidden_size, 0.1)

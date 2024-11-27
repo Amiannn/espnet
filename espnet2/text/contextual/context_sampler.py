@@ -596,7 +596,6 @@ class ContextSampler():
                 speech=speechs, 
                 speech_lengths=speech_lengths,
             )
-            logging.info(f'batch_wise_hnc_distractors: {batch_wise_hnc_distractors}')
             # batch-wise
             batch_wise_sub_context_list = (
                 batch_wise_sub_context_list + batch_wise_hnc_distractors
@@ -646,7 +645,6 @@ class ContextSampler():
             OrderedSet(context) for context in utterance_wise_sub_context_lists
         ]
         batch_wise_sub_context_list = OrderedSet(batch_wise_sub_context_list)
-        logging.info(f'batch_wise_sub_context_list length: {len(batch_wise_sub_context_list)}')
         return utterance_wise_gold_contexts_droped, utterance_wise_sub_context_lists, batch_wise_sub_context_list
 
     def sample(

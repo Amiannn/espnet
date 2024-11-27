@@ -244,22 +244,13 @@ def decode_topk_tokens(
         average_probs = token_probs.reshape(-1)
         if priors is not None:
             priors = torch.tensor([0] + priors)
-            logging.info(f'priors: {priors}')
-            logging.info(f'token_probs: {average_probs}')
             average_probs = (1 - combine_weight) * priors + combine_weight * average_probs
-            logging.info(f'combine probs: {average_probs}')
             average_probs[average_probs < average_probs[0]] = 0.0
-            logging.info(f'masked combine probs: {average_probs}')
 
     # Get indices sorted by average_probs values in descending order
     sorted_indices = torch.argsort(average_probs, descending=True)
-    logging.info(f'sorted_indices: {sorted_indices}')
-    logging.info(f'average_probs[sorted_indices]: {average_probs[sorted_indices]}')
-    logging.info(f'average_probs[sorted_indices] >= threshold: {average_probs[sorted_indices] >= threshold}')
-    logging.info(f'sorted_indices[average_probs[sorted_indices] >= threshold]: {sorted_indices[average_probs[sorted_indices] >= threshold]}')
     # Apply threshold filtering
     sorted_indices = sorted_indices[average_probs[sorted_indices] >= threshold][:top_k]
-    logging.info(f'sorted_indices after: {sorted_indices}')
     topk_tokens = []
     for idx in sorted_indices:
         idx_int = idx.item()

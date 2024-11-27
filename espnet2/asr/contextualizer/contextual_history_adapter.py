@@ -20,8 +20,6 @@ from espnet2.asr.contextualizer.component.context_history_encoder import (
 
 from espnet2.asr.contextualizer.component.attention_based_adapter import (
     AttentionBasedAdapter,
-    ConvAttentionAdapter,
-    Conv2AttentionAdapter,
 )
 
 class ContextualHistoryAdapterPrototype(torch.nn.Module):

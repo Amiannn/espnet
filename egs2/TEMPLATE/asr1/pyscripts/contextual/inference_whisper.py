@@ -222,6 +222,16 @@ def forward(model, speech, speech_length, context_data, tokens, text, token_list
             context_probabilities = torch.softmax(context_probabilities, dim=-1)
         # dec_bias_vec = model.decoder.output_layer(dec_bias_vec)
         # decoder_out = decoder_out + dec_bias_vec
+        decoder_out_prob = torch.max(torch.softmax((decoder_out), dim=-1), dim=-1).values
+        print(f'decoder_out_prob: {decoder_out_prob.shape}')
+        print(f'context_probabilities: {context_probabilities.shape}')
+
+        if hasattr(model.contextualizer, 'gate_layer'):
+            decoder_out, gate_value = model.contextualizer.gate_layer(dec_hidden_vec, dec_bias_vec)
+            print(f'gate_value: {gate_value}')
+            print(f'gate_value: {gate_value.shape}')
+
+        context_probabilities = torch.cat([gate_value, context_probabilities], dim=-1)
 
     return None, None, context_probabilities, ctc_prediction, {
         'text': text,
@@ -290,8 +300,10 @@ if __name__ == "__main__":
         'contextual_type': 'context_sampler',
         'context_list_path': rareword_path,
         'context_phone_embedding_path': context_list_xphone_path,
-        'max_batch_disrupt_context': 100,
+        'max_batch_disrupt_context': 20,
         'sub_context_list_dropout': 0.0,
+        'gold_context_dropout': 0.0,
+        'hnc_sampler_type': None,
         'warmup_epoch': 0,
         'use_no_context_token': True,
         'context_prompt_has_context_template': '主題為:',
@@ -356,6 +368,8 @@ if __name__ == "__main__":
             context_list = context_data['blist_utterance_wise'][0]
             context_list = [prompt_tokenizer.tokens2text([prompt_token_list[word] for word in rareword if word != -1]) for rareword in context_list]
             print(f'updated context_list: {context_list}')
+        
+        context_list = ['Gate'] + context_list
         visualize(logp, attention, ctc_prediction, text, tokens[0], target, context_list, speech, model.blank_id, token_list, debug_dir, f'{uid}')
 
     # Save results

@@ -107,3 +107,36 @@ class InteractionDropout(torch.nn.Module):
                 B = torch.zeros_like(B)
         return A, B
 
+class GatedAdditionWithDropout(torch.nn.Module):
+    def __init__(self, input_dim, dropout_prob=0.1):
+        super(GatedAdditionWithDropout, self).__init__()
+        # Determine gate input dimensio
+        gate_input_dim = input_dim * 2
+        # Gate computation with temperature scaling
+        self.gate = torch.nn.Linear(gate_input_dim, 1)
+        self.activation = torch.nn.Sigmoid()
+        # Normalization layers (choose between LayerNorm and BatchNorm as appropriate)
+        self.norm_a = torch.nn.LayerNorm(input_dim)
+        self.norm_b = torch.nn.LayerNorm(input_dim)
+        # Alternative: Use BatchNorm1d if inputs are batched and appropriate
+        # self.norm_a = nn.BatchNorm1d(input_dim)
+        # self.norm_b = nn.BatchNorm1d(input_dim)
+        # Dropout for regularization
+        self.dropout = torch.nn.Dropout(dropout_prob)
+        # Initialize gate bias to start with g ≈ 0
+        torch.nn.init.constant_(self.gate.bias, -5.0)  # Large negative bias
+        torch.nn.init.xavier_uniform_(self.gate.weight)
+    
+    def forward(self, a, b, context=None):
+        # Normalize inputs
+        _a = self.norm_a(a)
+        _b = self.norm_b(b)
+        # Concatenate inputs for gate computation
+        combined = torch.cat((_a, _b), dim=-1)
+        # Apply dropout to combined features
+        combined = self.dropout(combined)
+        gate_logits = self.gate(combined)
+        g = self.activation(gate_logits)
+        # Apply gating mechanism
+        y = (1 - g) * a + g * b
+        return y, gate_logits  # Return result and gate logits for analysis

@@ -6,7 +6,7 @@ def read_file(file_path, sp=' '):
         lines = f.readlines()
     return [line.strip().split(sp) for line in lines]
 
-model_ckpt_path = "./exp/asr_whisper/run_medium_contextual_adapter_decoder_pretrained_ce_alpha0.9/valid.loss.ave_10best.pth"
+model_ckpt_path = "./exp/asr_whisper/run_medium_contextual_adapter_decoder_alpha0.9/45epoch.pth"
 
 state_dict     = torch.load(model_ckpt_path, map_location=torch.device("cpu"))
 new_state_dict = {}

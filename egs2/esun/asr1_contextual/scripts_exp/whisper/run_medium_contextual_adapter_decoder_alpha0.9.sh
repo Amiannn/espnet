@@ -13,34 +13,13 @@ uttblist_idx_train="uttblist_idx_f65536.txt"
 uttblist_idx_valid="uttblist_idx_f65536.txt"
 uttblist_idx_test="uttblist_idx"
 
-asr_config=conf/contextual/whisper/train_asr_whisper_medium_contextual_adapter_decoder_pretrained.yaml
+asr_config=conf/contextual/whisper/train_asr_whisper_medium_contextual_adapter_decoder_alpha0.9.yaml
 inference_config=conf/contextual/whisper/decode_asr_whisper_contextual_adapter_decoder_c1000_test.yaml
-asr_tag=whisper/run_medium_contextual_adapter_decoder_pretrained_ce_test
+asr_tag=whisper/run_medium_contextual_adapter_decoder_alpha0.9
 
-pretrained_model=../asr1/exp/asr_whisper_medium_lora_decoder/3epoch.pth
+pretrained_model=exp/asr_whisper/run_medium_contextual_adapter_decoder_pretrained_ce_alpha0.9/valid.loss.ave_10best_fixed.pth
 
-lm_config=conf/exp/train_lm_transformer.yaml
 use_lm=false
-use_wordlm=false
-
-if [ ! -f "data/train/token.man.2" ]; then
-    # must preprocess data first to get Mandarin character tokens
-    if [ ${stage} -eq 1 ]; then
-        ./asr.sh --stage 1 --stop_stage 1
-        stage=2
-    else
-        echo "Error: data/train/token.man.2 does not exist! Run from stage=1 again."
-        exit 1
-    fi
-fi
-
-man_chars=3955
-bpe_nlsyms=""
-
-source data/train/token.man.2  # for bpe_nlsyms & man_chars
-# nbpe=$((3000 + man_chars + 4))  # 5626
-nbpe=5000
-# English BPE: 3000 / Mandarin: 2622 / other symbols: 4
 
 CUDA_LAUNCH_BLOCKING=1 CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --nj 20 \
@@ -57,7 +36,7 @@ CUDA_LAUNCH_BLOCKING=1 CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --asr_tag "${asr_tag}" \
     --asr_config "${asr_config}" \
     --inference_config "${inference_config}" \
-    --inference_asr_model valid.loss.ave_10best_fixed.pth \
+    --inference_asr_model 45epoch_fixed.pth \
     --train_set "${train_set}" \
     --valid_set "${valid_set}" \
     --test_sets "${test_sets}" \
@@ -69,7 +48,7 @@ CUDA_LAUNCH_BLOCKING=1 CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --asr_text_fold_length 150 \
     --contextualization true \
     --lm_fold_length 150 \
-    --pretrained_model "${pretrained_model},${pretrained_model}:decoder.decoders.token_embedding:contextualizer.encoder.embed" \
+    --pretrained_model "${pretrained_model}" \
     --ignore_init_mismatch true \
     "$@"
 

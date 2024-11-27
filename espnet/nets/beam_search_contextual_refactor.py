@@ -163,7 +163,12 @@ class ContextualizedDecoderScorer(ScorerInterface):
             # Mean across attention heads
             context_hypotheses = torch.mean(context_hypotheses, dim=1)
             # Bias the hidden state
-            # decoder_output = decoder_output + decoder_bias_vector
+            if hasattr(self.contextualizer, 'gate_layer'):
+                decoder_output, gate_value = self.contextualizer.gate_layer(decoder_embedding, decoder_bias_vector)
+                logging.info(f'gate_value: {gate_value}')
+            else:
+                logging.info(f'conduct decoder biasing. norm: {torch.norm(decoder_bias_vector)}')
+                decoder_output = decoder_output + decoder_bias_vector
             # Adjust the score
             decoder_output = torch.log_softmax(self.decoder_scorer.output_layer(decoder_output), dim=-1)
             decoder_output = decoder_output.reshape(-1)
@@ -514,23 +519,24 @@ class ContextualBeamSearch(BeamSearch):
             prediction_context_idxs_lists = [
                 contexts['context_list_idxs'][idx] for idx, _, _ in context_predictions
             ]
-            # prediction_context_idxs_lists = contexts['context_list_idxs'][1:]
-            (
-                utterance_wise_sub_context_lists,
-                utterance_wise_sub_context_ints_tensors,
-                utterance_wise_sub_context_ints_tensor_lens
-            ) = self.context_sampler.construct_utterance_wise_context(
-                [prediction_context_idxs_lists],
-            )
-            context_predictions_prior = [prior for _, _, prior in context_predictions]
-            contexts.update(
-                {
-                    "context_list": utterance_wise_sub_context_lists[0],
-                    "blist_utterance_wise": utterance_wise_sub_context_ints_tensors,
-                    "ilens_utterance_wise": utterance_wise_sub_context_ints_tensor_lens,
-                    "context_predictions_prior": context_predictions_prior,
-                }
-            )
+        else:
+            prediction_context_idxs_lists = contexts['context_list_idxs'][1:]
+        (
+            utterance_wise_sub_context_lists,
+            utterance_wise_sub_context_ints_tensors,
+            utterance_wise_sub_context_ints_tensor_lens
+        ) = self.context_sampler.construct_utterance_wise_context(
+            [prediction_context_idxs_lists],
+        )
+        context_predictions_prior = [prior for _, _, prior in context_predictions]
+        contexts.update(
+            {
+                "context_list": utterance_wise_sub_context_lists[0],
+                "blist_utterance_wise": utterance_wise_sub_context_ints_tensors,
+                "ilens_utterance_wise": utterance_wise_sub_context_ints_tensor_lens,
+                "context_predictions_prior": context_predictions_prior,
+            }
+        )
         # Update the context prompt
         if contexts["nlp_prompt_tensor"] is not None:
             nlp_prompt, nlp_prompt_tensor = generate_prompt_from_hypotheses(

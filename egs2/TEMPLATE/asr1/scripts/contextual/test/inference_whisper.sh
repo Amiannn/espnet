@@ -2,11 +2,13 @@
 
 # Set default paths (modify these paths according to your environment)
 SPM_PATH="whisper_multilingual"
-CONTEXT_SPM_PATH="./data/token_list/bpe_unigram5000suffix/bpe.model"
+# CONTEXT_SPM_PATH="./data/token_list/bpe_unigram5000suffix/bpe.model"
+CONTEXT_SPM_PATH=$SPM_PATH
 TOKEN_PATH="./data/zh_token_list/whisper_multilingual/tokens.txt"
-CONTEXT_TOKEN_PATH="./data/token_list/bpe_unigram5000suffix/tokens.txt"
-MODEL_CONF="./conf/contextual/whisper/train_asr_whisper_medium_rradapter.yaml"
-MODEL_PATH="./exp/asr_whisper/run_medium_rradapter/0epoch_fixed.pth"
+CONTEXT_TOKEN_PATH=$TOKEN_PATH
+# CONTEXT_TOKEN_PATH="./data/token_list/bpe_unigram5000suffix/tokens.txt"
+MODEL_CONF="./conf/contextual/whisper/train_asr_whisper_medium_contextual_adapter_decoder_alpha0.9_gated.yaml"
+MODEL_PATH="./exp/asr_whisper/run_medium_contextual_adapter_decoder_alpha0.9_gated/30epoch.pth"
 MODEL_LORA_PATH="../asr1/exp/asr_whisper_medium_lora_decoder/3epoch.pth"
 STATS_PATH=None
 RAREWORD_PATH="./local/contextual/rarewords/esun_earningcall.entity.txt"
@@ -15,7 +17,8 @@ CONTEXT_LIST_PATH="./dump/raw/test/uttblist_idx_entity_earningcall"
 CONTEXT_LIST_XPHONE_PATH="./local/contextual/ssl_features/esun_earningcall.entity.xphone.seq.pt"
 REFERENCE_PATH="./data/test/text"
 TOKEN_TYPE="whisper_multilingual"
-CONTEXT_TOKEN_TYPE="bpe"
+# CONTEXT_TOKEN_TYPE="bpe"
+CONTEXT_TOKEN_TYPE=$TOKEN_TYPE
 USE_LOCAL_ATTN_CONV="false"  # Set to "--use_local_attn_conv" if needed
 MAX_COUNT=10
 

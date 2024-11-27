@@ -193,6 +193,8 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             self.loss_amp = 10
         if "loss_contextualizer_ga_ce" in self.contextualizer_losses:
             self.contextualizer_ga_ce = torch.nn.CrossEntropyLoss(reduction='mean', ignore_index=ignore_id)
+        if "loss_gate_ce" in self.contextualizer_losses:
+            self.contextualizer_gate_ce = torch.nn.BCEWithLogitsLoss()
         self.context_sampler = context_sampler
 
     def forward(
@@ -303,6 +305,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
                 wer_att,
                 decoder_out_length,
                 contexts_hypotheses_decoder,
+                gate_hypotheses_decoder,
             ) = self._calc_att_loss(
                 encoder_out,
                 encoder_out_lens,
@@ -322,21 +325,23 @@ class ESPnetContextualASRModel(ESPnetASRModel):
 
         # 3. Contextualizer Loss
         loss_contextualizer = 0.0
-        for hypotheses, output_lengths, suffix in [
-            (contexts_hypotheses_encoder, encoder_out_lens, "encoder"),
-            (contexts_hypotheses_decoder, decoder_out_length, "decoder"),
-        ]:
-            if hypotheses is not None:
-                loss, individual_losses = self._calc_contextualizer_loss(
-                    contexts,
-                    hypotheses,
-                    context_logit_encoder,
-                    output_lengths,
-                    loss_suffix=suffix,
-                )
-                loss_contextualizer = loss_contextualizer + loss
-                stats.update(individual_losses)
-        stats["loss_contextualizer"] = loss_contextualizer.detach()
+        if len(self.contextualizer_losses) > 0:
+            for hypotheses, gate_hypotheses, output_lengths, suffix in [
+                (contexts_hypotheses_encoder, None, encoder_out_lens, "encoder"),
+                (contexts_hypotheses_decoder, gate_hypotheses_decoder, decoder_out_length, "decoder"),
+            ]:
+                if hypotheses is not None:
+                    loss, individual_losses = self._calc_contextualizer_loss(
+                        contexts,
+                        hypotheses,
+                        context_logit_encoder,
+                        gate_hypotheses,
+                        output_lengths,
+                        loss_suffix=suffix,
+                    )
+                    loss_contextualizer = loss_contextualizer + loss
+                    stats.update(individual_losses)
+            stats["loss_contextualizer"] = loss_contextualizer.detach()
         stats["contextualizer_warmup"] = self.epoch < self.warmup_epoch
 
         # Combine losses
@@ -439,6 +444,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         contexts_hypotheses = None
         contextualizer_type = self.contextualizer_conf["contextualizer_type"]
 
+        gate_value = None
         if contextualizer_type in CONTEXTUAL_ADAPTER_DECODER:
             decoder_bias_vector, decoder_attention = self.contextualizer(
                 model_embed=decoder_embed,
@@ -447,6 +453,14 @@ class ESPnetContextualASRModel(ESPnetASRModel):
                 return_atten=True,
             )
             contexts_hypotheses = torch.mean(decoder_attention, dim=1)
+
+            if decoder_bias_vector is not None and (self.epoch >= self.warmup_epoch):
+                if hasattr(self.contextualizer, 'gate_layer'):
+                    decoder_embed, gate_value = self.contextualizer.gate_layer(decoder_embed, decoder_bias_vector)
+                    logging.info(f'gate_value: {torch.sum(gate_value)}')
+                else:
+                    decoder_embed = decoder_embed + decoder_bias_vector
+
         elif contextualizer_type in CONTEXTUAL_PROTOTYPE:
             blist_utterance_wise = contexts["blist_utterance_wise"]
             ilens_utterance_wise = contexts["ilens_utterance_wise"]
@@ -469,8 +483,8 @@ class ESPnetContextualASRModel(ESPnetASRModel):
                 padding_value=0
             ).transpose(-1, 1)
             contexts_hypotheses = torch.mean(decoder_attentions, dim=1)
-
-        return decoder_bias_vector, contexts_hypotheses
+        decoder_out = self.decoder.output_layer(decoder_embed)
+        return decoder_out, contexts_hypotheses, gate_value
 
     def _update_contexts(self, contexts, contexts_hypotheses):
         # Update the context prompt
@@ -636,13 +650,9 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             decoder_embeddings = decoder_output
 
         # 4. Apply decoder contextualization
-        decoder_bias_vector, decoder_context_hypotheses = self._apply_contextualizer_decoder(
+        decoder_output, decoder_context_hypotheses, decoder_gate_hypotheses = self._apply_contextualizer_decoder(
             decoder_embeddings, contexts
         )
-
-        if decoder_bias_vector is not None and (self.epoch >= self.warmup_epoch):
-            decoder_bias_vector = self.decoder.output_layer(decoder_bias_vector)
-            decoder_output = decoder_output + decoder_bias_vector
 
         # 5. Compute attention loss
         loss_att = self.criterion_att(decoder_output, ys_out_pad)
@@ -666,6 +676,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             wer_att,
             ys_in_lengths,
             decoder_context_hypotheses,
+            decoder_gate_hypotheses,
         )
 
     def _calc_transducer_loss(
@@ -727,6 +738,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         contexts: dict,
         contextual_hypotheses: Optional[torch.Tensor],
         contextual_hypotheses_logits: Optional[torch.Tensor],
+        gate_hypotheses: Optional[torch.Tensor],
         contextual_hypotheses_output_lengths: Optional[torch.Tensor],
         loss_suffix: str,
     ) -> Tuple[Optional[torch.Tensor], Dict[str, torch.Tensor]]:
@@ -854,18 +866,25 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         if "loss_contextualizer_ga_ce" in normalized_weights and loss_suffix == contextualizer_losses_suffix["loss_contextualizer_ga_ce"]:
             ga_log_probs = log_contextual_hypotheses  # Shape: (batch_size, seq_len, num_classes)
             batch_size, seq_len, num_classes = ga_log_probs.shape
-            
-            label_ce       = contexts['label_cross_entropy']
-            label_ce_ilens = contexts['label_cross_entropy_ilens']
-
+            label_ce = contexts['label_cross_entropy']
             # Flatten inputs and targets
             input_flat  = ga_log_probs[:, :-1, :].reshape(-1, num_classes)
             target_flat = label_ce.view(-1)
-
             # Compute Cross-Entropy loss
             loss_ce = self.contextualizer_ga_ce(input_flat, target_flat)
             individual_losses[f"loss_contextualizer_ga_ce_{loss_suffix}"] = loss_ce
 
+        if "loss_gate_ce" in normalized_weights and loss_suffix == contextualizer_losses_suffix["loss_gate_ce"] and gate_hypotheses is not None:
+            label_ce  = contexts['label_cross_entropy']
+            label_bce = (label_ce != 0).float()
+            # Create mask for valid positions
+            mask = label_ce != -1  # Shape: [batch_size, seq_len]
+            # Filter out ignored positions
+            valid_gate_probs = (gate_hypotheses[:, :-1, :])[mask].squeeze(-1)      # Shape: [num_valid_positions]
+            valid_gate_labels = label_bce[mask]    # Shape: [num_valid_positions]
+            # Compute BCE loss
+            loss_gate_ce = self.contextualizer_gate_ce(valid_gate_probs, valid_gate_labels)
+            individual_losses[f"loss_gate_ce_{loss_suffix}"] = loss_gate_ce
         # Combine the individual losses into a total loss
         total_loss = 0.0
         for loss_name, loss_weight in normalized_weights.items():
