@@ -48,7 +48,7 @@ batch_type: numel
 # batch_bins: 12000000            # good for single GPU w/ 40G mem
 batch_bins: 96000000            # good for single GPU w/ 40G mem
 accum_grad: 2
-max_epoch: 150
+max_epoch: 300
 patience: none
 init: none
 # best_model_criterion:
