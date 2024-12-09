@@ -274,11 +274,8 @@ class ContextSampler():
         self.sub_context_list_structure_type = sub_context_list_structure_type
         if self.sub_context_list_structure_type is not None:
             self.context_constructurer = TrieProcessor(
-                tokenizer=self.tokenizer,
-                token_id_converter=self.token_id_converter,
                 pad_value=self.pad_token_value,
-                oov_value=self.no_context_token_value,
-                for_transducer=True,
+                no_context_token_value=0,
             )
         
         # output class
@@ -679,6 +676,11 @@ class ContextSampler():
 
         batch_wise_sub_context_ints_lists = [self.context_ints_list[idx] for idx in batch_wise_sub_context_idxs_list]
 
+        # structure context list
+        trie = None
+        if self.sub_context_list_structure_type is not None:
+            trie = self.context_constructurer.build_trie(batch_wise_sub_context_ints_lists)
+
         # add <no-context> token
         if self.use_no_context_token:
             batch_wise_sub_context_ints_lists = (
@@ -699,6 +701,7 @@ class ContextSampler():
             blist_utterance_wise=utterance_wise_sub_context_ints_tensors,
             ilens_utterance_wise=utterance_wise_sub_context_ints_tensor_lens,
             context_list=[self.context_list[c] for c in batch_wise_sub_context_idxs_list],
+            trie=trie,
         )
         outputs.context_list_ints=batch_wise_sub_context_ints_lists
         outputs.context_list_idxs=batch_wise_sub_context_idxs_list

@@ -124,7 +124,7 @@ class ContextualizedDecoderScorer(ScorerInterface):
             return score, state
 
         # Apply decoder contextualization if enabled
-        score, context_hypotheses = self._apply_contextualizer_decoder(hidden_state, self.context_data)
+        score, context_hypotheses = self._apply_contextualizer_decoder(yseq, hidden_state, self.context_data)
 
         if context_hypotheses is not None:
             context_predictions_prior = self.context_data.get("context_predictions_prior", None)
@@ -138,6 +138,7 @@ class ContextualizedDecoderScorer(ScorerInterface):
                 combine_weight=0.5,
                 retrieve_phrase=False,
             )
+            logging.info(f'yseq: {yseq}')
             logging.info(f'context_prediction: {[idx for idx, _, _ in context_prediction]}')
             logging.info(f'_' * 30)
             context_predictions.extend(context_prediction)
@@ -145,30 +146,44 @@ class ContextualizedDecoderScorer(ScorerInterface):
         return score, state
 
     def _apply_contextualizer_decoder(
-        self, decoder_output: torch.Tensor, context_data: Dict[str, Any]
+        self, yseq: torch.Tensor, decoder_output: torch.Tensor, context_data: Dict[str, Any]
     ) -> Tuple[torch.Tensor, Optional[List[Tuple[int, str, float]]]]:
         """Apply contextualizer to the decoder output."""
         
         context_hypotheses = None
         # Apply decoder contextualization if enabled
         if self.contextualizer_config["contextualizer_type"] in CONTEXTUAL_ADAPTER_DECODER:
+            blist = context_data["blist"]
+            ilens = context_data["ilens"]
+            if self.context_data['trie'] is not None:
+                yseq_list = yseq.tolist()
+                trie = self.context_data['trie']
+                no_context = [{}, [0]]
+                now  = trie
+                for y in yseq_list:
+                    if y in now[0]:
+                        now = now[0][y]
+                    elif y != 220:
+                        now = no_context
+                    elif y == 220:
+                        now = trie
+                context_node_idxs = now[1]
+                logging.info(f'context_node_idxs: {len(context_node_idxs)}')
+                blist = context_data["blist"][context_node_idxs]
+                ilens = context_data["ilens"][context_node_idxs]
+            blist = blist[:, :max(ilens)]
             decoder_embedding = decoder_output.reshape(1, 1, -1)  # Shape: (1, 1, D,)
             # Apply decoder contextualizer
             decoder_bias_vector, context_hypotheses = self.contextualizer(
                 model_embed=decoder_embedding,
-                context_embed=context_data["blist"],
-                ilens=context_data["ilens"],
+                context_embed=blist,
+                ilens=ilens,
                 return_atten=True,
             )
             # Mean across attention heads
             context_hypotheses = torch.mean(context_hypotheses, dim=1)
             # Bias the hidden state
-            if hasattr(self.contextualizer, 'gate_layer'):
-                decoder_output, gate_value = self.contextualizer.gate_layer(decoder_embedding, decoder_bias_vector)
-                logging.info(f'gate_value: {gate_value}')
-            else:
-                logging.info(f'conduct decoder biasing. norm: {torch.norm(decoder_bias_vector)}')
-                decoder_output = decoder_output + decoder_bias_vector
+            decoder_output = decoder_output + decoder_bias_vector
             # Adjust the score
             decoder_output = torch.log_softmax(self.decoder_scorer.output_layer(decoder_output), dim=-1)
             decoder_output = decoder_output.reshape(-1)
