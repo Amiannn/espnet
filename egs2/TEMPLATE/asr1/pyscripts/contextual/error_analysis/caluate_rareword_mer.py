@@ -369,5 +369,5 @@ if __name__ == "__main__":
 python3 -m pyscripts.contextual.error_analysis.caluate_rareword_mer \
     --rareword_list_path "./local/contextual/rarewords/esun_earningcall.entity.txt" \
     --reference_path "./dump/raw/test/text" \
-    --hypothesis_path "./exp/asr_whisper/run_medium_contextual_adapter_decoder_alpha0.9/decode_asr_whisper_contextual_adapter_decoder_bs5_c20_entity_earningcall_asr_model_valid.loss.ave_10best_fixed/test/text"
-    """
+    --hypothesis_path "./exp/asr_whisper/run_medium_contextual_adapter_decoder_alpha0.9/decode_asr_whisper_contextual_adapter_decoder_c20_entity_earningcall_trie_asr_model_valid.loss.ave_10best_fixed/test/text"
+"""
