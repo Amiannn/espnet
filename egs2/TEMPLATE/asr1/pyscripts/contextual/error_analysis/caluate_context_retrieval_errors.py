@@ -486,3 +486,13 @@ if __name__ == "__main__":
         args.k,
         args.threshold,
     )
+
+    """
+    python3 -m pyscripts.contextual.error_analysis.caluate_context_retrieval_errors \
+        --context_list_path "./local/contextual/rarewords/esun_earningcall.entity.txt" \
+        --ref_context_path "./dump/raw/test/uttblist_idx_entity_earningcall" \
+        --hyp_context_path "./n_gram_matching/baseline_matched_entities/baseline_matched_entities_idxs.txt" \
+        --hyp_context_prob_path "./n_gram_matching/baseline_matched_entities/baseline_matched_entities_probs.txt" \
+        --context_candidate_path "./n_gram_matching/baseline_matched_entities/baseline_matched_entities_idxs.txt" \
+        --k 10
+    """
