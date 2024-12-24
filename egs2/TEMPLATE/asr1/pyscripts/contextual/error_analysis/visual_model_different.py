@@ -16,7 +16,7 @@ def get_datas(paths):
     datas = {}
     for name in paths:
         data = read_file(paths[name], sp='\t')
-        data = {d[0]: float(d[3]) for d in data[1:]}
+        data = {d[0]: float(d[3]) + float(d[2]) / 1000 for d in data[1:]}
         datas[name] = data
     return datas
 

@@ -24,18 +24,18 @@ exp_folder=(
 # )
 
 # Set to -1 for auto threshold search
-# thresholds=(
-#   -1
-#   -1
-#   -1
-#   -1
-#   -1
-#   -1
-#   -1
-#   -1
-# )
+thresholds=(
+  0.5
+  0.5
+  0.5
+  0.5
+  0.5
+  0.5
+  0.5
+  0.5
+)
 
-top_k=20
+top_k=10
 # threshold=-1
 
 # Create CSV header

@@ -16,7 +16,7 @@ asr_tag=whisper_medium_lora_decoder
 CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --nj 20 \
     --gpu_inference false \
-    --inference_nj 20 \
+    --inference_nj 5 \
     --lang zh \
     --ngpu 1 \
     --token_type whisper_multilingual \

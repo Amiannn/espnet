@@ -240,7 +240,7 @@ def main(
     k,
     thres,
 ):
-    context_list_datas     = [d[0] for d in read_file(context_list_path, sp=' ')]
+    context_list_datas     = [d[0] for d in read_file(context_list_path, sp='\t')]
     ref_context_datas      = [list(map(int, filter_space(d[1:]))) for d in read_file(ref_context_path, sp=' ')]
     hyp_context_datas      = [list(map(int, filter_space(d[1:]))) for d in read_file(hyp_context_path, sp=' ')]
     hyp_context_prob_datas = [list(map(float, filter_space(d[1:]))) for d in read_file(hyp_context_prob_path, sp=' ')]

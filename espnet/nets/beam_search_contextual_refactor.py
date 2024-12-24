@@ -58,6 +58,21 @@ from espnet2.asr.decoder.whisper_decoder import OpenAIWhisperDecoder
 
 logger = logging.getLogger(__name__)
 
+def trie_search(trie, context_ints):
+    if trie is None:
+        return True
+    no_context = [{}, [0]]
+    now  = trie
+    for y in context_ints:
+        if y in now[0]:
+            now = now[0][y]
+        elif y != 220:
+            now = no_context
+        elif y == 220:
+            now = trie
+    context_node_idxs = now[1]
+    logging.info(f'context_node_idxs: {len(context_node_idxs)}')
+    return True if len(context_node_idxs) == 1 else False
 
 class ContextualHypothesis(NamedTuple):
     """Hypothesis class with contextual information."""
@@ -124,6 +139,8 @@ class ContextualizedDecoderScorer(ScorerInterface):
             return score, state
 
         # Apply decoder contextualization if enabled
+        logging.info(f'_' * 30)
+        logging.info(f'yseq: {yseq}')
         score, context_hypotheses = self._apply_contextualizer_decoder(yseq, hidden_state, self.context_data)
 
         if context_hypotheses is not None:
@@ -138,9 +155,7 @@ class ContextualizedDecoderScorer(ScorerInterface):
                 combine_weight=0.5,
                 retrieve_phrase=False,
             )
-            logging.info(f'yseq: {yseq}')
             logging.info(f'context_prediction: {[idx for idx, _, _ in context_prediction]}')
-            logging.info(f'_' * 30)
             context_predictions.extend(context_prediction)
 
         return score, state
@@ -153,25 +168,9 @@ class ContextualizedDecoderScorer(ScorerInterface):
         context_hypotheses = None
         # Apply decoder contextualization if enabled
         if self.contextualizer_config["contextualizer_type"] in CONTEXTUAL_ADAPTER_DECODER:
-            blist = context_data["blist"]
             ilens = context_data["ilens"]
-            if self.context_data['trie'] is not None:
-                yseq_list = yseq.tolist()
-                trie = self.context_data['trie']
-                no_context = [{}, [0]]
-                now  = trie
-                for y in yseq_list:
-                    if y in now[0]:
-                        now = now[0][y]
-                    elif y != 220:
-                        now = no_context
-                    elif y == 220:
-                        now = trie
-                context_node_idxs = now[1]
-                logging.info(f'context_node_idxs: {len(context_node_idxs)}')
-                blist = context_data["blist"][context_node_idxs]
-                ilens = context_data["ilens"][context_node_idxs]
-            blist = blist[:, :max(ilens)]
+            blist = context_data["blist"][:, :max(ilens)]
+
             decoder_embedding = decoder_output.reshape(1, 1, -1)  # Shape: (1, 1, D,)
             # Apply decoder contextualizer
             decoder_bias_vector, context_hypotheses = self.contextualizer(
@@ -184,9 +183,17 @@ class ContextualizedDecoderScorer(ScorerInterface):
             context_hypotheses = torch.mean(context_hypotheses, dim=1)
             # Bias the hidden state
             decoder_output = decoder_output + decoder_bias_vector
-            # Adjust the score
-            decoder_output = torch.log_softmax(self.decoder_scorer.output_layer(decoder_output), dim=-1)
-            decoder_output = decoder_output.reshape(-1)
+            decoder_output = torch.softmax(self.decoder_scorer.output_layer(decoder_output), dim=-1).reshape(-1)
+            copy_style = True
+            if copy_style:
+                decoder_output = self._copy_context_decode_style(
+                    model_probs=decoder_output,
+                    context_probs=context_hypotheses.reshape(-1)[1:],
+                    no_context_probs=context_hypotheses.reshape(-1)[:1],
+                    threshold=0.9 if yseq[-1] == 220 else 1.0,
+                    # threshold=0.8,
+                )
+            decoder_output = torch.log(decoder_output)
         elif self.contextualizer_config["contextualizer_type"] in CONTEXTUAL_PROTOTYPE:
             decoder_embedding    = decoder_output.reshape(1, 1, -1)
             blist_utterance_wise = context_data["blist_utterance_wise"][0]
@@ -206,6 +213,16 @@ class ContextualizedDecoderScorer(ScorerInterface):
             decoder_output = torch.log_softmax(self.decoder_scorer.output_layer(decoder_output), dim=-1)
             decoder_output = decoder_output.reshape(-1)
         return decoder_output, context_hypotheses
+    
+    def _copy_context_decode_style(self, model_probs, context_probs, no_context_probs, threshold):
+        logging.info(f'torch.max(context_probs): {torch.max(context_probs)}')
+        if torch.max(context_probs) < threshold:
+            context_probs = torch.zeros_like(context_probs)
+            no_context_probs = torch.ones_like(no_context_probs)
+
+        model_probs = model_probs * no_context_probs
+        probs = torch.cat([model_probs, context_probs], dim=-1)
+        return probs
 
 class ContextualBeamSearch(BeamSearch):
     """Beam search implementation with contextualization."""
@@ -364,7 +381,7 @@ class ContextualBeamSearch(BeamSearch):
         for i in range(maxlen):
             logger.debug(f"Beam search iteration {i}")
             best_hypotheses = self.search(
-                running_hypotheses, encoder_output, pre_encoder_output, context_predictions_decoder
+                running_hypotheses, encoder_output, pre_encoder_output, context_data, context_predictions_decoder
             )
             running_hypotheses = self.post_process(
                 i, maxlen, minlen, maxlenratio, best_hypotheses, ended_hypotheses
@@ -411,11 +428,49 @@ class ContextualBeamSearch(BeamSearch):
 
         return contextual_nbest_hypotheses
 
+    @staticmethod
+    def append_token(
+        xs: torch.Tensor, 
+        x: int,
+        n_vocab: int = None,
+        context_vocab: List[int] = None, 
+        trie: object = None,
+    ) -> torch.Tensor:
+        """Append new token to prefix tokens.
+
+        Args:
+            xs (torch.Tensor): The prefix token
+            x (int): The new token to append
+
+        Returns:
+            torch.Tensor: New tensor contains: xs + [x] with xs.dtype and xs.device
+
+        """
+        if (n_vocab is None) or (x < n_vocab):
+            logging.info(f'not copy!')
+            x = torch.tensor([x], dtype=xs.dtype, device=xs.device)
+        else:
+            logging.info(f'doing copy!')
+            x = x - n_vocab
+            end_phrase = [220] if trie_search(trie, context_vocab[x]) else []
+            logging.info(f'end_phrase: {end_phrase}')
+            x = torch.tensor(context_vocab[x] + end_phrase, dtype=xs.dtype, device=xs.device)
+
+            # roll back to last blank (space symbol)
+            blank_index = (xs == 220).nonzero(as_tuple=True)[0]
+            if len(blank_index) > 0:
+                blank_index = blank_index[-1]
+                logging.info(f'rolling back from {xs.shape[-1]} to {blank_index + 1}')
+
+                xs = xs[:blank_index + 1] 
+        return torch.cat((xs, x))
+
     def search(
         self,
         running_hyps: List[Hypothesis],
         x: torch.Tensor,
         pre_x: torch.Tensor = None,
+        context_data: Dict[str, Any] = {},
         context_predictions: List = [],
     ) -> List[Hypothesis]:
         """Search new tokens for running hypotheses and encoded speech x.
@@ -432,10 +487,11 @@ class ContextualBeamSearch(BeamSearch):
 
         """
         best_hyps = []
-        part_ids = torch.arange(self.n_vocab, device=x.device)  # no pre-beam
+        context_len = len(context_data['blist']) - 1
+        part_ids = torch.arange(self.n_vocab + context_len, device=x.device)  # no pre-beam
         for hyp in running_hyps:
             # scoring
-            weighted_scores = torch.zeros(self.n_vocab, dtype=x.dtype, device=x.device)
+            weighted_scores = torch.zeros(self.n_vocab + context_len, dtype=x.dtype, device=x.device)
             if self.return_hs:
                 hs, scores, states = self.score_full(hyp, x, pre_x=pre_x, context_predictions=context_predictions)
             else:
@@ -466,7 +522,13 @@ class ContextualBeamSearch(BeamSearch):
                 best_hyps.append(
                     Hypothesis(
                         score=weighted_scores[j],
-                        yseq=self.append_token(hyp.yseq, j),
+                        yseq=self.append_token(
+                            hyp.yseq, 
+                            j,
+                            self.n_vocab,
+                            context_data['context_list_ints'][1:],
+                            context_data['trie'],
+                        ),
                         scores=self.merge_scores(
                             hyp.scores, scores, j, part_scores, part_j
                         ),
