@@ -119,6 +119,8 @@ class ContextSampleOutput:
     context_label_ilens: Optional[torch.Tensor] = None
     label_occurrence: Optional[torch.Tensor] = None
     label_occurrence_ilens: Optional[torch.Tensor] = None
+    token_level_label_occurrence: Optional[torch.Tensor] = None
+    token_level_label_occurrence_ilens: Optional[torch.Tensor] = None
     label_cross_entropy: Optional[torch.Tensor] = None
     label_cross_entropy_ilens: Optional[torch.Tensor] = None
     context_list: Optional[List[str]] = None
@@ -356,7 +358,7 @@ class ContextSampler():
         positions = []
         index = sentence.find(phrase)
         while index != -1:
-            positions.append(index)
+            positions.append([index, index + len(phrase)])
             index = sentence.find(phrase, index + 1)
         return positions
 
@@ -381,11 +383,12 @@ class ContextSampler():
             ent_data = [self.context_list[idx] for idx in gold_contexts[i]]
             char2token_idx = self._map_tokens_to_words(valid_token_ids, tokens, text)
             for ent_idx, positions in self._find_contexts_with_positions(text, ent_data):
-                for pos in positions:
-                    index = char2token_idx.get(pos)
-                    if index is not None:
-                        ent_pos = utterance_wise_sub_context_lists[i].index(gold_contexts[i][ent_idx])
-                        label[index] = ent_pos + (1 if self.use_no_context_token else 0)
+                for start, end in positions:
+                    for char_pos in range(start, end):
+                        index = char2token_idx.get(char_pos)
+                        if index is not None:
+                            ent_pos = utterance_wise_sub_context_lists[i].index(gold_contexts[i][ent_idx])
+                            label[index] = ent_pos + (1 if self.use_no_context_token else 0)
             labels.append(label)
         return labels
 
@@ -468,7 +471,7 @@ class ContextSampler():
             outputs.label_occurrence       = batch_wise_context_occurrences_label_tensors
             outputs.label_occurrence_ilens = batch_wise_context_occurrences_label_tensor_lens
 
-        # Build cross-entropy labels
+        # Build cross-entropy and occurrence labels
         if texts is not None:
             labels = self.build_label_for_cross_entropy_loss(
                 texts,
@@ -485,6 +488,22 @@ class ContextSampler():
             )
             outputs.label_cross_entropy       = utterance_wise_context_ce_label_tensors
             outputs.label_cross_entropy_ilens = utterance_wise_context_ce_label_tensor_lens
+            
+            batch_wise_context_occurrence_list = [no_context_occurrence_label] + [self.context_occurrence_list[idx] for idx in batch_wise_sub_context_list]
+            token_level_occurrence_labels = []
+            for i in range(batch_size):
+                token_level_occurrence_label = [
+                    batch_wise_context_occurrence_list[idx] for idx in labels[i]
+                ] + [no_context_occurrence_label] # for <sos/eos>
+                token_level_occurrence_labels.append(token_level_occurrence_label)
+            (
+                batch_wise_token_level_occurrence_label_tensors, 
+                batch_wise_token_level_occurrence_label_tensor_lens
+            ) = self.tensorify(
+                token_level_occurrence_labels
+            )
+            outputs.token_level_label_occurrence       = batch_wise_token_level_occurrence_label_tensors
+            outputs.token_level_label_occurrence_ilens = batch_wise_token_level_occurrence_label_tensor_lens
 
     def construct_prompt_labels(
         self,

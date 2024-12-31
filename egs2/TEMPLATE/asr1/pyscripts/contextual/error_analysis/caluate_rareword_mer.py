@@ -372,6 +372,6 @@ if __name__ == "__main__":
 """
 python3 -m pyscripts.contextual.error_analysis.caluate_rareword_mer \
     --rareword_list_path "./local/contextual/rarewords/esun_earningcall.entity.txt" \
-    --reference_path "./dump/raw/test/text" \
-    --hypothesis_path "/mnt/storage1/experiments/espnet/egs2/esun/asr1/exp/asr_whisper_medium_lora_decoder/decode_asr_whisper_noctc_greedy_asr_model_3epoch/test/text"
+    --reference_path "./dump/raw/test_small/text" \
+    --hypothesis_path "./exp/asr_whisper/run_medium_contextual_adapter_decoder_reweight/decode_asr_whisper_contextual_adapter_decoder_c300_entity_earningcall_test_asr_model_valid.loss.ave_10best_fixed/test_small/text"
 """

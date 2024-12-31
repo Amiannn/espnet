@@ -184,7 +184,7 @@ class ContextualizedDecoderScorer(ScorerInterface):
             # Bias the hidden state
             decoder_output = decoder_output + decoder_bias_vector
             decoder_output = torch.softmax(self.decoder_scorer.output_layer(decoder_output), dim=-1).reshape(-1)
-            copy_style = True
+            copy_style = False
             if copy_style:
                 decoder_output = self._copy_context_decode_style(
                     model_probs=decoder_output,
@@ -487,7 +487,8 @@ class ContextualBeamSearch(BeamSearch):
 
         """
         best_hyps = []
-        context_len = len(context_data['blist']) - 1
+        # context_len = len(context_data['blist']) - 1
+        context_len = 0
         part_ids = torch.arange(self.n_vocab + context_len, device=x.device)  # no pre-beam
         for hyp in running_hyps:
             # scoring

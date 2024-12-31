@@ -490,9 +490,9 @@ if __name__ == "__main__":
     """
     python3 -m pyscripts.contextual.error_analysis.caluate_context_retrieval_errors \
         --context_list_path "./local/contextual/rarewords/esun_earningcall.entity.txt" \
-        --ref_context_path "./dump/raw/test/uttblist_idx_entity_earningcall" \
-        --hyp_context_path "./n_gram_matching/baseline_matched_entities/baseline_matched_entities_idxs.txt" \
-        --hyp_context_prob_path "./n_gram_matching/baseline_matched_entities/baseline_matched_entities_probs.txt" \
-        --context_candidate_path "./n_gram_matching/baseline_matched_entities/baseline_matched_entities_idxs.txt" \
+        --ref_context_path "./dump/raw/test_small/uttblist_idx_entity_earningcall" \
+        --hyp_context_path "./exp/asr_whisper/run_medium_contextual_adapter_decoder_alpha0.9/decode_asr_whisper_contextual_adapter_decoder_c300_entity_earningcall_test_asr_model_valid.loss.ave_10best_fixed/test_small/context_idx" \
+        --hyp_context_prob_path "./exp/asr_whisper/run_medium_contextual_adapter_decoder_alpha0.9/decode_asr_whisper_contextual_adapter_decoder_c300_entity_earningcall_test_asr_model_valid.loss.ave_10best_fixed/test_small/context_score" \
+        --context_candidate_path "./exp/asr_whisper/run_medium_contextual_adapter_decoder_alpha0.9/decode_asr_whisper_contextual_adapter_decoder_c300_entity_earningcall_test_asr_model_valid.loss.ave_10best_fixed/test_small/context_candidate" \
         --k 10
     """

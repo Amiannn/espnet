@@ -61,7 +61,10 @@ from espnet.nets.pytorch_backend.transformer.add_sos_eos import (
     add_sos_eos,
     add_sop_sos_eos,
 )
-from espnet.nets.pytorch_backend.transformer.label_smoothing_loss import LabelSmoothingLoss
+from espnet.nets.pytorch_backend.transformer.label_smoothing_loss import (
+    LabelSmoothingLoss,
+    LableSmoothingReWeightedLoss,
+)
 from espnet.nets.pytorch_backend.nets_utils import make_pad_mask
 
 from espnet2.asr.espnet_model import ESPnetASRModel
@@ -197,6 +200,16 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             self.contextualizer_gate_ce = torch.nn.BCEWithLogitsLoss()
         self.context_sampler = context_sampler
 
+        if not self.use_transducer_decoder:
+            self.lp_gamma = self.contextualizer_conf.get("lp_gamma", 0.99)
+            self.criterion_att = LableSmoothingReWeightedLoss(
+                size=vocab_size,
+                padding_idx=ignore_id,
+                smoothing=lsm_weight,
+                normalize_length=length_normalized_loss,
+                alpha=self.lp_gamma,
+            )
+
     def forward(
         self,
         speech: torch.Tensor,
@@ -312,7 +325,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
                 text,
                 text_lengths,
                 contexts,
-                contexts_hypotheses_encoder,
+                # contexts_hypotheses_encoder,
             )
             stats.update(
                 {
@@ -595,7 +608,6 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         target_sequences: torch.Tensor,
         target_lengths: torch.Tensor,
         contexts: dict,
-        encoder_context_hypotheses: Optional[torch.Tensor],
     ) -> Tuple[torch.Tensor, float, Optional[float], Optional[float], Dict[str, torch.Tensor], Optional[torch.Tensor]]:
         """Calculate attention loss for the attention-based decoder.
 
@@ -655,7 +667,8 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         )
 
         # 5. Compute attention loss
-        loss_att = self.criterion_att(decoder_output, ys_out_pad)
+        token_level_label_occurrence = contexts['token_level_label_occurrence']
+        loss_att = self.criterion_att(decoder_output, ys_out_pad, token_level_label_occurrence)
         acc_att = th_accuracy(
             decoder_output.view(-1, self.vocab_size),
             ys_out_pad,
