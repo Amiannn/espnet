@@ -9,7 +9,7 @@ train_set=train
 valid_set=dev
 test_sets="test"
 
-asr_config=conf/contextual/conformer/train_asr_conformer.yaml.yaml
+asr_config=conf/contextual/conformer/train_asr_conformer.yaml
 inference_config=conf/decode_asr_conformer.yaml
 
 lm_config=conf/train_lm_transformer.yaml

@@ -656,10 +656,10 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             )
             decoder_embeddings = decoder_hidden_states
         else:
-            decoder_output, _ = self.decoder(
-                encoder_output, encoder_output_lengths, ys_in_pad, ys_in_lengths
+            (decoder_output, decoder_hidden_states), _ = self.decoder(
+                encoder_output, encoder_output_lengths, ys_in_pad, ys_in_lengths, return_hs=True
             )
-            decoder_embeddings = decoder_output
+            decoder_embeddings = decoder_hidden_states
 
         # 4. Apply decoder contextualization
         decoder_output, decoder_context_hypotheses, decoder_gate_hypotheses = self._apply_contextualizer_decoder(

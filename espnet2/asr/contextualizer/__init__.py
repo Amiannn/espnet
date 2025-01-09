@@ -36,6 +36,7 @@ CONTEXTUAL_ADAPTER_ENCODER = {
     "contextual_adapter_encoder"                   : ContextualAdapterPrototype,
     "contextual_adapter_transformer_encoder"       : ContextualAdapterTransformer,
     "contextual_xphone_adapter_encoder"            : ContextualXPhoneAdapter,
+    "contextual_adapter_light_transformer_encoder" : ContextualLightAdapterTransformer,
 }
 
 CONTEXTUAL_ADAPTER_DECODER = {

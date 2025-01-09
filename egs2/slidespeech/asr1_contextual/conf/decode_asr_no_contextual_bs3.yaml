@@ -1,0 +1,33 @@
+beam_size: 3
+ctc_weight: 0.3
+lm_weight: 0.0
+maxlenratio: 0.0
+minlenratio: 0.0
+penalty: 0.0
+
+# contextual information settings
+contextual_conf:
+    contextual_type: context_sampler
+    # metadata for context list
+    context_list_path: ./local/contextual/contexts/context_f10_test.txt
+    context_phone_embedding_path: null
+    context_list_occurrence_path: null
+    # context settings
+    use_no_context_token: true
+    lower_context_word: false
+    # sampling settings
+    gold_context_dropout: 1.0
+    sub_context_list_dropout: 0.0
+    max_utterance_disrupt_context: 0
+    max_batch_disrupt_context: 0
+    shuffle_sub_context_list: False
+    # hard negative context settings
+    hnc_sampler_type: null
+    # hnc_per_gold_context: 1
+    # hnc_dropout: 0.2
+    # hnc_hardness_range: 20
+    # hnc_use_gpu: false
+    # nlp prompt setting
+    use_context_prompt: False
+    # special structure type
+    sub_context_list_structure_type: null

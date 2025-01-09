@@ -583,17 +583,17 @@ class ESPnetASRModel(AbsESPnetModel):
         ys_pad_lens: torch.Tensor,
     ):
         # Calc CTC loss
-        logging.info(f'-' * 30)
-        logging.info(f'ys_pad:\n{ys_pad}')
-        logging.info(f'ys_pad:\n{ys_pad.shape}')
-        logging.info(f'ys_pad_lens:\n{ys_pad_lens.shape}')
+        # logging.info(f'-' * 30)
+        # logging.info(f'ys_pad:\n{ys_pad}')
+        # logging.info(f'ys_pad:\n{ys_pad.shape}')
+        # logging.info(f'ys_pad_lens:\n{ys_pad_lens.shape}')
         ys_hat = self.ctc.argmax(encoder_out).data
-        logging.info(f'ys_hat:\n{ys_hat.cpu()}')
+        # logging.info(f'ys_hat:\n{ys_hat.cpu()}')
         ys_pad_char = self.error_calculator.decode(ys_pad.cpu())
         ys_hat_char = self.error_calculator.decode(ys_hat.cpu())
-        logging.info(f'ys_pad_char:\n{ys_pad_char}')
-        logging.info(f'')
-        logging.info(f'ys_hat_char:\n{ys_hat_char}')
+        # logging.info(f'ys_pad_char:\n{ys_pad_char}')
+        # logging.info(f'')
+        # logging.info(f'ys_hat_char:\n{ys_hat_char}')
         
         loss_ctc = self.ctc(encoder_out, encoder_out_lens, ys_pad, ys_pad_lens)
 
@@ -601,7 +601,7 @@ class ESPnetASRModel(AbsESPnetModel):
         cer_ctc = None
         if not self.training and self.error_calculator is not None:
             ys_hat = self.ctc.argmax(encoder_out).data
-            logging.info(f'ys_hat:\n{ys_hat.cpu()}')
+            # logging.info(f'ys_hat:\n{ys_hat.cpu()}')
             cer_ctc = self.error_calculator(ys_hat.cpu(), ys_pad.cpu(), is_ctc=True)
         return loss_ctc, cer_ctc
 
@@ -638,22 +638,22 @@ class ESPnetASRModel(AbsESPnetModel):
             encoder_out.unsqueeze(2), decoder_out.unsqueeze(1)
         )
 
-        logging.info(f'joint_out: {joint_out.shape}, {joint_out.device}')
-        logging.info(f'target: {target}, {target.device}')
-        logging.info(f'target: {target.shape}, {target.device}')
-        logging.info(f't_len: {t_len}, {t_len.device}')
-        logging.info(f't_len: {t_len.shape}, {t_len.device}')
-        logging.info(f'u_len: {u_len}, {u_len.device}')
-        logging.info(f'u_len: {u_len.shape}, {u_len.device}')
+        # logging.info(f'joint_out: {joint_out.shape}, {joint_out.device}')
+        # logging.info(f'target: {target}, {target.device}')
+        # logging.info(f'target: {target.shape}, {target.device}')
+        # logging.info(f't_len: {t_len}, {t_len.device}')
+        # logging.info(f't_len: {t_len.shape}, {t_len.device}')
+        # logging.info(f'u_len: {u_len}, {u_len.device}')
+        # logging.info(f'u_len: {u_len.shape}, {u_len.device}')
         loss_transducer = self.criterion_transducer(
             joint_out,
             target,
             t_len,
             u_len,
         )
-        logging.info(f'loss_transducer: {loss_transducer}')
-        logging.info(f'loss_transducer shape: {loss_transducer.shape}')
-        logging.info(f'_' * 30)
+        # logging.info(f'loss_transducer: {loss_transducer}')
+        # logging.info(f'loss_transducer shape: {loss_transducer.shape}')
+        # logging.info(f'_' * 30)
         
         cer_transducer, wer_transducer = None, None
         if not self.training and self.error_calculator_trans is not None:

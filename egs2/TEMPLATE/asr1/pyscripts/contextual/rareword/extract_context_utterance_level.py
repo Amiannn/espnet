@@ -5,18 +5,11 @@ from tqdm import tqdm
 from multiprocessing import Pool, cpu_count
 from pyscripts.contextual.utils.dataio import read_file, write_file
 
-# filename = f'f{2 ** 16}'
-# test_filename = f'f{10}'
+filename = f'f{2 ** 16}'
+test_filename = f'f{10}'
 
-# TRAIN_DEV_BLIST_PATH = f"./local/contextual/rarewords/rareword_{filename}_train.txt"
-# TEST_BLIST_PATH      = f"./local/contextual/rarewords/rareword_{test_filename}_test.txt"
-
-filename      = f'entity_earningcall'
-test_filename = f'entity_earningcall'
-
-TRAIN_DEV_BLIST_PATH = f"./local/contextual/rarewords/esun_earningcall.entity.txt"
-TEST_BLIST_PATH      = f"./local/contextual/rarewords/esun_earningcall.entity.txt"
-
+TRAIN_DEV_BLIST_PATH = f"./local/contextual/contexts/context_{filename}_train.txt"
+TEST_BLIST_PATH      = f"./local/contextual/contexts/context_{test_filename}_test.txt"
 
 def init_worker(init_bl, init_w2i):
     """Initializer function for each worker in the pool."""
@@ -25,20 +18,17 @@ def init_worker(init_bl, init_w2i):
     blist = init_bl
     word2idx = init_w2i
 
-# def get_uttblist(words):
-#     """Process words to get list of rare words and their indices."""
-#     return [[str(word2idx[word]), word] for word in words if word in blist]
-
 def process_data(data):
     """Function to process each data entry."""
     uttid = data[0]
     text  = [d.lower() for d in data[1:]]
-    results = get_uttblist(text)
+    # results = get_uttblist(text)
+    results = get_uttblist_quick(text)
     uttblist = [d[1] for d in results]
     uttblist_idx = [d[0] for d in results]
-    rareword_data = [uttid] + (uttblist if uttblist else [''])
-    rareword_idx = [uttid] + (uttblist_idx if uttblist_idx else [''])
-    return rareword_data, rareword_idx
+    context_data = [uttid] + (uttblist if uttblist else [''])
+    context_idx = [uttid] + (uttblist_idx if uttblist_idx else [''])
+    return context_data, context_idx
 
 def is_phrase_in_sentence(segmented_phrase, segmented_sentence):
     phrase_len = len(segmented_phrase)
@@ -49,7 +39,7 @@ def is_phrase_in_sentence(segmented_phrase, segmented_sentence):
 
 def get_uttblist(words):
     # Segment the sentence using jieba
-    sentence               = "".join(words)
+    sentence               = " ".join(words)
     segmented_sentence     = list(jieba.cut(sentence))
 
     # Set to keep track of detected phrases
@@ -65,6 +55,15 @@ def get_uttblist(words):
         detected_phrases = sorted(detected_phrases, key=lambda d: sentence.find(d[-1]))
     return detected_phrases
 
+# English only
+def get_uttblist_quick(words):
+    detected_phrases = []
+    # Check if each phrase is present in the segmented sentence
+    for word in words:
+        if word in word2idx:
+            detected_phrases.append([str(word2idx[word]), word])
+    return detected_phrases
+
 if __name__ == '__main__':
     datas_path = './dump/raw'
     # Set the number of worker processes
@@ -72,7 +71,7 @@ if __name__ == '__main__':
     # num_workers = 4          # Or set to a specific number
     for folder in os.listdir(datas_path):
         path = os.path.join(datas_path, folder)
-        if not os.path.isfile(os.path.join(path, 'wav.scp')):
+        if not os.path.isfile(os.path.join(path, 'wav.scp')) or "L95_sp" in path:
             continue
         if 'test' in path:
             blist_path = TEST_BLIST_PATH
@@ -92,12 +91,12 @@ if __name__ == '__main__':
         with Pool(processes=num_workers, initializer=init_worker, initargs=(blist, word2idx)) as pool:
             results = list(tqdm(pool.imap(process_data, text_datas), total=len(text_datas)))
 
-        rareword_datas, rareword_idxs = zip(*results)
-        rareword_datas = list(rareword_datas)
-        rareword_idxs = list(rareword_idxs)
+        context_datas, context_idxs = zip(*results)
+        context_datas = list(context_datas)
+        context_idxs = list(context_idxs)
 
         output_path_uttblist = os.path.join(path, f'uttblist_{now_filename}')
-        write_file(output_path_uttblist, rareword_datas)
+        write_file(output_path_uttblist, context_datas)
 
         output_path_uttblist_idx = os.path.join(path, f'uttblist_idx_{now_filename}')
-        write_file(output_path_uttblist_idx, rareword_idxs)
+        write_file(output_path_uttblist_idx, context_idxs)

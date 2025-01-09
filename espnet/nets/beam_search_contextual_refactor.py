@@ -71,7 +71,6 @@ def trie_search(trie, context_ints):
         elif y == 220:
             now = trie
     context_node_idxs = now[1]
-    logging.info(f'context_node_idxs: {len(context_node_idxs)}')
     return True if len(context_node_idxs) == 1 else False
 
 class ContextualHypothesis(NamedTuple):
@@ -139,8 +138,6 @@ class ContextualizedDecoderScorer(ScorerInterface):
             return score, state
 
         # Apply decoder contextualization if enabled
-        logging.info(f'_' * 30)
-        logging.info(f'yseq: {yseq}')
         score, context_hypotheses = self._apply_contextualizer_decoder(yseq, hidden_state, self.context_data)
 
         if context_hypotheses is not None:
@@ -155,7 +152,6 @@ class ContextualizedDecoderScorer(ScorerInterface):
                 combine_weight=0.5,
                 retrieve_phrase=False,
             )
-            logging.info(f'context_prediction: {[idx for idx, _, _ in context_prediction]}')
             context_predictions.extend(context_prediction)
 
         return score, state
@@ -212,10 +208,12 @@ class ContextualizedDecoderScorer(ScorerInterface):
             # Adjust the score
             decoder_output = torch.log_softmax(self.decoder_scorer.output_layer(decoder_output), dim=-1)
             decoder_output = decoder_output.reshape(-1)
+        else:
+            decoder_output = torch.log_softmax(self.decoder_scorer.output_layer(decoder_output), dim=-1)
+            decoder_output = decoder_output.reshape(-1)
         return decoder_output, context_hypotheses
     
     def _copy_context_decode_style(self, model_probs, context_probs, no_context_probs, threshold):
-        logging.info(f'torch.max(context_probs): {torch.max(context_probs)}')
         if torch.max(context_probs) < threshold:
             context_probs = torch.zeros_like(context_probs)
             no_context_probs = torch.ones_like(no_context_probs)
@@ -417,15 +415,18 @@ class ContextualBeamSearch(BeamSearch):
         self._log_best_hypothesis(nbest_hypotheses[0])
 
         # TODO: Change to save both
-        # if len(context_predictions_decoder) > 0:
-        context_predictions = select_max_predictions(context_predictions_decoder)
-        # else:
-        #     context_predictions = select_max_predictions(context_predictions_encoder)
+        if self.contextualizer_config["contextualizer_type"] in CONTEXTUAL_ADAPTER_ENCODER:
+            context_predictions = select_max_predictions(context_predictions_encoder)
+        elif self.contextualizer_config["contextualizer_type"] in CONTEXTUAL_ADAPTER_DECODER:
+            context_predictions = select_max_predictions(context_predictions_decoder)
+        elif self.contextualizer_config["contextualizer_type"] in CONTEXTUAL_PROTOTYPE:
+            context_predictions = select_max_predictions(context_predictions_decoder)
+        elif self.contextualizer_config["contextualizer_type"] in CONTEXTUAL_RETRIEVER:
+            context_predictions = select_max_predictions(context_predictions_encoder)
         # Add context predictions to the hypotheses
         contextual_nbest_hypotheses = self._add_context_predictions(
             nbest_hypotheses, context_predictions, context_data
         )
-
         return contextual_nbest_hypotheses
 
     @staticmethod
@@ -447,21 +448,16 @@ class ContextualBeamSearch(BeamSearch):
 
         """
         if (n_vocab is None) or (x < n_vocab):
-            logging.info(f'not copy!')
             x = torch.tensor([x], dtype=xs.dtype, device=xs.device)
         else:
-            logging.info(f'doing copy!')
             x = x - n_vocab
             end_phrase = [220] if trie_search(trie, context_vocab[x]) else []
-            logging.info(f'end_phrase: {end_phrase}')
             x = torch.tensor(context_vocab[x] + end_phrase, dtype=xs.dtype, device=xs.device)
 
             # roll back to last blank (space symbol)
             blank_index = (xs == 220).nonzero(as_tuple=True)[0]
             if len(blank_index) > 0:
                 blank_index = blank_index[-1]
-                logging.info(f'rolling back from {xs.shape[-1]} to {blank_index + 1}')
-
                 xs = xs[:blank_index + 1] 
         return torch.cat((xs, x))
 
@@ -684,6 +680,7 @@ class ContextualBeamSearch(BeamSearch):
             )
             context_hypotheses = torch.mean(context_hypotheses, dim=1)
             encoder_output = (encoder_output + encoder_bias_vector)
+            encoder_output = encoder_output.squeeze(0)
 
         elif contextualizer_type in CONTEXTUAL_PROTOTYPE:
             context_hypotheses, encoder_output_proj = self.contextualizer.forward_at_encode(

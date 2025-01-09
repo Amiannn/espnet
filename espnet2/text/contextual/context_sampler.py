@@ -154,6 +154,7 @@ class ContextSampler():
         use_no_context_token         : bool = True,
         no_context_token_value       : int = 600,
         no_context_prompt_token_value: int = 600,
+        lower_context_word           : bool = True,
         # sampling settings
         gold_context_dropout         : float = 0.3,
         sub_context_list_dropout     : float = 0.0,
@@ -197,6 +198,7 @@ class ContextSampler():
 
         # ASR model settings
         self.asr_model = asr_model
+        self.lower_context_word = lower_context_word
 
         # context metadatas
         (
@@ -299,7 +301,7 @@ class ContextSampler():
 
     def load_context_list(self, path):
         # watch out! lowering every context words may cause some problem!
-        context_list = [context.lower() for context in read_file(path)]
+        context_list = [context.lower() if self.lower_context_word else context for context in read_file(path)]
         context_idxs_list = [i for i in range(len(context_list))]
         context_ints_list = [self.text2int(context) for context in context_list]
         context_prompt_ints_list = [self.prompt_text2int(context) for context in context_list]
@@ -489,6 +491,7 @@ class ContextSampler():
             outputs.label_cross_entropy       = utterance_wise_context_ce_label_tensors
             outputs.label_cross_entropy_ilens = utterance_wise_context_ce_label_tensor_lens
             
+        if self.context_occurrence_list is not None and texts is not None:
             batch_wise_context_occurrence_list = [no_context_occurrence_label] + [self.context_occurrence_list[idx] for idx in batch_wise_sub_context_list]
             token_level_occurrence_labels = []
             for i in range(batch_size):

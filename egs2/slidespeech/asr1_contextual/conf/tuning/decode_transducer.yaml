@@ -1,0 +1,15 @@
+# beam_size: 10
+# transducer_conf:
+#     search_type: default
+#     score_norm: true
+
+# decoding parameters
+beam_size: 1
+beam_search_config:
+    search_type: default
+    score_norm: true
+
+streaming: true 
+decoding_window: 640
+left_context: 32
+display_hypotheses: true

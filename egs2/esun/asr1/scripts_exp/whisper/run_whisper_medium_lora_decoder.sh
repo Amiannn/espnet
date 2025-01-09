@@ -11,7 +11,7 @@ test_sets="test"
 
 asr_config=conf/whisper/train_asr_whisper_lora_decoder.yaml
 inference_config=conf/whisper/decode_asr_whisper_noctc_greedy.yaml
-asr_tag=whisper_medium_lora_decoder
+asr_tag=whisper_medium_lora_decoder_test
 
 CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --nj 20 \
