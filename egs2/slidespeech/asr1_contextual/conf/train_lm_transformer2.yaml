@@ -1,0 +1,29 @@
+lm: transformer
+lm_conf:
+    pos_enc: null
+    embed_unit: 128
+    att_unit: 512
+    head: 4
+    unit: 1024
+    layer: 4
+    dropout_rate: 0.1
+
+# optimization related
+grad_clip: 5.0
+batch_type: numel
+batch_bins: 250000000
+accum_grad: 4
+max_epoch: 1000
+
+optim: adam
+optim_conf:
+   lr: 0.005
+scheduler: warmuplr
+scheduler_conf:
+   warmup_steps: 25000
+
+best_model_criterion:
+-   - valid
+    - loss
+    - min
+keep_nbest_models: 5  # 5 is good.

@@ -383,5 +383,5 @@ if __name__ == "__main__":
 python3 -m pyscripts.contextual.error_analysis.caluate_rareword_wer \
     --rareword_list_path "./local/contextual/contexts/context_keywords_test.txt" \
     --reference_path "./dump/raw/test/text" \
-    --hypothesis_path "/mnt/storage1/experiments/espnet/egs2/slidespeech/asr1_contextual/exp/asr_conformer/run_context_adapter_encoder_suffix/decode_asr_contextual_asr_model_valid.acc.ave_10best/test/text"
+    --hypothesis_path "/mnt/storage1/experiments/espnet/egs2/slidespeech/asr1/exp/asr_train_conformer_raw_en_bpe5000_sp_suffix/decode_asr_bs3_asr_model_valid.acc.ave_10best/test/text"
 """

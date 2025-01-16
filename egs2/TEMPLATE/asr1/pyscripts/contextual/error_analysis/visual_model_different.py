@@ -8,7 +8,7 @@ from matplotlib import gridspec
 from pyscripts.utils.fileio import read_file
 
 # Configure plot aesthetics
-plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei']
+# plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei']
 plt.rcParams['axes.unicode_minus'] = False
 
 def get_datas(paths):
@@ -16,7 +16,7 @@ def get_datas(paths):
     datas = {}
     for name in paths:
         data = read_file(paths[name], sp='\t')
-        data = {d[0]: float(d[3]) + float(d[2]) / 1000 for d in data[1:]}
+        data = {d[0]: float(d[3]) for d in data[1:]}
         datas[name] = data
     return datas
 
@@ -95,8 +95,8 @@ if __name__ == '__main__':
     sorted_heatmap_data = heatmap_data.sort_values(by=first_model_name, ascending=False)
 
     # Extract Imbalance Rate and Error Rates
-    imbalance_rates = sorted_heatmap_data[['ImbalanceRate']][:100]
-    error_rates = sorted_heatmap_data.drop(columns=['ImbalanceRate'])[:100]
+    imbalance_rates = sorted_heatmap_data[['ImbalanceRate']][:1000]
+    error_rates = sorted_heatmap_data.drop(columns=['ImbalanceRate'])[:1000]
 
     # Enhance Imbalance Rate heatmap by duplicating columns
     num_duplicates = 1  # Number of times to duplicate the imbalance rate column
@@ -155,13 +155,9 @@ if __name__ == '__main__':
 
 """Usage:
 python -m pyscripts.contextual.error_analysis.visual_model_different \
-  --path "Whisper (LoRA Finetune):../asr1/exp/asr_whisper_medium_lora_decoder/decode_asr_whisper_noctc_greedy_asr_model_3epoch/test/analysis/error_patterns.tsv" \
-  --path "Dotproduct Retriever:./exp/asr_whisper/run_medium_dotproduct_contextual_retriever_suffix/decode_asr_whisper_ctc_greedy_c300_entity_earningcall_asr_model_valid.loss.ave_10best/test/error_patterns_retrieval.tsv" \
-  --path "XDotproduct Retriever:./exp/asr_whisper/run_medium_xdotproduct_contextual_retriever_suffix/decode_asr_whisper_ctc_greedy_c300_entity_earningcall_asr_model_valid.loss.ave_10best/test/error_patterns_retrieval.tsv" \
-  --path "Dotproduct Retriever (α=0.8):./exp/asr_whisper/run_medium_dotproduct_contextual_retriever_balanced_alpha0.8_suffix/decode_asr_whisper_ctc_greedy_c300_entity_earningcall_asr_model_valid.loss.ave_10best/test/error_patterns_retrieval.tsv" \
-  --path "XDotproduct Retriever (α=0.8):./exp/asr_whisper/run_medium_xdotproduct_contextual_retriever_balanced_alpha0.8_suffix/decode_asr_whisper_ctc_greedy_c300_entity_earningcall_asr_model_valid.loss.ave_10best/test/error_patterns_retrieval.tsv" \
-  --context-path ./local/contextual/rarewords/esun_earningcall.entity.txt \
-  --occ-train-path ./local/contextual/rarewords/esun_earningcall.entity_occurrence_train.txt \
-  --occ-test-path ./local/contextual/rarewords/esun_earningcall.entity_occurrence_test.txt \
-  --output ./exp/test/sorted_combined_heatmaps.png
+  --path "Conformer:../asr1/exp/asr_train_conformer_raw_en_bpe5000_sp_suffix/decode_asr_bs3_asr_model_valid.acc.ave_10best/test/analysis/error_patterns.tsv" \
+  --context-path ./local/contextual/contexts/context_keywords_test.txt \
+  --occ-train-path ./local/contextual/contexts/context_keywords_test_occurrence_train.txt \
+  --occ-test-path ./local/contextual/contexts/context_keywords_test_occurrence.txt \
+  --output ./exp/statistics/context_errors/sorted_combined_heatmaps.png
 """

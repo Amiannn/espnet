@@ -64,6 +64,7 @@ from espnet.nets.pytorch_backend.transformer.add_sos_eos import (
 from espnet.nets.pytorch_backend.transformer.label_smoothing_loss import (
     LabelSmoothingLoss,
     LableSmoothingReWeightedLoss,
+    LableSmoothingUtterLevelReWeightedLoss,
 )
 from espnet.nets.pytorch_backend.nets_utils import make_pad_mask
 
@@ -135,6 +136,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         extract_feats_in_collect_stats: bool = True,
         lang_token_id: int = -1,
         context_sampler: object = None,
+        lsm_reweight_type: str = None,
         **kwargs,
     ):
         assert check_argument_types()
@@ -201,14 +203,30 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         self.context_sampler = context_sampler
 
         if not self.use_transducer_decoder:
-            self.lp_gamma = self.contextualizer_conf.get("lp_gamma", 0.99)
-            self.criterion_att = LableSmoothingReWeightedLoss(
-                size=vocab_size,
-                padding_idx=ignore_id,
-                smoothing=lsm_weight,
-                normalize_length=length_normalized_loss,
-                alpha=self.lp_gamma,
-            )
+            self.lsm_reweight_type = lsm_reweight_type
+            if lsm_reweight_type is None:
+                self.criterion_att = LabelSmoothingLoss(
+                    size=vocab_size,
+                    padding_idx=ignore_id,
+                    smoothing=lsm_weight,
+                    normalize_length=length_normalized_loss,
+                )
+            elif lsm_reweight_type == 'iw':
+                self.criterion_att = LableSmoothingUtterLevelReWeightedLoss(
+                    size=vocab_size,
+                    padding_idx=ignore_id,
+                    smoothing=lsm_weight,
+                    normalize_length=length_normalized_loss,
+                )
+            elif lsm_reweight_type == 'ln':
+                lp_gamma = self.contextualizer_conf.get("lp_gamma", 0.99)
+                self.criterion_att = LableSmoothingReWeightedLoss(
+                    size=vocab_size,
+                    padding_idx=ignore_id,
+                    smoothing=lsm_weight,
+                    normalize_length=length_normalized_loss,
+                    alpha=lp_gamma,
+                )
 
     def forward(
         self,
@@ -667,8 +685,29 @@ class ESPnetContextualASRModel(ESPnetASRModel):
         )
 
         # 5. Compute attention loss
-        token_level_label_occurrence = contexts['token_level_label_occurrence']
-        loss_att = self.criterion_att(decoder_output, ys_out_pad, token_level_label_occurrence)
+        if self.lsm_reweight_type is None:
+            loss_att = self.criterion_att(
+                decoder_output, 
+                ys_out_pad, 
+            )
+        elif self.lsm_reweight_type == 'iw':
+            label_importance_weight       = contexts['label_importance_weight']
+            label_importance_weight_ilens = contexts['label_importance_weight_ilens']
+            loss_att = self.criterion_att(
+                decoder_output, 
+                ys_out_pad, 
+                label_importance_weight,
+                label_importance_weight_ilens
+            )
+        elif self.lsm_reweight_type == 'ln':
+            token_level_label_occurrence = contexts['token_level_label_occurrence']
+            logging.info(f'token_level_label_occurrence: {token_level_label_occurrence}')
+            loss_att = self.criterion_att(
+                decoder_output, 
+                ys_out_pad, 
+                token_level_label_occurrence
+            )
+        
         acc_att = th_accuracy(
             decoder_output.view(-1, self.vocab_size),
             ys_out_pad,

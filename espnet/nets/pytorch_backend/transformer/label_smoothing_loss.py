@@ -10,6 +10,19 @@ import torch
 import logging
 from torch import nn
 
+def compute_statistics(arr, label="Array"):
+    """
+    Computes mean, variance, std, min, max and prints them out.
+    Returns them in a tuple for convenience.
+    """
+    mean_val = torch.mean(arr)
+    var_val  = torch.var(arr)
+    std_val  = torch.std(arr)
+    min_val  = torch.min(arr)
+    max_val  = torch.max(arr)
+    logging.info(f"{label}: mean={mean_val:.4f}, var={var_val:.4f}, std={std_val:.4f}, "
+          f"min={min_val:.4f}, max={max_val:.4f}")
+    return mean_val, var_val, std_val, min_val, max_val
 
 class LabelSmoothingLoss(nn.Module):
     """Label-smoothing loss.
@@ -106,3 +119,50 @@ class LableSmoothingReWeightedLoss(LabelSmoothingLoss):
             class_weights = (1 - self.alpha) / (1 - torch.pow(self.alpha, class_occurrence))
             kl = kl * class_weights
         return kl.masked_fill(ignore.unsqueeze(1), 0).sum() / denom
+
+class LableSmoothingUtterLevelReWeightedLoss(LabelSmoothingLoss):
+    def __init__(
+        self,
+        size,
+        padding_idx,
+        smoothing,
+        normalize_length=False,
+        criterion=nn.KLDivLoss(reduction="none"),
+    ):
+        super(LableSmoothingUtterLevelReWeightedLoss, self).__init__(
+            size, padding_idx, smoothing, normalize_length, criterion
+        )
+
+    def forward(self, x, target, label_importance_weight=None, label_importance_weight_ilens=None):
+        """Compute loss between x and target.
+
+        :param torch.Tensor x: prediction (batch, seqlen, class)
+        :param torch.Tensor target:
+            target signal masked with self.padding_id (batch, seqlen)
+        :return: scalar float value
+        :rtype torch.Tensor
+        """
+        assert x.size(2) == self.size
+        batch_size = x.size(0)
+        x = x.view(-1, self.size)
+        target = target.view(-1)
+
+        iws = (torch.sum(label_importance_weight, dim=-1) + 1.0).unsqueeze(-1)
+
+        # logging.info(f'iws: {iws}')
+        # compute_statistics(iws, 'IWs')
+
+        with torch.no_grad():
+            true_dist = x.clone()
+            true_dist.fill_(self.smoothing / (self.size - 1))
+            ignore = target == self.padding_idx  # (B,)
+            total = len(target) - ignore.sum().item()
+            target = target.masked_fill(ignore, 0)  # avoid -1 index
+            true_dist.scatter_(1, target.unsqueeze(1), self.confidence)
+        kl = self.criterion(torch.log_softmax(x, dim=1), true_dist)
+        denom = total if self.normalize_length else batch_size
+        
+        kl.masked_fill(ignore.unsqueeze(1), 0)
+        kl = kl.reshape(batch_size, -1)
+        kl = iws * kl
+        return kl.sum() / denom

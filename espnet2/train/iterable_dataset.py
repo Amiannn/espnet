@@ -215,7 +215,7 @@ class IterableESPnetDataset(IterableDataset):
 
             # 3. [Option] Apply preprocessing
             #   e.g. espnet2.train.preprocessor:CommonPreprocessor
-            if self.preprocess is not None and not isinstance(data['speech'], np.ndarray):
+            if self.preprocess is not None and 'speech' in data and not isinstance(data['speech'], np.ndarray):
                 data = self.preprocess(uid, data)
             elif 'text' in data and self.preprocess is not None and not isinstance(data['text'], np.ndarray):
                 # this may cause a problem

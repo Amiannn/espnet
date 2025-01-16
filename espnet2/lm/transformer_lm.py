@@ -2,6 +2,7 @@ from typing import Any, List, Tuple
 
 import torch
 import torch.nn as nn
+import logging
 
 from espnet2.lm.abs_model import AbsLM
 from espnet.nets.pytorch_backend.transformer.embedding import PositionalEncoding

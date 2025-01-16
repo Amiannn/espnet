@@ -8,6 +8,9 @@ from pyscripts.contextual.utils.dataio import read_file, write_file
 filename = f'f{2 ** 16}'
 test_filename = f'f{10}'
 
+filename = "S95_keywords"
+test_filename = "keywords"
+
 TRAIN_DEV_BLIST_PATH = f"./local/contextual/contexts/context_{filename}_train.txt"
 TEST_BLIST_PATH      = f"./local/contextual/contexts/context_{test_filename}_test.txt"
 

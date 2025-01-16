@@ -119,6 +119,8 @@ class ContextSampleOutput:
     context_label_ilens: Optional[torch.Tensor] = None
     label_occurrence: Optional[torch.Tensor] = None
     label_occurrence_ilens: Optional[torch.Tensor] = None
+    label_importance_weight: Optional[torch.Tensor] = None
+    label_importance_weight_ilens: Optional[torch.Tensor] = None
     token_level_label_occurrence: Optional[torch.Tensor] = None
     token_level_label_occurrence_ilens: Optional[torch.Tensor] = None
     label_cross_entropy: Optional[torch.Tensor] = None
@@ -148,8 +150,9 @@ class ContextSampler():
         asr_model: object,
         # metadata for context list
         context_list_path           : str,
-        context_phone_embedding_path: str,
-        context_list_occurrence_path: str,
+        context_phone_embedding_path: str = None,
+        context_list_occurrence_path: str = None,
+        context_list_importance_weights_path: str = None,
         # context settings
         use_no_context_token         : bool = True,
         no_context_token_value       : int = 600,
@@ -213,6 +216,11 @@ class ContextSampler():
         if context_list_occurrence_path is not None:
             self.context_occurrence_list = self.load_context_occurrence_list(context_list_occurrence_path)
 
+        # load context importance weights
+        self.context_importance_weights_list = None
+        if context_list_importance_weights_path is not None:
+            self.context_importance_weights_list = self.load_context_importance_weights_list(context_list_importance_weights_path)
+        logging.info(f'self.context_importance_weights_list: {self.context_importance_weights_list}')
         # load context embedding
         self.context_phone_embeddings = None
         if context_phone_embedding_path is not None:
@@ -311,6 +319,17 @@ class ContextSampler():
         context_occurrence = read_file(path)
         context_occurrence = [int(occur) for occur in context_occurrence]
         return context_occurrence
+    
+    def load_context_importance_weights_list(self, path):
+        def normalize(datas):
+            datas = np.array(datas)
+            iw_max = np.max(datas)
+            iw_min = np.min(datas)
+            return (datas - iw_min) / (iw_max - iw_min)
+        
+        context_importance_weights = read_file(path)
+        context_importance_weights = [np.log(float(iw)) for iw in context_importance_weights]
+        return normalize(context_importance_weights)
 
     def load_context_phone_embedding(self, path):
         datas = torch.load(path)
@@ -319,14 +338,16 @@ class ContextSampler():
         logging.info(f'Loaded conetxt phone embeddings ({context_phone_embeddings.shape})')
         return context_phone_embeddings, context_phone_embedding_indexis
 
-    def tensorify(self, Xs, pad_value=None):
+    def tensorify(self, Xs, pad_value=None, long_type=True):
         if pad_value is None:
             pad_value = self.pad_token_value
         x_tensors = pad_sequence(
             [torch.tensor(x) for x in Xs], 
             batch_first=True, 
             padding_value=pad_value
-        ).long()
+        )
+        if long_type:
+            x_tensors = x_tensors.long()
         x_tensor_ilens = (
             x_tensors != pad_value
         ).sum(dim=-1)
@@ -472,6 +493,25 @@ class ContextSampler():
             )
             outputs.label_occurrence       = batch_wise_context_occurrences_label_tensors
             outputs.label_occurrence_ilens = batch_wise_context_occurrences_label_tensor_lens
+
+        if self.context_importance_weights_list is not None:
+            context_importance_weights_labels  = []
+            for i in range(batch_size):
+                context_importance_weights_label = [
+                    (
+                        self.context_importance_weights_list[idx]
+                    ) for idx in utterance_wise_gold_contexts[i]
+                ]
+                context_importance_weights_labels.append(context_importance_weights_label)
+
+            (
+                batch_wise_context_importance_weights_label_tensors, 
+                batch_wise_context_importance_weights_label_tensor_lens
+            ) = self.tensorify(
+                context_importance_weights_labels, pad_value=0, long_type=False
+            )
+            outputs.label_importance_weight       = batch_wise_context_importance_weights_label_tensors
+            outputs.label_importance_weight_ilens = batch_wise_context_importance_weights_label_tensor_lens
 
         # Build cross-entropy and occurrence labels
         if texts is not None:

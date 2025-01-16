@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Path to your speech_shape file
-FILE_PATH = "/mnt/storage1/experiments/espnet/egs2/esun/asr1/exp/asr_stats_raw_zh_whisper_multilingual_sp/train/speech_shape"
+FILE_PATH = "exp/asr_stats_raw_en_bpe5000_sp_suffix/train/text_shape"
 
 sample_rate = 16000
 durations = []
@@ -32,7 +32,7 @@ median_duration = np.median(durations_array)
 min_duration = np.min(durations_array)
 max_duration = np.max(durations_array)
 
-print(f"Number of audio files: {len(durations)}")
+print(f"Number of text files: {len(durations)}")
 print(f"Mean duration: {mean_duration:.2f} s")
 print(f"Median duration: {median_duration:.2f} s")
 print(f"Min duration: {min_duration:.2f} s")
@@ -40,10 +40,10 @@ print(f"Max duration: {max_duration:.2f} s")
 
 # 3) Plot a histogram of durations
 plt.hist(durations_array, bins=10, edgecolor='black')
-plt.title('Distribution of Audio Durations')
+plt.title('Distribution of Text Durations')
 plt.xlabel('Duration (seconds)')
 plt.ylabel('Count')
 plt.grid(axis='y', linestyle='--', alpha=0.7)
 plt.show()
-output_path = os.path.join(FILE_PATH.rsplit('/', 1)[0], 'audio_durations.png')
+output_path = os.path.join(FILE_PATH.rsplit('/', 1)[0], 'Text_durations.png')
 plt.savefig(output_path)
