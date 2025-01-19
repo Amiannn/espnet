@@ -7,8 +7,8 @@ from pyscripts.contextual.utils.dataio import read_file
 from pyscripts.contextual.utils.dataio import read_json
 from pyscripts.contextual.utils.dataio import write_file
 
-plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei']
-plt.rcParams['axes.unicode_minus'] = False
+# plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei']
+# plt.rcParams['axes.unicode_minus'] = False
 
 def get_word_count(datas):
     counts = {}
@@ -48,7 +48,7 @@ counts = get_word_count(text_datas)
 
 # top 100
 counts_tmp = {key:counts[key] for key in list(counts.keys())[:100]}
-plot_word_count(dump_path, counts_tmp, 'slidespeech')
+# plot_word_count(dump_path, counts_tmp, 'slidespeech')
 
 gamma = 2 ** 32
 
@@ -61,17 +61,18 @@ for word in counts:
 print(f'context length: {len(contexts)}')
 contexts = sorted(contexts, key=lambda x: len(x[0]), reverse=True)
 output_path = os.path.join(dump_context_path, f'context_f{gamma}_train.txt')
-write_file(output_path, contexts, sp=' ')
+# write_file(output_path, contexts, sp=' ')
 
 text_datas = test_text_datas
 counts = get_word_count(text_datas)
 contexts = []
 for word in counts:
     count = counts[word]
-    if (count < 10):
+    # if (count < 10):
+    if (count < 2 ** 16):
         contexts.append([word])
 
 print(f'context length: {len(contexts)}')
 contexts = sorted(contexts, key=lambda x: len(x[0]), reverse=True)
-output_path = os.path.join(dump_context_path, 'context_f10_test.txt')
+output_path = os.path.join(dump_context_path, f'context_f{2 ** 16}_test.txt')
 write_file(output_path, contexts, sp=' ')

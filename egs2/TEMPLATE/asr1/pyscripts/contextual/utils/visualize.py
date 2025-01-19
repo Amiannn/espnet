@@ -5,7 +5,10 @@ import matplotlib.pyplot as plt
 
 from sklearn.manifold import TSNE
 
-plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei']
+try:
+    plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei']
+except:
+    print(f'Font: Microsoft JhengHei not found!')
 plt.rcParams['axes.unicode_minus'] = False
 
 def plot_attention_map(

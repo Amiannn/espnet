@@ -426,8 +426,8 @@ class ContextSampler():
     ):
         batch_size = len(utterance_wise_gold_contexts)
         
-        if len(batch_wise_sub_context_list) == 0:
-            return
+        # if len(batch_wise_sub_context_list) == 0:
+        #     return
 
         # build label for ctc objective
         utterance_wise_context_ctc_labels = []
@@ -465,7 +465,6 @@ class ContextSampler():
         ) = self.tensorify(
             batch_wise_context_ctc_labels
         )
-
         outputs.label_ctc                 = batch_wise_context_ctc_label_tensors
         outputs.label_ctc_ilens           = batch_wise_context_ctc_label_tensor_lens
         outputs.label_utterance_ctc       = utterance_wise_context_ctc_label_tensors
@@ -508,7 +507,7 @@ class ContextSampler():
                 batch_wise_context_importance_weights_label_tensors, 
                 batch_wise_context_importance_weights_label_tensor_lens
             ) = self.tensorify(
-                context_importance_weights_labels, pad_value=0, long_type=False
+                context_importance_weights_labels, long_type=False
             )
             outputs.label_importance_weight       = batch_wise_context_importance_weights_label_tensors
             outputs.label_importance_weight_ilens = batch_wise_context_importance_weights_label_tensor_lens
@@ -632,7 +631,11 @@ class ContextSampler():
     ):
         batch_size = len(utterance_wise_gold_contexts)
         if self.sub_context_list_dropout > random.random():
-            return [[] for _ in range(batch_size)], []
+            return (
+                [[] for _ in range(batch_size)], 
+                [[] for _ in range(batch_size)],
+                []
+            )
 
         utterance_wise_gold_contexts_droped = [
             OrderedSet(
@@ -647,7 +650,7 @@ class ContextSampler():
             batch_wise_sub_context_list.extend(contexts)
             for _ in contexts:
                 batch_wise_to_utterance_wise_ids.append(i)
-            
+
         # hard negative context mining
         if self.hnc_sampler is not None:
             batch_wise_hnc_distractors = self.hnc_sampler.sample(

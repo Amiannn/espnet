@@ -46,6 +46,9 @@ TEST_UTT_BLIST_PATH = './dump/raw/test/uttblist_idx_keywords'
 # TEST_RAREWORD_LIST  = './local/contextual/contexts/context_f10_test.txt'
 # TEST_UTT_BLIST_PATH = './dump/raw/test/uttblist_idx_f10'
 
+# TEST_RAREWORD_LIST  = './local/contextual/contexts/context_f65536_test.txt'
+# TEST_UTT_BLIST_PATH = './dump/raw/test/uttblist_idx_f65536'
+
 HYP_BASELINE_PATH = (
     '../asr1/exp/asr_train_conformer_raw_en_bpe5000_sp_suffix/'
     'decode_asr_bs3_asr_model_valid.acc.ave_10best/test/text'
@@ -55,7 +58,9 @@ HYP_CASR_PATH = (
     'decode_asr_contextual_bs3_asr_model_valid.acc.ave_10best/test/text'
 )
 HYP_OUR_PATH  = (
-    './exp/asr_conformer/run_context_adapter_encoder_reweight0.8_suffix/'
+    # './exp/asr_conformer/run_context_adapter_encoder_reweight0.8_suffix/'
+    # 'decode_asr_contextual_bs3_asr_model_valid.acc.ave_10best/test/text'
+    './exp/asr_conformer/run_context_adapter_encoder_iw_suffix/'
     'decode_asr_contextual_bs3_asr_model_valid.acc.ave_10best/test/text'
 )
 

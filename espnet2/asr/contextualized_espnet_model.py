@@ -189,17 +189,14 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             self.contextualizer_ctc_ga_loss = torch.nn.CTCLoss(
                 reduction="mean", zero_infinity=True
             )
-        if "loss_contextualizer_ga_rnnt" in self.contextualizer_losses:
-            self.contextualizer_rnnt_ga_loss = RNNTLoss(
-                blank=self.blank_id, fastemit_lambda=0.0
-            )
         if "loss_contextualizer_ga_reweight_lp" in self.contextualizer_losses:
+            self.lp_gamma = self.contextualizer_conf.get("lp_gamma", 0.99)
+            self.loss_amp = 10
+        if "loss_contextualizer_ga_iw" in self.contextualizer_losses:
             self.lp_gamma = self.contextualizer_conf.get("lp_gamma", 0.99)
             self.loss_amp = 10
         if "loss_contextualizer_ga_ce" in self.contextualizer_losses:
             self.contextualizer_ga_ce = torch.nn.CrossEntropyLoss(reduction='mean', ignore_index=ignore_id)
-        if "loss_gate_ce" in self.contextualizer_losses:
-            self.contextualizer_gate_ce = torch.nn.BCEWithLogitsLoss()
         self.context_sampler = context_sampler
 
         if not self.use_transducer_decoder:
@@ -863,30 +860,6 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             )
             individual_losses[f"loss_contextualizer_ga_ctc_{loss_suffix}"] = loss_ctc
 
-        if "loss_contextualizer_ga_rnnt" in normalized_weights and loss_suffix == contextualizer_losses_suffix["loss_contextualizer_ga_rnnt"]:
-            if contextual_hypotheses_logits is None:
-                raise ValueError("contextual_hypotheses_logits is required for 'loss_contextualizer_ga_rnnt'")
-
-            # Prepare inputs
-            labels = contexts["context_label"]
-            if labels is None:
-                raise ValueError("Missing 'context_label' in contexts for RNN-T loss")
-
-            # Infer contextual_hypotheses_output_lengths from hypotheses
-            time_lengths = contextual_hypotheses_output_lengths  # Shape: (N,)
-            label_lengths = (labels != self.ignore_id).sum(dim=1).long()  # Assuming labels are padded with ignore_id
-
-            rnnt_input = contextual_hypotheses_logits.float()
-
-            # Compute RNN-T loss
-            loss_rnnt = self.contextualizer_rnnt_ga_loss(
-                rnnt_input,
-                labels,
-                time_lengths,
-                label_lengths,
-            )
-            individual_losses["loss_contextualizer_ga_rnnt"] = loss_rnnt
-
         if "loss_contextualizer_ga_reweight_lp" in normalized_weights and loss_suffix == contextualizer_losses_suffix["loss_contextualizer_ga_reweight_lp"]:
             required_keys = ["label_ctc", "label_occurrence", "label_occurrence_ilens"]
             for key in required_keys:
@@ -915,6 +888,33 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             loss_reweighted_lp = -self.loss_amp * ((weighted_labels * predicted_log_probs).sum(dim=-1)).mean()
             individual_losses[f"loss_contextualizer_ga_reweight_lp_{loss_suffix}"] = loss_reweighted_lp
 
+        if "loss_contextualizer_ga_iw" in normalized_weights and loss_suffix == contextualizer_losses_suffix["loss_contextualizer_ga_iw"]:
+            required_keys = ["label_ctc", "label_importance_weight", "label_importance_weight_ilens"]
+            for key in required_keys:
+                if key not in contexts:
+                    raise ValueError(f"Missing required context key: '{key}' for Reweighted Label Prior loss.")
+
+            label_prior = torch.mean(contextual_hypotheses, dim=1)  # Shape: (N, C)
+            label_prior_log = torch.log(label_prior + epsilon)  # Shape: (N, C)
+
+            labels = contexts["label_ctc"]  # Shape: (N, U)
+            label_importance_weight = contexts["label_importance_weight"]  # Shape: (N, U)
+            label_importance_weight_lengths = contexts["label_importance_weight_ilens"]  # Shape: (N,)
+
+            batch_size, seq_length = labels.shape
+            labels = torch.cat([torch.zeros(batch_size, 1).to(labels.device), labels], dim=-1).long() # add no-context ids
+            seq_length += 1
+            
+            indices = (
+                torch.arange(batch_size, device=labels.device).unsqueeze(1).repeat(1, seq_length).reshape(-1)
+            )
+            predicted_log_probs = label_prior_log[indices, labels.reshape(-1)].reshape(batch_size, seq_length)
+            predicted_log_probs = predicted_log_probs[:, 1:]
+            label_mask = label_importance_weight == -1
+            label_importance_weight[label_mask] = 0.0
+            loss_iw = -self.loss_amp * ((label_importance_weight * predicted_log_probs).sum(dim=-1)).mean()
+            individual_losses[f"loss_contextualizer_ga_iw_{loss_suffix}"] = loss_iw
+
         if "loss_contextualizer_ga_ce" in normalized_weights and loss_suffix == contextualizer_losses_suffix["loss_contextualizer_ga_ce"]:
             ga_log_probs = log_contextual_hypotheses  # Shape: (batch_size, seq_len, num_classes)
             batch_size, seq_len, num_classes = ga_log_probs.shape
@@ -926,17 +926,6 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             loss_ce = self.contextualizer_ga_ce(input_flat, target_flat)
             individual_losses[f"loss_contextualizer_ga_ce_{loss_suffix}"] = loss_ce
 
-        if "loss_gate_ce" in normalized_weights and loss_suffix == contextualizer_losses_suffix["loss_gate_ce"] and gate_hypotheses is not None:
-            label_ce  = contexts['label_cross_entropy']
-            label_bce = (label_ce != 0).float()
-            # Create mask for valid positions
-            mask = label_ce != -1  # Shape: [batch_size, seq_len]
-            # Filter out ignored positions
-            valid_gate_probs = (gate_hypotheses[:, :-1, :])[mask].squeeze(-1)      # Shape: [num_valid_positions]
-            valid_gate_labels = label_bce[mask]    # Shape: [num_valid_positions]
-            # Compute BCE loss
-            loss_gate_ce = self.contextualizer_gate_ce(valid_gate_probs, valid_gate_labels)
-            individual_losses[f"loss_gate_ce_{loss_suffix}"] = loss_gate_ce
         # Combine the individual losses into a total loss
         total_loss = 0.0
         for loss_name, loss_weight in normalized_weights.items():
