@@ -23,7 +23,8 @@ def occurrence(texts, bwords):
 if __name__ == '__main__':
     text_path  = './dump/raw/S95_sp/text'
     dev_path   = './dump/raw/dev/text'
-    test_path  = './dump/raw/test/text'
+    # test_path  = './dump/raw/test/text'
+    test_path  = './exp/asr_conformer/run_context_adapter_encoder_suffix/decode_asr_contextual_bs3_asr_model_valid.acc.ave_10best/test/text'
     dump_path  = './local/contextual/contexts'
     name       = TRAIN_DEV_BLIST_PATH.split('/')[-1].replace('.txt', '')
     name_test  = TEST_BLIST_PATH.split('/')[-1].replace('.txt', '')
@@ -38,8 +39,8 @@ if __name__ == '__main__':
     counts      = list(map(lambda x: [str(x)], occurrence(text_datas, blist)))
     counts_test = list(map(lambda x: [str(x)], occurrence(test_datas, blist_test)))
 
-    output_path = os.path.join(dump_path, f'{name}_occurrence_train.txt')
-    write_file(output_path, counts)
+    # output_path = os.path.join(dump_path, f'{name}_occurrence_train.txt')
+    # write_file(output_path, counts)
 
-    output_path = os.path.join(dump_path, f'{name_test}_occurrence_test.txt')
+    output_path = os.path.join(dump_path, f'{name_test}_occurrence_test_hyp.txt')
     write_file(output_path, counts_test)

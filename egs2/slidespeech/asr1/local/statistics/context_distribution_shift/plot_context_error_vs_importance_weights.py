@@ -9,7 +9,7 @@ from scipy.stats import pearsonr
 result_path = '../asr1/exp/asr_train_conformer_raw_en_bpe5000_sp_suffix/decode_asr_bs3_asr_model_valid.acc.ave_10best/test/score_wer/result.txt'
 context_path = './local/contextual/contexts/context_keywords_test.txt'
 iw_path = './exp/statistics/context_importance_weights/importance_weights.txt'
-iw_uniform_path = './exp/statistics/context_importance_weights/importance_weights_uniform.txt'
+iw_uniform_path = './exp/statistics/context_importance_weights/importance_weights.txt'
 
 def read_file(file_path, sp=" "):
     """
@@ -107,15 +107,16 @@ def plot_subplots(iw, iw_uniform, avg_errors, non_avg_errors, save_path=None):
     iw_uniform_norm = normalize(np.array(iw_uniform))
 
     # Prepare the subplot grid
-    fig, axes = plt.subplots(2, 2, figsize=(16, 12))  # Adjusted size for clarity
-    plt.subplots_adjust(hspace=0.35, wspace=0.25)
+    # fig, axes = plt.subplots(2, 2, figsize=(16, 12))  # Adjusted size for clarity
+    fig, axes = plt.subplots(1, 1, figsize=(8, 8))  # Adjusted size for clarity
+    # plt.subplots_adjust(hspace=0.35, wspace=0.25)
 
     # Define subplot configurations
     subplot_configs = [
-        {'ax': axes[0, 0], 'x': iw_norm, 'y': avg_errors, 'title': 'Importance Weights vs Averaged Context Error Rate', 'xlabel': 'Importance Weights (Normalized)', 'ylabel': 'Averaged Context Error Rate'},
-        {'ax': axes[0, 1], 'x': iw_uniform_norm, 'y': avg_errors, 'title': 'Uniform Importance Weights vs Averaged Context Error Rate', 'xlabel': 'Uniform Importance Weights (Normalized)', 'ylabel': 'Averaged Context Error Rate'},
-        {'ax': axes[1, 0], 'x': iw_norm, 'y': non_avg_errors, 'title': 'Importance Weights vs Non-Averaged Context Error Rate', 'xlabel': 'Importance Weights (Normalized)', 'ylabel': 'Non-Averaged Context Error Rate'},
-        {'ax': axes[1, 1], 'x': iw_uniform_norm, 'y': non_avg_errors, 'title': 'Uniform Importance Weights vs Non-Averaged Context Error Rate', 'xlabel': 'Uniform Importance Weights (Normalized)', 'ylabel': 'Non-Averaged Context Error Rate'},
+        {'ax': axes, 'x': iw_norm, 'y': non_avg_errors, 'title': 'Importance Weights vs Context ErrorRate', 'xlabel': 'Importance Weights', 'ylabel': 'Context ErrorRate'},
+        # {'ax': axes[0, 1], 'x': iw_uniform_norm, 'y': avg_errors, 'title': 'Uniform Importance Weights vs Averaged Context Error Rate', 'xlabel': 'Uniform Importance Weights (Normalized)', 'ylabel': 'Averaged Context Error Rate'},
+        # {'ax': axes[1, 0], 'x': iw_norm, 'y': non_avg_errors, 'title': 'Importance Weights vs Non-Averaged Context Error Rate', 'xlabel': 'Importance Weights (Normalized)', 'ylabel': 'Non-Averaged Context Error Rate'},
+        # {'ax': axes[1, 1], 'x': iw_uniform_norm, 'y': non_avg_errors, 'title': 'Uniform Importance Weights vs Non-Averaged Context Error Rate', 'xlabel': 'Uniform Importance Weights (Normalized)', 'ylabel': 'Non-Averaged Context Error Rate'},
     ]
 
     for config in subplot_configs:

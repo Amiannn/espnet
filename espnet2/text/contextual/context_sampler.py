@@ -123,6 +123,8 @@ class ContextSampleOutput:
     label_importance_weight_ilens: Optional[torch.Tensor] = None
     token_level_label_occurrence: Optional[torch.Tensor] = None
     token_level_label_occurrence_ilens: Optional[torch.Tensor] = None
+    token_level_label_importance_weights: Optional[torch.Tensor] = None
+    token_level_label_importance_weight_ilens: Optional[torch.Tensor] = None
     label_cross_entropy: Optional[torch.Tensor] = None
     label_cross_entropy_ilens: Optional[torch.Tensor] = None
     context_list: Optional[List[str]] = None
@@ -536,7 +538,7 @@ class ContextSampler():
             for i in range(batch_size):
                 token_level_occurrence_label = [
                     batch_wise_context_occurrence_list[idx] for idx in labels[i]
-                ] + [no_context_occurrence_label] # for <sos/eos>
+                ] + [no_context_occurrence_label] # for <eos>
                 token_level_occurrence_labels.append(token_level_occurrence_label)
             (
                 batch_wise_token_level_occurrence_label_tensors, 
@@ -546,6 +548,28 @@ class ContextSampler():
             )
             outputs.token_level_label_occurrence       = batch_wise_token_level_occurrence_label_tensors
             outputs.token_level_label_occurrence_ilens = batch_wise_token_level_occurrence_label_tensor_lens
+
+        if self.context_importance_weights_list is not None and texts is not None:
+            no_context_importance_weights_label = 1.0
+            batch_wise_context_importance_weights_list = [
+                no_context_importance_weights_label
+            ] + [
+                self.context_importance_weights_list[idx] + 1.0 for idx in batch_wise_sub_context_list
+            ]
+            token_level_importance_weights_labels = []
+            for i in range(batch_size):
+                token_level_importance_weights_label = [
+                    batch_wise_context_importance_weights_list[idx] for idx in labels[i]
+                ] + [no_context_importance_weights_label] # for <eos>
+                token_level_importance_weights_labels.append(token_level_importance_weights_label)
+            (
+                batch_wise_token_level_context_importance_label_tensors, 
+                batch_wise_token_level_context_importance_label_tensor_lens
+            ) = self.tensorify(
+                token_level_importance_weights_labels, long_type=False
+            )
+            outputs.token_level_label_importance_weights      = batch_wise_token_level_context_importance_label_tensors
+            outputs.token_level_label_importance_weight_ilens = batch_wise_token_level_context_importance_label_tensor_lens
 
     def construct_prompt_labels(
         self,

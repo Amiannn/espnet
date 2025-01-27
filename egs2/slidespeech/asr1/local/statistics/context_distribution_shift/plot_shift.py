@@ -100,7 +100,7 @@ x = np.arange(len(top_words))
 # -------------------------
 # (a) 分佈 A
 # -------------------------
-axes[0].plot(x, a_counts_aligned, color='#1f77b4', label='$\mathrm{P}_{\mathcal{S}}(\mathrm{C}_{s})$', linewidth=1.5)
+axes[0].plot(x, a_counts_aligned, color='#1f77b4', label='$\mathrm{P}_{\mathcal{S}}(c)$', linewidth=1.5)
 axes[0].fill_between(x, 0, a_counts_aligned, color='#1f77b4', alpha=0.3)
 axes[0].set_ylabel("Freq. Source")
 axes[0].set_title("Source Context Distribution".format(N), 
@@ -112,7 +112,7 @@ axes[0].legend(loc='upper right', frameon=True)
 # -------------------------
 # (b) 分佈 B
 # -------------------------
-axes[1].plot(x, b_counts_aligned, color='#2ca02c', label='$\mathrm{P}_{\mathcal{T}}(\mathrm{C}_{s})$', linewidth=1.5)
+axes[1].plot(x, b_counts_aligned, color='#2ca02c', label='$\mathrm{P}_{\mathcal{T}}(c)$', linewidth=1.5)
 axes[1].fill_between(x, 0, b_counts_aligned, color='#2ca02c', alpha=0.3)
 axes[1].set_ylabel("Freq. Target")
 axes[1].set_title("Target Context Distribution".format(N),
@@ -123,7 +123,7 @@ axes[1].legend(loc='upper right', frameon=True)
 # (c) 重要性權重 (Log Ratio)
 # -------------------------
 axes[2].plot(x, importance_weights_aligned, color='#9467bd', 
-             label='$\mathrm{P}_{\mathcal{T}}(\mathrm{C}_{s})/\mathrm{P}_{\mathcal{S}}(\mathrm{C}_{s})$', linewidth=1.5)
+             label='$\mathrm{P}_{\mathcal{T}}(c)/\mathrm{P}_{\mathcal{S}}(c)$', linewidth=1.5)
 
 # 在 log scale 下，填充 (fill_between) 需要確保上下界都大於 0
 # baseline (ratio = 1)

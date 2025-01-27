@@ -146,12 +146,6 @@ class LableSmoothingUtterLevelReWeightedLoss(LabelSmoothingLoss):
         batch_size = x.size(0)
         x = x.view(-1, self.size)
         target = target.view(-1)
-
-        iws = (torch.sum(label_importance_weight, dim=-1) + 1.0).unsqueeze(-1)
-
-        # logging.info(f'iws: {iws}')
-        # compute_statistics(iws, 'IWs')
-
         with torch.no_grad():
             true_dist = x.clone()
             true_dist.fill_(self.smoothing / (self.size - 1))
@@ -161,8 +155,8 @@ class LableSmoothingUtterLevelReWeightedLoss(LabelSmoothingLoss):
             true_dist.scatter_(1, target.unsqueeze(1), self.confidence)
         kl = self.criterion(torch.log_softmax(x, dim=1), true_dist)
         denom = total if self.normalize_length else batch_size
-        
-        kl.masked_fill(ignore.unsqueeze(1), 0)
-        kl = kl.reshape(batch_size, -1)
-        kl = iws * kl
-        return kl.sum() / denom
+        # logging.info(f'label_importance_weight: {label_importance_weight[0].tolist()}')
+        # logging.info(f'label_importance_weight shape: {label_importance_weight.shape}')
+        label_importance_weight = label_importance_weight.view(-1, 1)
+        kl = kl * label_importance_weight
+        return kl.masked_fill(ignore.unsqueeze(1), 0).sum() / denom

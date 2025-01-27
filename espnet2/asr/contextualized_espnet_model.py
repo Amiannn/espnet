@@ -688,8 +688,8 @@ class ESPnetContextualASRModel(ESPnetASRModel):
                 ys_out_pad, 
             )
         elif self.lsm_reweight_type == 'iw':
-            label_importance_weight       = contexts['label_importance_weight']
-            label_importance_weight_ilens = contexts['label_importance_weight_ilens']
+            label_importance_weight       = contexts['token_level_label_importance_weights']
+            label_importance_weight_ilens = contexts['token_level_label_importance_weight_ilens']
             loss_att = self.criterion_att(
                 decoder_output, 
                 ys_out_pad, 

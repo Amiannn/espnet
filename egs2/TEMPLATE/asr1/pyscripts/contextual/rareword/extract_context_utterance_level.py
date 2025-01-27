@@ -5,13 +5,13 @@ from tqdm import tqdm
 from multiprocessing import Pool, cpu_count
 from pyscripts.contextual.utils.dataio import read_file, write_file
 
-filename = f'f{2 ** 16}'
+filename = f'f{10}'
 test_filename = f'f{10}'
 
-filename = "S95_keywords"
-test_filename = "f65536"
+# filename = "f10"
+# test_filename = "f10"
 
-TRAIN_DEV_BLIST_PATH = f"./local/contextual/contexts/context_{filename}_train.txt"
+TRAIN_DEV_BLIST_PATH = f"./local/contextual/contexts/context_{filename}_test.txt"
 TEST_BLIST_PATH      = f"./local/contextual/contexts/context_{test_filename}_test.txt"
 
 def init_worker(init_bl, init_w2i):
@@ -79,6 +79,7 @@ if __name__ == '__main__':
         if 'test' in path:
             blist_path = TEST_BLIST_PATH
             now_filename = test_filename
+            continue
         else:
             blist_path = TRAIN_DEV_BLIST_PATH
             now_filename = filename
