@@ -3,7 +3,7 @@ set -e
 
 # 1) Basic paths (modify as needed)
 ref_path="./dump/raw/test/text"
-hyp_path="exp/asr_conformer/run_context_adapter_encoder_iw_all_suffix/decode_asr_contextual_bs3_keywords_asr_model_valid.acc.ave_10best/test/text"
+hyp_path="exp/asr_conformer/run_context_adapter_encoder_iw_all_explicit_drop_suffix/decode_asr_no_contextual_bs3_asr_model_valid.acc.ave_10best/test/text"
 
 # 2) If you want to loop over multiple session files, list them here:
 #    Otherwise, you can just define one session file.

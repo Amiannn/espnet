@@ -37,6 +37,7 @@ model_conf:
     ctc_weight: 0.3
     lsm_weight: 0.1     # label smoothing option
     length_normalized_loss: false
+    lsm_reweight_type: 'iw' # reweight type [iw (importance weighting), ln (long-tailed)]
 
 frontend_conf:
     n_fft: 512
@@ -98,7 +99,8 @@ contextual_conf:
     # metadata for context list
     context_list_path: ./local/contextual/contexts/context_f65536_train.txt
     context_phone_embedding_path: null
-    context_list_occurrence_path: ./local/contextual/contexts/context_f65536_train_occurrence_train.txt
+    context_list_occurrence_path: null
+    context_list_importance_weights_path: ./local/contextual/contexts/context_f65536_train_bbse_importance_weights
     # context settings
     use_no_context_token: true
     lower_context_word: false
@@ -141,8 +143,7 @@ contextualizer_conf:
     contextualizer_weight: 0.5
     contextualizer_losses:
         loss_contextualizer_ga_ctc: [0.5, "encoder"]
-        loss_contextualizer_ga_reweight_lp: [0.5, "encoder"]
-    lp_gamma: 0.9
+        loss_contextualizer_ga_iw: [0.5, "encoder"]
 
 # adapter style training
 freeze_param: ["encoder", "decoder", "contextualizer.encoder.embed", "contextualizer.encoder.pad_embed"]

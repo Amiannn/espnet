@@ -24,7 +24,7 @@ if __name__ == '__main__':
     text_path  = './dump/raw/S95_sp/text'
     dev_path   = './dump/raw/dev/text'
     # test_path  = './dump/raw/test/text'
-    test_path  = './exp/asr_conformer/run_context_adapter_encoder_suffix/decode_asr_contextual_bs3_asr_model_valid.acc.ave_10best/test/text'
+    test_path  = './exp/asr_conformer/run_context_adapter_encoder_suffix/decode_asr_no_contextual_bs3_asr_model_valid.acc.ave_10best/test/text'
     dump_path  = './local/contextual/contexts'
     name       = TRAIN_DEV_BLIST_PATH.split('/')[-1].replace('.txt', '')
     name_test  = TEST_BLIST_PATH.split('/')[-1].replace('.txt', '')

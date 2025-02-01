@@ -13,9 +13,10 @@ uttblist_idx_train="uttblist_idx_f65536"
 uttblist_idx_valid="uttblist_idx_f65536"
 uttblist_idx_test="uttblist_idx_f10"
 
-asr_config=conf/conformer/context_adapter_iw_utterlevel.yaml
+asr_config=conf/conformer/ca.yaml
 inference_config=conf/decode_asr_contextual.yaml
-asr_tag=conformer/run_context_adapter_encoder_iw_utterlevel
+# asr_tag=conformer/run_context_adapter_encoder
+asr_tag=conformer/ca_enc
 
 pretrained_model=../asr1/exp/asr_train_conformer_raw_en_bpe5000_sp_suffix/valid.acc.ave_10best.pth
 
