@@ -22,22 +22,32 @@ if __name__ == '__main__':
     
     metadata = metadata_train + metadata_dev
 
-    keywords = []
-    for m in metadata:
+    # ocr_text = []
+    # for m in metadata:
+    #     if len(m) < 2:
+    #         continue
+    #     ocr_text += m[1:]
+
+    # ocr_text = [[k] for k in sorted(list(set(ocr_text)), key=lambda x: len(x), reverse=True)]
+    # output_path = os.path.join(output_dir, 'context_keywords_train.txt')
+    # write_file(output_path, ocr_text)
+
+    ocr_text = []
+    for m in metadata_dev:
         if len(m) < 2:
             continue
-        keywords += m[1].split('$')
+        ocr_text += m[1].split('$')
 
-    keywords = [[k] for k in sorted(list(set(keywords)), key=lambda x: len(x), reverse=True)]
-    output_path = os.path.join(output_dir, 'context_keywords_train.txt')
-    write_file(output_path, keywords)
+    ocr_text = [[k] for k in sorted(list(set(ocr_text)), key=lambda x: len(x), reverse=True)]
+    output_path = os.path.join(output_dir, 'context_keywords_dev.txt')
+    write_file(output_path, ocr_text)
 
-    keywords = []
-    for m in metadata_test:
-        if len(m) < 2:
-            continue
-        keywords += m[1].split('$')
+    # ocr_text = []
+    # for m in metadata_test:
+    #     if len(m) < 2:
+    #         continue
+    #     ocr_text += m[1:]
 
-    keywords = [[k] for k in sorted(list(set(keywords)), key=lambda x: len(x), reverse=True)]
-    output_path = os.path.join(output_dir, 'context_keywords_test.txt')
-    write_file(output_path, keywords)
+    # ocr_text = [[k] for k in sorted(list(set(ocr_text)), key=lambda x: len(x), reverse=True)]
+    # output_path = os.path.join(output_dir, 'context_keywords_test.txt')
+    # write_file(output_path, ocr_text)

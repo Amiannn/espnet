@@ -1,4 +1,4 @@
-beam_size: 3
+beam_size: 20
 ctc_weight: 0.3
 lm_weight: 0.0
 maxlenratio: 0.0
@@ -19,7 +19,7 @@ contextual_conf:
     gold_context_dropout: 0.0
     sub_context_list_dropout: 0.0
     max_utterance_disrupt_context: 0
-    max_batch_disrupt_context: 0
+    max_batch_disrupt_context: 2000
     shuffle_sub_context_list: False
     # hard negative context settings
     hnc_sampler_type: null

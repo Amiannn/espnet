@@ -46,22 +46,19 @@ TEST_UTT_BLIST_PATH = './dump/raw/test/uttblist_idx_keywords'
 # Example: you can add more hypotheses here
 METHODS = {
     "Baseline": (
-        '../asr1/exp/asr_train_conformer_raw_en_bpe5000_sp_suffix/'
-        'decode_asr_bs3_asr_model_valid.acc.ave_10best/test/text'
+        '../asr1/exp/asr_train_conformer_raw_en_bpe5000_sp_suffix/decode_asr_asr_model_valid.acc.ave_10best/test/text'
     ),
     "CA": (
-        './exp/asr_conformer/run_context_adapter_encoder_suffix/'
-        'decode_asr_contextual_bs3_asr_model_valid.acc.ave_10best/test/text'
+        './exp/asr_conformer/ca_enc_suffix/decode_asr_bs20_ctx_keywords_asr_model_valid.acc.ave_10best/test/text'
     ),
-    "CA + Importance Weighting ($\mathrm{\hat p}_{\mathcal{T}}(c)=\pi$)": (
-        './exp/asr_conformer/run_context_adapter_encoder_reweight0.8_ca_suffix/'
-        'decode_asr_contextual_bs3_asr_model_valid.acc.ave_10best/test/text'
+    "CA + CIW (Naïve)": (
+        './exp/asr_conformer/ca_enc_iw_naive_all_suffix/decode_asr_bs20_ctx_keywords_asr_model_valid.acc.ave_10best/test/text'
     ),
-    # "CA + Importance Weighting (CA&Out:long-tailed)": (
-    #     './exp/asr_conformer/run_context_adapter_encoder_reweight0.8_suffix/decode_asr_contextual_bs3_asr_model_valid.acc.ave_10best/test/text'
-    # ),
-    "CA + Importance Weighting ($\mathrm{\hat p}_{\mathcal{T}}(c)=\mathrm{p}_{\mathcal{T}}(c)$)": (
-        'exp/asr_conformer/run_context_adapter_encoder_iw_suffix/decode_asr_contextual_bs3_asr_model_valid.acc.ave_10best/test/text'
+    "CA + CIW (BBCE)": (
+        './exp/asr_conformer/ca_enc_iw_bbse_all_suffix/decode_asr_bs20_ctx_keywords_asr_model_valid.acc.ave_10best/test/text'
+    ),
+    "CA + CIW (Explicit)": (
+        './exp/asr_conformer/ca_enc_iw_explicit_all_suffix/decode_asr_bs20_ctx_keywords_asr_model_valid.acc.ave_10best/test/text'
     ),
 }
 
@@ -119,6 +116,8 @@ def compute_context_error(ref_data, hyp_data, blist_idxs, bwords):
         blist         = [bwords[idx] for idx in blist_idx]
 
         # Align references & hypotheses at the token level
+        if len("".join(ref_words)) < 1 or len("".join(hyp_words)) < 1:
+            continue
         chunks = align_to_index(ref_words, hyp_words)
         for chunk in chunks:
             wref, whyps, rindex, hindexis = chunk
@@ -174,7 +173,7 @@ def plot_error_rates(
     }
 
     # Create figure and axis
-    fig, ax = plt.subplots(figsize=(10, 8))
+    fig, ax = plt.subplots(figsize=(10, 5))
 
     # Highlight spans (for many/medium/few/zero-shot regions)
     start = 0
@@ -211,9 +210,9 @@ def plot_error_rates(
     ax.set_xticklabels(x_vals[::step], rotation=45)
 
     # Y-axis setup
-    ax.set_ylim([0, 1.0])
+    ax.set_ylim([0, 0.6])
     ax.set_xlim([0, len(train_occurrences)])
-    ax.set_ylabel("Context Error Rate")
+    ax.set_ylabel("Context ErrorRate")
     ax.set_xlabel("Sorted Context Index")
     ax.grid(True, linestyle='--', alpha=0.5)
 
@@ -232,20 +231,22 @@ def plot_error_rates(
         # Light, behind line
         ax.plot(x_vals, short_smoothed, color=color, linewidth=2, alpha=0.2)
         # White outline for contrast
-        ax.plot(x_vals, long_smoothed, color='white', linewidth=3, alpha=1)
+        ax.plot(x_vals, long_smoothed, color='white', linewidth=2, alpha=1)
         # Actual main line
-        ax.plot(x_vals, long_smoothed, color=color, linewidth=2, alpha=0.9, 
+        ax.plot(x_vals, long_smoothed, color=color, linewidth=1, alpha=0.9, 
                 label=method_name)
 
-    ax.set_title("Long-tailed Performance", fontweight='bold', fontsize=12)
+    # ax.set_title("Long-tailed Performance", fontweight='bold', fontsize=12)
     ax.legend(loc="upper left")
     plt.tight_layout()
 
     # Save figure
     svg_path = os.path.join(output_path, f'word_plot_counts_{suffix}.svg')
+    pdf_path = os.path.join(output_path, f'word_plot_counts_{suffix}.pdf')
     png_path = os.path.join(output_path, f'word_plot_counts_{suffix}.png')
     plt.savefig(svg_path, dpi=300)
     plt.savefig(png_path, dpi=300)
+    plt.savefig(pdf_path)
     plt.close(fig)
     print(f"Saved plots to:\n  {svg_path}\n  {png_path}")
 

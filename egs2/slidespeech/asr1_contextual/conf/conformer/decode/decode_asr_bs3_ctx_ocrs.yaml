@@ -9,7 +9,7 @@ penalty: 0.0
 contextual_conf:
     contextual_type: context_sampler
     # metadata for context list
-    context_list_path: ./local/contextual/contexts/context_keywords_test.txt
+    context_list_path: ./local/contextual/contexts/context_ocr_text_test.txt
     context_phone_embedding_path: null
     context_list_occurrence_path: null
     # context settings

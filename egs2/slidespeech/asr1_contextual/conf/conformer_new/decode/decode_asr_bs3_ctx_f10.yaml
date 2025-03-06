@@ -9,7 +9,7 @@ penalty: 0.0
 contextual_conf:
     contextual_type: context_sampler
     # metadata for context list
-    context_list_path: ./local/contextual/contexts/context_keywords_test.txt
+    context_list_path: ./local/contextual/contexts/context_f10_test.txt
     context_phone_embedding_path: null
     context_list_occurrence_path: null
     # context settings
@@ -19,7 +19,7 @@ contextual_conf:
     gold_context_dropout: 0.0
     sub_context_list_dropout: 0.0
     max_utterance_disrupt_context: 0
-    max_batch_disrupt_context: 0
+    max_batch_disrupt_context: 50
     shuffle_sub_context_list: False
     # hard negative context settings
     hnc_sampler_type: null

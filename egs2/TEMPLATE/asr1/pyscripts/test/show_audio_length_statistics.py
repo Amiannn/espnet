@@ -23,7 +23,7 @@ with open(FILE_PATH, "r", encoding="utf-8") as f:
         
         # Convert samples to seconds
         duration_sec = samples / sample_rate
-        durations.append(duration_sec)
+        durations.append(samples)
 
 # 2) Calculate basic statistics
 durations_array = np.array(durations)
@@ -37,13 +37,16 @@ print(f"Mean duration: {mean_duration:.2f} s")
 print(f"Median duration: {median_duration:.2f} s")
 print(f"Min duration: {min_duration:.2f} s")
 print(f"Max duration: {max_duration:.2f} s")
-
 # 3) Plot a histogram of durations
 plt.hist(durations_array, bins=10, edgecolor='black')
-plt.title('Distribution of Text Durations')
+plt.title('Distribution of text Durations')
 plt.xlabel('Duration (seconds)')
 plt.ylabel('Count')
 plt.grid(axis='y', linestyle='--', alpha=0.7)
 plt.show()
-output_path = os.path.join(FILE_PATH.rsplit('/', 1)[0], 'Text_durations.png')
+output_path = os.path.join(FILE_PATH.rsplit('/', 1)[0], 'text_durations.png')
 plt.savefig(output_path)
+
+"""
+ami: 2.6s, 8.47 (tokens)
+"""

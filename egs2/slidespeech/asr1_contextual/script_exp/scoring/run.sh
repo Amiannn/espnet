@@ -2,19 +2,25 @@
 set -e
 
 # 1) Basic paths (modify as needed)
-ref_path="./dump/raw/test/text"
-hyp_path="exp/asr_conformer/run_context_adapter_encoder_iw_all_explicit_drop_suffix/decode_asr_no_contextual_bs3_asr_model_valid.acc.ave_10best/test/text"
+# 1) Basic paths (modify as needed)
+ref_path="./dump/raw/dev/text"
+hyp_path="../asr1/exp/asr_train_conformer_raw_en_bpe5000_sp_suffix/decode_asr_asr_model_valid.acc.ave_10best/dev/text"
+
+# Override hyp_path if OVERRIDE_HYP_PATH is provided
+if [ -n "$OVERRIDE_HYP_PATH" ]; then
+  hyp_path="$OVERRIDE_HYP_PATH"
+fi
 
 # 2) If you want to loop over multiple session files, list them here:
 #    Otherwise, you can just define one session file.
 session_files=(
 #   "./dump/raw/test/wav2session"
-  "./dump/raw/test/wav2session_domains"
+  "./dump/raw/dev/wav2session_domains"
 )
 
 # 3) Context types to test:
 context_types=(
-  "ocr"
+  # "ocr"
   "keywords"
 #   "f10"
 )
@@ -25,12 +31,12 @@ for context_type in "${context_types[@]}"; do
   # Decide how to build 'context_path' based on context_type
   # Adjust these paths to your actual directories
   if [ "$context_type" == "ocr" ]; then
-    context_path="./local/contextual/metadata/related_files/test/ocr_fix"
+    context_path="./local/contextual/metadata/related_files/dev/ocr_fix"
   elif [ "$context_type" == "keywords" ]; then
-    context_path="./local/contextual/metadata/related_files/test/keywords_fix"
+    context_path="./local/contextual/metadata/related_files/dev/keywords_fix"
   else
     # e.g. "f10"
-    context_path="./dump/raw/test/uttblist_f10"
+    context_path="./dump/raw/dev/uttblist_f10"
   fi
 
   for session_file in "${session_files[@]}"; do

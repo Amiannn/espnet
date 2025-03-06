@@ -6,8 +6,8 @@ set -u
 set -o pipefail
 
 train_set="S95"
-valid_set="dev"
-test_sets="test"
+valid_set="test"
+test_sets="dev"
 
 asr_config=conf/exp/train_conformer.yaml
 inference_config=conf/decode_asr.yaml

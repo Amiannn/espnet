@@ -1,4 +1,4 @@
-beam_size: 3
+beam_size: 10
 ctc_weight: 0.3
 lm_weight: 0.0
 maxlenratio: 0.0
@@ -9,14 +9,14 @@ penalty: 0.0
 contextual_conf:
     contextual_type: context_sampler
     # metadata for context list
-    context_list_path: ./local/contextual/contexts/context_keywords_test.txt
+    context_list_path: ./local/contextual/contexts/context_f10_test.txt
     context_phone_embedding_path: null
     context_list_occurrence_path: null
     # context settings
     use_no_context_token: true
     lower_context_word: false
     # sampling settings
-    gold_context_dropout: 0.0
+    gold_context_dropout: 1.0
     sub_context_list_dropout: 0.0
     max_utterance_disrupt_context: 0
     max_batch_disrupt_context: 0

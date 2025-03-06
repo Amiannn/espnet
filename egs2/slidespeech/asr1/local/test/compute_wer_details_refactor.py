@@ -9,6 +9,7 @@ import argparse
 from enum import Enum
 from tqdm import tqdm
 import os
+import csv  # <--- ADDED
 
 spacelist = [" ", "\t", "\r", "\n"]
 puncts = [
@@ -34,13 +35,11 @@ puncts = [
 # Whether to remove tags like <...> from tokens:
 remove_tag = False
 
-
 class Code(Enum):
     match = 1
     substitution = 2
     insertion = 3
     deletion = 4
-
 
 class WordError:
     """Holds the number of reference words and errors of each type
@@ -72,7 +71,6 @@ class WordError:
             f"ins={self.errors[Code.insertion]}, "
             f"dels={self.errors[Code.deletion]}"
         )
-
 
 def characterize(string):
     """Splits a string into character-like tokens, skipping punctuation/spaces."""
@@ -108,7 +106,6 @@ def characterize(string):
             i = j
     return res
 
-
 def stripoff_tags(x):
     """Removes <...> tags from a single token."""
     if not x:
@@ -125,7 +122,6 @@ def stripoff_tags(x):
             chars.append(x[i])
             i += 1
     return "".join(chars)
-
 
 def normalize(sentence, ignore_words, cs, split=None):
     """Case normalization, removing tags if remove_tag=True, splitting if needed."""
@@ -145,7 +141,6 @@ def normalize(sentence, ignore_words, cs, split=None):
         else:
             new_sentence.append(x)
     return new_sentence
-
 
 class Calculator:
     """Levenshtein alignment + tracking per-token error counts."""
@@ -307,11 +302,9 @@ class Calculator:
             result["del"] += self.data[token]["del"]
         return result
 
-
 def width(string):
     """Return 'visual width' of a string for alignment. CJK often double-width."""
     return sum(1 + (unicodedata.east_asian_width(c) in "AFW") for c in string)
-
 
 def default_cluster(word):
     """A simplistic 'cluster' approach for classifying tokens. Used in debug prints."""
@@ -353,7 +346,6 @@ def default_cluster(word):
             return "Other"
     return unicode_names[0]
 
-
 def get_args():
     parser = argparse.ArgumentParser(description="Compute WER, also track U-WER/B-WER.")
     parser.add_argument("--ref", type=str, help="Reference text input path")
@@ -364,7 +356,6 @@ def get_args():
     parser.add_argument("--verbose", type=int, default=1, help="Set verbosity level")
     parser.add_argument("--char", type=bool, default=True, help="Character-based alignment (True) or word-based")
     return parser.parse_args()
-
 
 def main(args):
     tochar = args.char
@@ -379,6 +370,7 @@ def main(args):
 
     # Read reference OCR file
     ref_ocr_dict = {}
+    ref_ocr_name = os.path.basename(args.ref_ocr)
     with codecs.open(args.ref_ocr, "r", "utf-8") as fh:
         for line in fh:
             if "$" in line:
@@ -397,6 +389,8 @@ def main(args):
             for line in fh:
                 uttid, session = line.strip().split()
                 utt2session[uttid] = session
+
+    exp_folder = os.path.dirname(args.rec_file[0])
 
     # Read hypothesis systems
     rec_files = args.rec_file
@@ -441,17 +435,20 @@ def main(args):
     wrong_rec_but_in_ocr_dict = {name: 0 for name in rec_names}
 
     # Attempt to get the total lines for progress bar
-    # (If you want to remove tqdm, you can simply loop without tqdm.)
-    # Fallback if we can't get a line count
     try:
         from pathlib import Path
         _file_total_len = sum(1 for _ in open(args.ref, 'r', encoding='utf-8'))
     except:
         _file_total_len = None
 
+    # Prepare lists that we'll write out to CSV at the end:
+    # 1) domain_result_rows (session-level stats)
+    domain_result_rows = []
+    # 2) final_result_rows (overall system-level stats)
+    final_result_rows = []
+
     # Compute WER per line
     with open(args.ref, 'r', encoding='utf-8') as f:
-        # If _file_total_len is None, tqdm won't show total
         it = tqdm(f, total=_file_total_len, desc="Processing") if verbose else f
 
         for line in it:
@@ -491,7 +488,7 @@ def main(args):
                 # For debug cluster usage:
                 for w in rec + lab:
                     if w not in ignore_words:
-                        _ = default_cluster(w)  # we do not strictly use it, but you might
+                        _ = default_cluster(w)  # we do not strictly use it, but for potential usage
 
                 result = calculators_dict[rec_name].calculate(lab.copy(), rec.copy())
 
@@ -589,38 +586,36 @@ def main(args):
                 print(f"hotword: tp: {_tp}, tn: {_tn}, fp: {_fp}, fn: {_fn}, all: {all_hot}, recall: {recall_:.2f}%")
 
                 # --- Accumulate global U-WER/B-WER/normal WER
-                # Identify which references are "hot" (b-words) vs. "non-hot" (u-words).
                 for idx, code in enumerate(result["code"]):
                     ref_word = result["lab"][idx]
                     hyp_word = result["rec"][idx].replace("<BIAS>", "")
-                    # is this a "b-word" if it's in the intersection (hot_true_list)?
-                    # (We define it as "hot" if the label's token is in hot_true_list.)
-                    # The logic might differ depending on your exact definition.
+                    # is this a "b-word"? We'll define it if it's in hot_true_list
                     is_b_word = (ref_word in hot_true_list)
 
-                    # Increase counters
-                    ub_wer_dict[rec_name]["wer"], wobj = ub_wer_dict[rec_name]["wer"], None
+                    # The main WER object
+                    w_wer = ub_wer_dict[rec_name]["wer"]
                     if is_b_word:
-                        wobj = ub_wer_dict[rec_name]["b_wer"]
+                        w_bwer = ub_wer_dict[rec_name]["b_wer"]
                     else:
-                        wobj = ub_wer_dict[rec_name]["u_wer"]
+                        w_bwer = ub_wer_dict[rec_name]["u_wer"]
 
                     if code == Code.match:
-                        wobj.ref_words += 1
-                        ub_wer_dict[rec_name]["wer"].ref_words += 1
+                        w_wer.ref_words += 1
+                        w_bwer.ref_words += 1
                     elif code == Code.substitution:
-                        wobj.ref_words += 1
-                        wobj.errors[Code.substitution] += 1
-                        ub_wer_dict[rec_name]["wer"].ref_words += 1
-                        ub_wer_dict[rec_name]["wer"].errors[Code.substitution] += 1
+                        w_wer.ref_words += 1
+                        w_wer.errors[Code.substitution] += 1
+
+                        w_bwer.ref_words += 1
+                        w_bwer.errors[Code.substitution] += 1
                     elif code == Code.deletion:
-                        wobj.ref_words += 1
-                        wobj.errors[Code.deletion] += 1
-                        ub_wer_dict[rec_name]["wer"].ref_words += 1
-                        ub_wer_dict[rec_name]["wer"].errors[Code.deletion] += 1
+                        w_wer.ref_words += 1
+                        w_wer.errors[Code.deletion] += 1
+
+                        w_bwer.ref_words += 1
+                        w_bwer.errors[Code.deletion] += 1
                     elif code == Code.insertion:
-                        # insertion does not increase ref_words, but we do increment insertion error
-                        ub_wer_dict[rec_name]["wer"].errors[Code.insertion] += 1
+                        w_wer.errors[Code.insertion] += 1
                         if is_b_word:
                             ub_wer_dict[rec_name]["b_wer"].errors[Code.insertion] += 1
                         else:
@@ -630,17 +625,16 @@ def main(args):
                     if utt2session:
                         session = utt2session[fid]
                         s_ub = multirec_session_result[rec_name][session]["ub_wer"]
-
-                        # The main "wer"
+                        s_wer = s_ub["wer"]
                         if code == Code.match:
-                            s_ub["wer"].ref_words += 1
+                            s_wer.ref_words += 1
                             if is_b_word:
                                 s_ub["b_wer"].ref_words += 1
                             else:
                                 s_ub["u_wer"].ref_words += 1
                         elif code == Code.substitution:
-                            s_ub["wer"].ref_words += 1
-                            s_ub["wer"].errors[Code.substitution] += 1
+                            s_wer.ref_words += 1
+                            s_wer.errors[Code.substitution] += 1
                             if is_b_word:
                                 s_ub["b_wer"].ref_words += 1
                                 s_ub["b_wer"].errors[Code.substitution] += 1
@@ -648,8 +642,8 @@ def main(args):
                                 s_ub["u_wer"].ref_words += 1
                                 s_ub["u_wer"].errors[Code.substitution] += 1
                         elif code == Code.deletion:
-                            s_ub["wer"].ref_words += 1
-                            s_ub["wer"].errors[Code.deletion] += 1
+                            s_wer.ref_words += 1
+                            s_wer.errors[Code.deletion] += 1
                             if is_b_word:
                                 s_ub["b_wer"].ref_words += 1
                                 s_ub["b_wer"].errors[Code.deletion] += 1
@@ -657,7 +651,7 @@ def main(args):
                                 s_ub["u_wer"].ref_words += 1
                                 s_ub["u_wer"].errors[Code.deletion] += 1
                         elif code == Code.insertion:
-                            s_ub["wer"].errors[Code.insertion] += 1
+                            s_wer.errors[Code.insertion] += 1
                             if is_b_word:
                                 s_ub["b_wer"].errors[Code.insertion] += 1
                             else:
@@ -705,11 +699,8 @@ def main(args):
     # Print session-level results (standard WER, plus U-WER/B-WER)
     if utt2session:
         print("=" * 75)
-        print("Per-session results:")
+        print("Per-session (domain) results:")
         print()
-        # session_results_zip structure:
-        #  { session: [ (rec_name, result_dict), ... ], ... } is not directly built,
-        #  but we can build it from multirec_session_result
         for rec_name, session_result in multirec_session_result.items():
             for session, sres in session_result.items():
                 n_all = sres["all"]
@@ -732,6 +723,23 @@ def main(args):
                 print(f"  U-WER: {sess_u_wer_obj.get_result_string()}")
                 print(f"  B-WER: {sess_b_wer_obj.get_result_string()}")
                 print()
+
+                # Save domain/session-level row for CSV
+                # You can store whichever stats you need. Example:
+                domain_result_rows.append([
+                    rec_name,
+                    session,
+                    f"{wer_val:.4f}",
+                    sres["all"],
+                    sres["cor"],
+                    sres["sub"],
+                    sres["del"],
+                    sres["ins"],
+                    # U-WER & B-WER numeric:
+                    f"{sess_u_wer_obj.get_wer():.4f}",
+                    f"{sess_b_wer_obj.get_wer():.4f}",
+                ])
+
         print("=" * 75)
         print()
 
@@ -772,13 +780,73 @@ def main(args):
         recall = tp / (tp + fn) * 100 if (tp + fn) != 0 else 0
         print(f"  Hotword stats -> tp: {tp}, tn: {tn}, fp: {fp}, fn: {fn}, all: {total_hot}, recall: {recall:.2f}%")
 
-        # Summarize the final line with WER, U-WER, B-WER, recall
-        print(f"  => Final: {w_wer.get_wer():.3f} (WER); {u_wer.get_wer():.3f} (U-WER); "
-              f"{b_wer.get_wer():.3f} (B-WER); {recall:.2f}% (hotword recall)")
+        # Summarize final line with WER, U-WER, B-WER, recall
+        final_wer_val = w_wer.get_wer()
+        final_u_wer_val = u_wer.get_wer()
+        final_b_wer_val = b_wer.get_wer()
+
+        print(f"  => Final: {final_wer_val:.3f} (WER); {final_u_wer_val:.3f} (U-WER); "
+              f"{final_b_wer_val:.3f} (B-WER); {recall:.2f}% (hotword recall)")
         print()
 
-    print("Done.")
+        # Save final/overall result row for CSV
+        final_result_rows.append([
+            rec_name,
+            f"{final_wer_val:.3f}",
+            result["all"], 
+            result["cor"],
+            result["sub"],
+            result["del"],
+            result["ins"],
+            f"{final_u_wer_val:.3f}",
+            f"{final_b_wer_val:.3f}",
+            f"{recall:.2f}",
+            tp, tn, fp, fn
+        ])
 
+    # Write domain-level results to CSV
+    output_path = os.path.join(exp_folder, f"domain_result_{ref_ocr_name}.csv")
+    with open(output_path, "w", newline="", encoding="utf-8") as fcsv:
+        writer = csv.writer(fcsv)
+        # Header row: adapt or extend as needed
+        writer.writerow([
+            "system",
+            "session",
+            "WER",
+            "N",
+            "C",
+            "S",
+            "D",
+            "I",
+            "U-WER",
+            "B-WER",
+        ])
+        writer.writerows(domain_result_rows)
+
+    # Write final/overall results to CSV
+    output_path = os.path.join(exp_folder, f"final_result_{ref_ocr_name}.csv")
+    with open(output_path, "w", newline="", encoding="utf-8") as fcsv:
+        writer = csv.writer(fcsv)
+        # Header row: adapt or extend as needed
+        writer.writerow([
+            "system",
+            "WER",
+            "N",
+            "C",
+            "S",
+            "D",
+            "I",
+            "U-WER",
+            "B-WER",
+            "HotwordRecall",
+            "TP",
+            "TN",
+            "FP",
+            "FN",
+        ])
+        writer.writerows(final_result_rows)
+
+    print("Done.")
 
 if __name__ == "__main__":
     args = get_args()
