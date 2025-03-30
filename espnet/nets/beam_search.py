@@ -146,8 +146,6 @@ class BeamSearch(torch.nn.Module):
 
         # NOTE (Shih-Lun): added for OpenAI Whisper ASR
         primer = [self.sos] if self.hyp_primer is None else self.hyp_primer
-        logging.info(f'self.hyp_primer: {self.hyp_primer}')
-        logging.info(f'primer: {primer}')
 
         return [
             Hypothesis(
@@ -439,6 +437,7 @@ class BeamSearch(torch.nn.Module):
         logger.info("decoder input length: " + str(inp.shape[0]))
         logger.info("max output length: " + str(maxlen))
         logger.info("min output length: " + str(minlen))
+        logger.info(f'x: {x}')
 
         # main loop of prefix search
         running_hyps = self.init_hyp(x if pre_x is None else pre_x)

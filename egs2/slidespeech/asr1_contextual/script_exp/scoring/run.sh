@@ -3,8 +3,8 @@ set -e
 
 # 1) Basic paths (modify as needed)
 # 1) Basic paths (modify as needed)
-ref_path="./dump/raw/dev/text"
-hyp_path="../asr1/exp/asr_train_conformer_raw_en_bpe5000_sp_suffix/decode_asr_asr_model_valid.acc.ave_10best/dev/text"
+ref_path="./dump/raw/test/text"
+hyp_path="./exp/asr_whisper/ca_iw_naive_all/decode_asr_bs3_ctx_keywords_asr_model_30epoch/test/text"
 
 # Override hyp_path if OVERRIDE_HYP_PATH is provided
 if [ -n "$OVERRIDE_HYP_PATH" ]; then
@@ -15,7 +15,7 @@ fi
 #    Otherwise, you can just define one session file.
 session_files=(
 #   "./dump/raw/test/wav2session"
-  "./dump/raw/dev/wav2session_domains"
+  "./dump/raw/test/wav2session_domains"
 )
 
 # 3) Context types to test:
@@ -31,12 +31,12 @@ for context_type in "${context_types[@]}"; do
   # Decide how to build 'context_path' based on context_type
   # Adjust these paths to your actual directories
   if [ "$context_type" == "ocr" ]; then
-    context_path="./local/contextual/metadata/related_files/dev/ocr_fix"
+    context_path="./local/contextual/metadata/related_files/test/ocr_fix"
   elif [ "$context_type" == "keywords" ]; then
-    context_path="./local/contextual/metadata/related_files/dev/keywords_fix"
+    context_path="./local/contextual/metadata/related_files/test/keywords_fix"
   else
     # e.g. "f10"
-    context_path="./dump/raw/dev/uttblist_f10"
+    context_path="./dump/raw/test/uttblist_f10"
   fi
 
   for session_file in "${session_files[@]}"; do

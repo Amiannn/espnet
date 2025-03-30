@@ -9,22 +9,23 @@ train_set="S95"
 valid_set="dev"
 test_sets="test"
 
-asr_config=conf/exp/train_conformer.yaml
-inference_config=conf/decode_asr_ctc.yaml
-# asr_tag=run_conformer_test
+asr_config=conf/train_025b.yaml
+inference_config=conf/decode_asr.yaml
+asr_tag=train_025b_ds_raw_bpe50000_finetune
+
+pretrained_model=./exp/asr_train_025b_ds_raw_bpe50000/valid.total_count.ave_5best.pth
 
 CUDA_VISIBLE_DEVICES=0 ./asr.sh \
-    --lang en \
     --ngpu 1 \
     --nj 16 \
-    --gpu_inference false \
-    --inference_nj 6 \
-    --nbpe 5000 \
-    --suffixbpe suffix \
+    --gpu_inference true \
+    --inference_nj 1 \
+    --nbpe 50000 \
     --max_wav_duration 30 \
     --speed_perturb_factors "0.9 1.0 1.1" \
     --audio_format "flac.ark" \
     --feats_type raw \
+    --asr_tag "${asr_tag}" \
     --use_lm false \
     --asr_config "${asr_config}" \
     --inference_config "${inference_config}" \
@@ -33,5 +34,6 @@ CUDA_VISIBLE_DEVICES=0 ./asr.sh \
     --test_sets "${test_sets}" \
     --lm_train_text "data/${train_set}/text" \
     --bpe_train_text "data/${train_set}/text" \
-    --inference_asr_model valid.acc.ave_10best.pth \
+    --inference_asr_model 1epoch.pth \
+    --pretrained_model "${pretrained_model}" \
     "$@"

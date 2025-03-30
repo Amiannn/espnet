@@ -13,6 +13,7 @@ import numpy as np
 import torch
 import torch.quantization
 from typeguard import check_argument_types, check_return_type
+import torch.nn.functional as F
 
 from espnet2.asr.decoder.hugging_face_transformers_decoder import (
     get_hugging_face_model_lm_head,
@@ -420,7 +421,6 @@ class Speech2Text:
                             f"As non-batch scorers {non_batch} are found, "
                             f"fall back to non-batch implementation."
                         )
-
             beam_search.to(device=device, dtype=getattr(torch, dtype)).eval()
             for scorer in scorers.values():
                 if isinstance(scorer, torch.nn.Module):
@@ -435,9 +435,9 @@ class Speech2Text:
             bpemodel = asr_train_args.bpemodel
 
         # compatibility for whisper tokenizer
-        preprocessor_conf = getattr(asr_train_args, "preprocessor_conf", {})
-        whisper_language = preprocessor_conf.get("whisper_language", None)
-        whisper_task = preprocessor_conf.get("whisper_task", None)
+        self.preprocessor_conf = getattr(asr_train_args, "preprocessor_conf", {})
+        whisper_language = self.preprocessor_conf.get("whisper_language", None)
+        whisper_task = self.preprocessor_conf.get("whisper_task", None)
 
         if token_type is None:
             tokenizer = None
@@ -468,7 +468,7 @@ class Speech2Text:
         elif bpemodel not in ["whisper_en", "whisper_multilingual"]:
             converter = TokenIDConverter(token_list=token_list)
         else:
-            if "speaker_change_symbol" in preprocessor_conf:
+            if "speaker_change_symbol" in self.preprocessor_conf:
                 sot_asr = True
             else:
                 sot_asr = False
@@ -507,6 +507,22 @@ class Speech2Text:
                 beam_search.set_hyp_primer(
                     list(converter.tokenizer.tokenizer.convert_tokens_to_ids(a1))
                 )
+        # TODO: fix it.
+        self.model_name = getattr(asr_train_args, "model_name", {})
+        logging.info(f"self.model_name: {self.model_name}")
+        if self.model_name == 'owsl':
+            try:
+                lang_id = converter.token2id['<eng>']
+                task_id = converter.token2id['<asr>']
+                notime_id = converter.token2id[self.preprocessor_conf["notime_symbol"]]
+
+                # Prepare hyp_primer
+                hyp_primer = [asr_model.sos, lang_id, task_id, notime_id]
+                logging.info(f'hyp_primer:: {hyp_primer}')
+                logging.info(f'sos: {asr_model.sos}, eos: {asr_model.eos}')
+                beam_search.set_hyp_primer(hyp_primer)
+            except:
+                logging.info(f'wrong type of model! (owsl)')
 
         self.asr_model = asr_model
         self.asr_train_args = asr_train_args
@@ -560,17 +576,45 @@ class Speech2Text:
 
         """
         assert check_argument_types()
-        # Input as audio signal
-        if isinstance(speech, np.ndarray):
-            speech = torch.tensor(speech)
 
-        # data: (Nsamples,) -> (1, Nsamples)
-        speech = speech.unsqueeze(0).to(getattr(torch, self.dtype))
-        # lengths: (1,)
-        lengths = speech.new_full([1], dtype=torch.long, fill_value=speech.size(1))
-        batch = {"speech": speech, "speech_lengths": lengths}
+        if self.model_name != 'owsl':
+            # Input as audio signal
+            if isinstance(speech, np.ndarray):
+                speech = torch.tensor(speech)
+
+            # data: (Nsamples,) -> (1, Nsamples)
+            speech = speech.unsqueeze(0).to(getattr(torch, self.dtype))
+            # lengths: (1,)
+            lengths = speech.new_full([1], dtype=torch.long, fill_value=speech.size(1))
+            batch = {"speech": speech, "speech_lengths": lengths}
+        else:
+            # Preapre speech
+            if isinstance(speech, np.ndarray):
+                speech = torch.tensor(speech)
+
+            # Only support single-channel speech
+            if speech.dim() > 1:
+                assert (
+                    speech.dim() == 2 and speech.size(1) == 1
+                ), f"speech of size {speech.size()} is not supported"
+                speech = speech.squeeze(1)  # (nsamples, 1) --> (nsamples,)
+
+            lengths = int(
+                self.preprocessor_conf["fs"] * self.preprocessor_conf["speech_length"]
+            )
+            # Pad or trim speech to the fixed length
+            if speech.size(-1) >= lengths:
+                speech = speech[:lengths]
+            else:
+                speech = F.pad(speech, (0, lengths - speech.size(-1)))
+            # Batchify input
+            # speech: (nsamples,) -> (1, nsamples)
+            speech = speech.unsqueeze(0).to(getattr(torch, self.dtype))
+            # lengths: (1,)
+            lengths = speech.new_full([1], dtype=torch.long, fill_value=speech.size(1))
+            batch = {"speech": speech, "speech_lengths": lengths}
+
         logging.info("speech length: " + str(speech.size(1)))
-
         # a. To device
         batch = to_device(batch, device=self.device)
 

@@ -78,6 +78,7 @@ for metric in Metrics:
 
     # Remove the baseline from the plotting DataFrame to avoid a single dot (0% improvement)
     df_relative_plot = df_relative.drop(columns=[baseline_model])
+    print(f'metric: {metric}, df_relative_plot: {df_relative_plot}')
 
     # 7. Prepare the radar chart
 

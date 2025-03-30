@@ -1328,10 +1328,13 @@ class AbsTask(ABC):
             else:
                 valid_key_file = None
 
+            logging.info(f'model: {model}')
+            logging.info(f'getattr(model, "extract_feats_in_collect_stats", True): {getattr(model, "extract_feats_in_collect_stats", True)}')
             if model and not getattr(model, "extract_feats_in_collect_stats", True):
                 model = None
                 logging.info("Skipping collect_feats in collect_stats stage.")
 
+            logging.info(f'Start collect stats!!!')
             collect_stats(
                 model=model,
                 train_iter=cls.build_streaming_iterator(

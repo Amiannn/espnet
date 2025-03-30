@@ -89,6 +89,7 @@ from espnet2.train.preprocessor import (
     CommonPreprocessor,
     ContextualPreprocessor,
     CommonPreprocessor_multi,
+    S2TPreprocessor,
 )
 from espnet2.train.trainer import Trainer
 from espnet2.utils.get_default_kwargs import get_default_kwargs
@@ -223,6 +224,7 @@ preprocessor_choices = ClassChoices(
     classes=dict(
         default=CommonPreprocessor,
         multi=CommonPreprocessor_multi,
+        s2t=S2TPreprocessor,
         contextual=ContextualPreprocessor
     ),
     type_check=AbsPreprocessor,
@@ -272,6 +274,12 @@ class ASRTask(AbsTask):
         required = parser.get_default("required")
         required += ["token_list"]
 
+        group.add_argument(
+            "--model_name",
+            type=str_or_none,
+            default='asr',
+            help="Model name (owsl use)",
+        )
         group.add_argument(
             "--token_list",
             type=str_or_none,
@@ -847,6 +855,7 @@ class ASRTask(AbsTask):
             ctc=ctc,
             joint_network=joint_network,
             token_list=token_list,
+            model_name=getattr(args, "model_name", 'asr'),
             **args.model_conf,
         )
 

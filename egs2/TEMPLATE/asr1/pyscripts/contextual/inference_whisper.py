@@ -119,6 +119,8 @@ def forward(model, speech, speech_length, context_data, tokens, text, token_list
     prediction            = None
     encoder_projection    = None
     context_probabilities = None
+
+    print(f"context_data['blist']: {context_data['blist']}")
     if model.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_RETRIEVER:
         context_probabilities, encoder_projection = model.contextualizer(
             query=encoder_output,
@@ -173,6 +175,17 @@ def forward(model, speech, speech_length, context_data, tokens, text, token_list
                 "context_predictions_prior": context_predictions_prior,
             }
         )
+    elif model.contextualizer_conf["contextualizer_type"] in CONTEXTUAL_ADAPTER_ENCODER:
+        encoder_bias_vector, encoder_attention = model.contextualizer(
+            model_embed=encoder_output,
+            context_embed=context_data["blist"],
+            context_xphone_idxs=context_data["blist_xphone_mean"],
+            ilens=context_data["ilens"],
+            return_atten=True,
+        )
+        context_probabilities = torch.mean(encoder_attention, dim=1)
+        encoder_output = encoder_output + encoder_bias_vector
+                
 
     ctc_prediction = None
     predicted_hypothesis = None
@@ -226,12 +239,12 @@ def forward(model, speech, speech_length, context_data, tokens, text, token_list
         print(f'decoder_out_prob: {decoder_out_prob.shape}')
         print(f'context_probabilities: {context_probabilities.shape}')
 
-        if hasattr(model.contextualizer, 'gate_layer'):
-            decoder_out, gate_value = model.contextualizer.gate_layer(dec_hidden_vec, dec_bias_vec)
-            print(f'gate_value: {gate_value}')
-            print(f'gate_value: {gate_value.shape}')
+        # if hasattr(model.contextualizer, 'gate_layer'):
+        #     decoder_out, gate_value = model.contextualizer.gate_layer(dec_hidden_vec, dec_bias_vec)
+        #     print(f'gate_value: {gate_value}')
+        #     print(f'gate_value: {gate_value.shape}')
 
-        context_probabilities = torch.cat([gate_value, context_probabilities], dim=-1)
+        # context_probabilities = torch.cat([gate_value, context_probabilities], dim=-1)
 
     return None, None, context_probabilities, ctc_prediction, {
         'text': text,
@@ -299,7 +312,7 @@ if __name__ == "__main__":
     contextual_conf = {
         'contextual_type': 'context_sampler',
         'context_list_path': rareword_path,
-        'context_phone_embedding_path': context_list_xphone_path,
+        'context_phone_embedding_path': context_list_xphone_path if context_list_xphone_path != "None" else None,
         'max_batch_disrupt_context': 20,
         'sub_context_list_dropout': 0.0,
         'gold_context_dropout': 0.0,
@@ -308,6 +321,7 @@ if __name__ == "__main__":
         'use_no_context_token': True,
         'context_prompt_has_context_template': '主題為:',
         'context_prompt_no_context_template': '開始吧',
+        # 'lower_context_word': True,
     }
 
     model, loader, contextual_processor = load_espnet_model(
@@ -326,7 +340,7 @@ if __name__ == "__main__":
         use_local_attn_conv=use_local_attn_conv,
         token_type=token_type,
         context_token_type=context_token_type,
-        preprocessor_conf={'whisper_language': 'zh'},
+        preprocessor_conf={'whisper_language': 'en'},
     )
 
     # Prepare tokenizer and token list
@@ -369,7 +383,7 @@ if __name__ == "__main__":
             context_list = [prompt_tokenizer.tokens2text([prompt_token_list[word] for word in rareword if word != -1]) for rareword in context_list]
             print(f'updated context_list: {context_list}')
         
-        context_list = ['Gate'] + context_list
+        # context_list = ['Gate'] + context_list
         visualize(logp, attention, ctc_prediction, text, tokens[0], target, context_list, speech, model.blank_id, token_list, debug_dir, f'{uid}')
 
     # Save results

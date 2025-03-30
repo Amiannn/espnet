@@ -145,6 +145,7 @@ class BatchBeamSearch(BeamSearch):
 
         # NOTE (Shih-Lun): added for OpenAI Whisper ASR
         primer = [self.sos] if self.hyp_primer is None else self.hyp_primer
+        logger.info(f'primer: {primer}')
 
         return self.batchfy(
             [

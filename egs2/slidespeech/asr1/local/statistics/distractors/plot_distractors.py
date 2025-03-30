@@ -11,7 +11,7 @@ baselines = {
     'B-WER': 24.86,
     'U-WER': 19.60
 }
-
+pd.set_option('display.max_columns', None)
 # Set up matplotlib parameters for high quality output
 plt.rcParams["figure.dpi"] = 300           # Higher output resolution
 plt.rcParams["axes.labelsize"] = 12        # xy label font size
@@ -84,6 +84,7 @@ for metric in Metrics:
     if baseline_val is not None:
         plt.axhline(y=baseline_val, color='black', linestyle='--', label='CT')
 
+    print(f'metric: {metric}, baseline_val: {baseline_val}, df_filtered: {df_filtered}')
     sns.lineplot(
         data=df_filtered, 
         x='distractor', 

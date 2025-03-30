@@ -2274,6 +2274,9 @@ class S2TPreprocessor(CommonPreprocessor):
         notime_symbol: str = "<notimestamps>",
         first_time_symbol: str = "<0.00>",
         last_time_symbol: str = "<30.00>",
+        lang_sym: str = '<eng>',
+        task_sym: str = '<asr>',
+        **kargs
     ):
         super().__init__(
             train=train,
@@ -2310,7 +2313,14 @@ class S2TPreprocessor(CommonPreprocessor):
         self.notime = self.token_id_converter.token2id[notime_symbol]
         self.first_time = self.token_id_converter.token2id[first_time_symbol]
         self.last_time = self.token_id_converter.token2id[last_time_symbol]
-
+        
+        self.add_owsl_tokens = True
+        try:
+            self.lang_id = self.token_id_converter.token2id[lang_sym]
+            self.task_id = self.token_id_converter.token2id[task_sym]
+        except:
+            self.add_owsl_tokens = False
+            
     def _pad_or_trim_speech(
         self, data: Dict[str, Union[str, np.ndarray]]
     ) -> Tuple[Dict[str, Union[str, np.ndarray]], int]:
@@ -2367,37 +2377,48 @@ class S2TPreprocessor(CommonPreprocessor):
                         text = self.na_symbol
 
                     text = self.text_cleaner(text)
+                    if self.add_owsl_tokens:
+                        text = text.lower()
                     tokens = self.tokenizer.text2tokens(text)
                     text_ints = self.token_id_converter.tokens2ids(tokens)
+                    # logging.info(f'text:\n{text}')
+                    # logging.info(f'tokens:\n{tokens}')
+                    # logging.info(f'text_ints:\n{text_ints}')
+                    if self.add_owsl_tokens:
+                        text_ints = [self.lang_id, self.task_id, self.notime] + text_ints
+                    # logging.info(f'after text_ints:\n{text_ints}')
                     text_ints = np.array(text_ints, dtype=np.int64)
-
                     # Augment text
                     if name == self.text_name:
                         # NOTE(yifan): The first token is always space
                         # which should be removed.
                         # No space is allowed between special tokens.
                         # This works for bpe, but maybe not for the other types.
-                        text_ints = text_ints[1:]
+                        if not self.add_owsl_tokens:
+                            text_ints = text_ints[1:]
 
-                        # Remove timestamps
-                        if self.train and np.random.uniform() > self.time_apply_prob:
-                            # Timestamps are continuous ints
-                            text_ints = text_ints[
-                                np.logical_or(
-                                    text_ints < self.first_time,
-                                    text_ints > self.last_time,
+                            # Remove timestamps
+                            if self.train and np.random.uniform() > self.time_apply_prob:
+                                # Timestamps are continuous ints
+                                text_ints = text_ints[
+                                    np.logical_or(
+                                        text_ints < self.first_time,
+                                        text_ints > self.last_time,
+                                    )
+                                ]
+                                # First two tokens are <category> and <task>
+                                # text_ints = np.insert(text_ints, 2, self.notime)
+                                # Modified code:
+                                insert_idx = 2 if len(text_ints) >= 2 else len(text_ints)
+                                text_ints = np.insert(text_ints, insert_idx, self.notime)
+
+                            # Shift timestamps
+                            text_ints[
+                                np.logical_and(
+                                    text_ints >= self.first_time,
+                                    text_ints <= self.last_time,
                                 )
-                            ]
-                            # First two tokens are <category> and <task>
-                            text_ints = np.insert(text_ints, 2, self.notime)
-
-                        # Shift timestamps
-                        text_ints[
-                            np.logical_and(
-                                text_ints >= self.first_time,
-                                text_ints <= self.last_time,
-                            )
-                        ] += time_shift
+                            ] += time_shift
 
                     data[name] = text_ints
 

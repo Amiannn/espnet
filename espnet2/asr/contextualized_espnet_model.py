@@ -698,7 +698,7 @@ class ESPnetContextualASRModel(ESPnetASRModel):
             )
         elif self.lsm_reweight_type == 'ln':
             token_level_label_occurrence = contexts['token_level_label_occurrence']
-            logging.info(f'token_level_label_occurrence: {token_level_label_occurrence}')
+            # logging.info(f'token_level_label_occurrence: {token_level_label_occurrence}')
             loss_att = self.criterion_att(
                 decoder_output, 
                 ys_out_pad, 

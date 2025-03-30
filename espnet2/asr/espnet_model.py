@@ -68,6 +68,7 @@ class ESPnetASRModel(AbsESPnetModel):
         sym_eos: str = "<sos/eos>",
         extract_feats_in_collect_stats: bool = True,
         lang_token_id: int = -1,
+        model_name: str = "asr",
         **kwargs
     ):
         assert check_argument_types()
@@ -102,6 +103,8 @@ class ESPnetASRModel(AbsESPnetModel):
         self.preencoder = preencoder
         self.postencoder = postencoder
         self.encoder = encoder
+        self.model_name = model_name
+        # logging.info(f'self.model_name: {self.model_name}')
 
         if not hasattr(self.encoder, "interctc_use_conditioning"):
             self.encoder.interctc_use_conditioning = False
@@ -552,6 +555,10 @@ class ESPnetASRModel(AbsESPnetModel):
 
         ys_in_pad, ys_out_pad = add_sos_eos(ys_pad, self.sos, self.eos, self.ignore_id)
         ys_in_lens = ys_pad_lens + 1
+        # logging.info(f'-' * 30)
+        # logging.info(f'attn ys_in_pad:\n{ys_in_pad}')
+        # logging.info(f'attn ys_out_pad:\n{ys_out_pad}')
+        # logging.info(f'-' * 30)
 
         # 1. Forward decoder
         decoder_out, _ = self.decoder(
@@ -584,16 +591,15 @@ class ESPnetASRModel(AbsESPnetModel):
     ):
         # Calc CTC loss
         # logging.info(f'-' * 30)
-        # logging.info(f'ys_pad:\n{ys_pad}')
-        # logging.info(f'ys_pad:\n{ys_pad.shape}')
-        # logging.info(f'ys_pad_lens:\n{ys_pad_lens.shape}')
+        # logging.info(f'ctc ys_pad:\n{ys_pad}')
+        # logging.info(f'ctc ys_pad:\n{ys_pad.shape}')
+        # logging.info(f'ctc ys_pad_lens:\n{ys_pad_lens.shape}')
         ys_hat = self.ctc.argmax(encoder_out).data
-        # logging.info(f'ys_hat:\n{ys_hat.cpu()}')
         ys_pad_char = self.error_calculator.decode(ys_pad.cpu())
         ys_hat_char = self.error_calculator.decode(ys_hat.cpu())
-        # logging.info(f'ys_pad_char:\n{ys_pad_char}')
-        # logging.info(f'')
-        # logging.info(f'ys_hat_char:\n{ys_hat_char}')
+        # logging.info(f'ctc ys_pad_char:\n{ys_pad_char}')
+        # logging.info(f'ctc ys_hat_char:\n{ys_hat_char}')
+        # logging.info(f'-' * 30)
         
         loss_ctc = self.ctc(encoder_out, encoder_out_lens, ys_pad, ys_pad_lens)
 

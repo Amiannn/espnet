@@ -14,7 +14,7 @@ from torch.utils.data.dataset import IterableDataset
 from typeguard import check_argument_types
 
 from espnet2.train.dataset import ESPnetDataset
-
+from espnet2.train.preprocessor import S2TPreprocessor
 
 def load_kaldi(input):
     retval = kaldiio.load_mat(input)
@@ -215,20 +215,27 @@ class IterableESPnetDataset(IterableDataset):
 
             # 3. [Option] Apply preprocessing
             #   e.g. espnet2.train.preprocessor:CommonPreprocessor
-            if self.preprocess is not None and 'speech' in data and not isinstance(data['speech'], np.ndarray):
-                data = self.preprocess(uid, data)
-            elif 'text' in data and self.preprocess is not None and not isinstance(data['text'], np.ndarray):
-                # this may cause a problem
-                data = self.preprocess._text_process(data)
-            elif 'prompt' in data and self.preprocess is not None and not isinstance(data['prompt'], np.ndarray):
-                # this may cause a problem
-                dummy_text = False
-                if 'text' not in data:
-                    dummy_text   = True
-                    data['text'] = ''
-                data = self.preprocess._text_process(data)
-                if dummy_text:
-                    del data['text']
+
+            if not isinstance(self.preprocess, S2TPreprocessor):
+                if self.preprocess is not None and 'speech' in data and not isinstance(data['speech'], np.ndarray):
+                    data = self.preprocess(uid, data)
+                elif 'text' in data and self.preprocess is not None and not isinstance(data['text'], np.ndarray):
+                    # this may cause a problem
+                    data = self.preprocess._text_process(data)
+                elif 'prompt' in data and self.preprocess is not None and not isinstance(data['prompt'], np.ndarray):
+                    # this may cause a problem
+                    dummy_text = False
+                    if 'text' not in data:
+                        dummy_text   = True
+                        data['text'] = ''
+                    data = self.preprocess._text_process(data)
+                    if dummy_text:
+                        del data['text']
+            else:
+                # 3. [Option] Apply preprocessing
+                #   e.g. espnet2.train.preprocessor:CommonPreprocessor
+                if self.preprocess is not None:
+                    data = self.preprocess(uid, data)
 
             # 4. Force data-precision
             for name in data:

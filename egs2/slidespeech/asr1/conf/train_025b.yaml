@@ -1,0 +1,98 @@
+model_name: owsl
+sort_in_batch: descending       # how to sort data in making batch
+sort_batch: descending          # how to sort created batches
+batch_type: numel
+batch_bins: 3000000            # good for single GPU w/ 40G mem
+accum_grad: 16
+max_epoch: 5
+patience: none
+init: none
+best_model_criterion:
+- - valid
+  - acc
+  - max
+keep_nbest_models: 5
+
+# normalize: global_mvn
+
+frontend: default
+frontend_conf:
+  fs: 16k
+  hop_length: 160
+  n_fft: 512
+  win_length: 400
+
+encoder: transformer
+encoder_conf:
+  attention_dropout_rate: 0.1
+  attention_heads: 16
+  dropout_rate: 0.1
+  input_layer: conv2d
+  layer_drop_rate: 0.1
+  linear_units: 3072
+  normalize_before: true
+  num_blocks: 8
+  output_size: 768
+  positional_dropout_rate: 0.1
+  use_flash_attn: true
+exclude_weight_decay: false
+exclude_weight_decay_conf: {}
+
+decoder: transformer
+decoder_conf:
+  attention_heads: 16
+  dropout_rate: 0.1
+  linear_units: 3072
+  num_blocks: 8
+  positional_dropout_rate: 0.1
+  self_attention_dropout_rate: 0.1
+  src_attention_dropout_rate: 0.1
+  use_flash_attn: true
+
+model_conf:
+  ctc_weight: 0.3
+  extract_feats_in_collect_stats: true
+  length_normalized_loss: false
+  lsm_weight: 0.1
+  sym_na: <na>
+  sym_sos: <sos>
+  sym_eos: <eos>
+
+optim: adam
+optim_conf:
+  lr: 0.002
+
+scheduler: warmuplr
+scheduler_conf:
+  warmup_steps: 25000
+
+specaug: specaug
+specaug_conf:
+  apply_freq_mask: true
+  apply_time_mask: true
+  apply_time_warp: false
+  freq_mask_width_range:
+  - 0
+  - 27
+  num_freq_mask: 2
+  num_time_mask: 10
+  time_mask_width_ratio_range:
+  - 0.0
+  - 0.05
+  time_warp_mode: bicubic
+  time_warp_window: 5
+
+preprocessor: s2t
+preprocessor_conf:
+  first_time_symbol: <0.00>
+  fs: 16000
+  last_time_symbol: <30.00>
+  na_symbol: <na>
+  notime_symbol: <notimestamps>
+  speech_init_silence: 30
+  speech_length: 30
+  speech_resolution: 0.02
+  text_ctc_name: text_ctc
+  text_prev_apply_prob: 0.5
+  text_prev_name: text_prev
+  time_apply_prob: 0.5

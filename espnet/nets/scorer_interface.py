@@ -184,3 +184,11 @@ class BatchPartialScorerInterface(BatchScorerInterface, PartialScorerInterface):
                 and next states for ys
         """
         raise NotImplementedError
+
+
+class MaskParallelScorerInterface(ScorerInterface):
+    """Mask Parallel Scorer Interface."""
+
+    def __init__(self) -> None:
+        """Initialize method."""
+        super().__init__()
